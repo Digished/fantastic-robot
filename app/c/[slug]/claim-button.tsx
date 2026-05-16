@@ -26,21 +26,20 @@ export function ClaimButton({ slug, amountKobo }: { slug: string; amountKobo: nu
 
   if (!confirm) {
     return (
-      <button className="btn-primary w-full py-4 text-base" onClick={() => setConfirm(true)}>
-        🎁 Receive your gift ({formatNaira(amountKobo)})
+      <button className="w-full btn-accent py-5 text-base shadow-glow" onClick={() => setConfirm(true)}>
+        🎁 Receive your gift · {formatNaira(amountKobo)}
       </button>
     );
   }
 
   return (
-    <div className="card">
-      <p className="text-plum">Send {formatNaira(amountKobo)} to the saved bank account now?</p>
+    <div className="glass rounded-3xl2 p-5">
+      <p className="font-serif text-plum text-xl">Send {formatNaira(amountKobo)} now?</p>
+      <p className="text-plum/60 text-sm mt-1">Goes straight to the saved bank account.</p>
       {error && <p className="text-sm text-terracotta mt-2">{error}</p>}
-      <div className="mt-3 flex gap-2">
-        <button className="btn-outline flex-1" onClick={() => setConfirm(false)} disabled={loading}>
-          Not yet
-        </button>
-        <button className="btn-primary flex-1" onClick={trigger} disabled={loading}>
+      <div className="mt-4 flex gap-2">
+        <button className="btn-outline flex-1" onClick={() => setConfirm(false)} disabled={loading}>Not yet</button>
+        <button className="btn-accent flex-1" onClick={trigger} disabled={loading}>
           {loading ? "Sending…" : "Yes, send"}
         </button>
       </div>

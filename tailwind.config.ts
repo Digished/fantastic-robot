@@ -27,9 +27,11 @@ const config: Config = {
         sans: ["var(--font-inter)", "ui-sans-serif", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        card: "0 1px 2px rgba(31,26,24,0.06), 0 8px 24px rgba(31,26,24,0.06)",
+        card: "0 1px 2px rgba(31,26,24,0.05), 0 12px 30px rgba(31,26,24,0.10)",
+        soft: "0 1px 2px rgba(31,26,24,0.06), 0 6px 18px rgba(31,26,24,0.08)",
+        glow: "0 0 0 1px rgba(255,255,255,0.6), 0 20px 50px -10px rgba(217,97,60,0.45)",
       },
-      borderRadius: { xl2: "1.25rem" },
+      borderRadius: { xl2: "1.25rem", "3xl2": "1.75rem" },
     },
   },
   plugins: [],

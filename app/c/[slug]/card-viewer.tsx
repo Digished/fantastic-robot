@@ -1,0 +1,129 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { Message } from "./wall-grid";
+import { deleteMessageAction } from "./actions";
+
+function publicUrl(path: string) {
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${path}`;
+}
+
+export function CardViewer({
+  messages, startIndex, slug, isCreator, onClose,
+}: {
+  messages: Message[];
+  startIndex: number;
+  slug: string;
+  isCreator: boolean;
+  onClose: () => void;
+}) {
+  const [idx, setIdx] = useState(startIndex);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight") setIdx((i) => Math.min(i + 1, messages.length - 1));
+      if (e.key === "ArrowLeft")  setIdx((i) => Math.max(i - 1, 0));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [messages.length, onClose]);
+
+  const m = messages[idx];
+  if (!m) return null;
+  const name = m.is_anonymous ? "Someone special" : m.contributor_name;
+
+  async function onDelete() {
+    if (!confirm("Remove this card from the wall?")) return;
+    setDeleting(true);
+    const res = await deleteMessageAction(slug, m.id);
+    setDeleting(false);
+    if ((res as { error?: string }).error) {
+      alert((res as { error?: string }).error);
+      return;
+    }
+    if (messages.length === 1) onClose();
+    else setIdx((i) => Math.min(i, messages.length - 2));
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 mesh-dusk grain fade-in" onClick={onClose}>
+      <div className="absolute inset-0 flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <header className="relative z-10 px-5 pt-6 flex items-center justify-between text-cream">
+          <span className="text-xs uppercase tracking-[0.25em] text-cream/70">
+            {idx + 1} / {messages.length}
+          </span>
+          <div className="flex items-center gap-2">
+            {isCreator && (
+              <button
+                onClick={onDelete}
+                disabled={deleting}
+                className="glass-dark rounded-full px-3 py-1.5 text-xs"
+              >
+                {deleting ? "Removing…" : "Remove"}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="glass-dark rounded-full size-9 grid place-items-center text-lg leading-none"
+              aria-label="Close"
+            >×</button>
+          </div>
+        </header>
+
+        <div className="relative flex-1 grid place-items-center px-6 py-8">
+          <article className="w-full max-w-md fade-up">
+            {m.media_kind === "image" && m.media_path && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={publicUrl(m.media_path)} alt="" className="w-full rounded-2xl shadow-card" />
+            )}
+            {m.media_kind === "video" && m.media_path && (
+              <video src={publicUrl(m.media_path)} controls playsInline autoPlay className="w-full rounded-2xl shadow-card" />
+            )}
+            {m.media_kind === "audio" && m.media_path && (
+              <div className="glass-dark rounded-3xl2 p-8 text-center">
+                <div className="text-5xl mb-4">🎙</div>
+                <audio src={publicUrl(m.media_path)} controls autoPlay className="w-full" />
+              </div>
+            )}
+
+            {m.body && (
+              <p
+                className={`mt-6 text-cream font-serif whitespace-pre-wrap text-center ${
+                  m.body.length < 80 ? "text-4xl leading-tight" : "text-2xl leading-snug"
+                }`}
+              >
+                {m.body}
+              </p>
+            )}
+
+            <p className="mt-8 text-center text-[11px] uppercase tracking-[0.3em] text-cream/70">
+              — {name}
+            </p>
+          </article>
+        </div>
+
+        {/* Nav arrows */}
+        <div className="relative z-10 px-5 pb-8 flex items-center justify-between">
+          <button
+            onClick={() => setIdx((i) => Math.max(i - 1, 0))}
+            disabled={idx === 0}
+            className="glass-dark rounded-full size-12 grid place-items-center text-cream disabled:opacity-30"
+            aria-label="Previous"
+          >‹</button>
+          <button
+            onClick={() => setIdx((i) => Math.min(i + 1, messages.length - 1))}
+            disabled={idx >= messages.length - 1}
+            className="glass-dark rounded-full size-12 grid place-items-center text-cream disabled:opacity-30"
+            aria-label="Next"
+          >›</button>
+        </div>
+      </div>
+    </div>
+  );
+}
