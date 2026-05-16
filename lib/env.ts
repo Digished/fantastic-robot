@@ -12,8 +12,6 @@ export const env = {
   paystackSecret: () => req("PAYSTACK_SECRET_KEY", process.env.PAYSTACK_SECRET_KEY),
   paystackPublic: () =>
     req("NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY", process.env.PAYSTACK_PUBLIC_KEY),
-  paystackWebhookSecret: () =>
-    req("PAYSTACK_WEBHOOK_SECRET", process.env.PAYSTACK_WEBHOOK_SECRET),
   appUrl: () =>
     process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
 };
