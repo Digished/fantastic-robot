@@ -52,10 +52,10 @@ export function CardViewer({
   }
 
   return (
-    <div className="fixed inset-0 z-50 mesh-dusk grain fade-in" onClick={onClose}>
+    <div className="fixed inset-0 z-50 bg-ink/95 backdrop-blur-2xl fade-in" onClick={onClose}>
       <div className="absolute inset-0 flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <header className="relative z-10 px-5 pt-6 flex items-center justify-between text-cream">
-          <span className="text-xs uppercase tracking-[0.25em] text-cream/70">
+        <header className="relative z-10 px-5 pt-5 flex items-center justify-between text-white">
+          <span className="text-[11px] uppercase tracking-[0.3em] text-white/70">
             {idx + 1} / {messages.length}
           </span>
           <div className="flex items-center gap-2">
@@ -76,8 +76,8 @@ export function CardViewer({
           </div>
         </header>
 
-        <div className="relative flex-1 grid place-items-center px-6 py-8">
-          <article className="w-full max-w-md fade-up">
+        <div className="relative flex-1 grid place-items-center px-6 py-6 overflow-hidden">
+          <article className="w-full max-w-phone fade-up">
             {m.media_kind === "image" && m.media_path && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={publicUrl(m.media_path)} alt="" className="w-full rounded-2xl shadow-card" />
@@ -94,7 +94,7 @@ export function CardViewer({
 
             {m.body && (
               <p
-                className={`mt-6 text-cream font-serif whitespace-pre-wrap text-center ${
+                className={`mt-6 text-white serif whitespace-pre-wrap text-center ${
                   m.body.length < 80 ? "text-4xl leading-tight" : "text-2xl leading-snug"
                 }`}
               >
@@ -102,24 +102,23 @@ export function CardViewer({
               </p>
             )}
 
-            <p className="mt-8 text-center text-[11px] uppercase tracking-[0.3em] text-cream/70">
+            <p className="mt-8 text-center text-[11px] uppercase tracking-[0.3em] text-white/70">
               — {name}
             </p>
           </article>
         </div>
 
-        {/* Nav arrows */}
-        <div className="relative z-10 px-5 pb-8 flex items-center justify-between">
+        <div className="relative z-10 px-5 pb-7 flex items-center justify-between">
           <button
             onClick={() => setIdx((i) => Math.max(i - 1, 0))}
             disabled={idx === 0}
-            className="glass-dark rounded-full size-12 grid place-items-center text-cream disabled:opacity-30"
+            className="glass-dark rounded-full size-12 grid place-items-center text-white disabled:opacity-30"
             aria-label="Previous"
           >‹</button>
           <button
             onClick={() => setIdx((i) => Math.min(i + 1, messages.length - 1))}
             disabled={idx >= messages.length - 1}
-            className="glass-dark rounded-full size-12 grid place-items-center text-cream disabled:opacity-30"
+            className="glass-dark rounded-full size-12 grid place-items-center text-white disabled:opacity-30"
             aria-label="Next"
           >›</button>
         </div>

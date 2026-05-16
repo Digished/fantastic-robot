@@ -2,6 +2,8 @@
 
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { createCelebration, type CreateState } from "./actions";
+import { ThemePicker } from "@/components/theme-picker";
+import type { Theme } from "@/lib/themes";
 
 type Bank = { name: string; code: string };
 
@@ -20,8 +22,9 @@ function minDate() {
 
 export function CreateForm({ banks }: { banks: Bank[] }) {
   const [state, action] = useActionState<CreateState, FormData>(createCelebration, {});
+  const [theme, setTheme] = useState<Theme>("ivory");
 
-  // Cover photo upload (optional, recommended)
+  // Cover photo
   const fileRef = useRef<HTMLInputElement>(null);
   const [coverPath, setCoverPath] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -53,9 +56,6 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     if (!file.type.startsWith("image/")) return;
     if (file.size > 8 * 1024 * 1024) { alert("Cover must be under 8 MB."); return; }
     setUploading(true);
-    // Sign as a generic image upload on a dummy slug — server actions will copy later.
-    // For now use a transient slug 'pending' so RLS lookup succeeds; we'll fix later if needed.
-    // Simplest path: upload via service-role signed URL with a temporary path.
     const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
     const res = await fetch("/api/media/sign-cover", {
       method: "POST",
@@ -64,11 +64,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     });
     const sign = await res.json();
     if (!res.ok) { setUploading(false); alert(sign.error ?? "Upload failed"); return; }
-    const put = await fetch(sign.signedUrl, {
-      method: "PUT",
-      headers: { "Content-Type": file.type },
-      body: file,
-    });
+    const put = await fetch(sign.signedUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
     setUploading(false);
     if (!put.ok) { alert("Upload failed"); return; }
     setCoverPath(sign.path);
@@ -76,7 +72,16 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
   }
 
   return (
-    <form action={action} className="mt-8 space-y-6">
+    <form action={action} className="mt-8 space-y-6" data-theme={theme}>
+      {/* Live theme preview */}
+      <div className="relative h-32 rounded-3xl2 overflow-hidden shadow-ring theme-mesh">
+        <p className="absolute bottom-3 left-4 text-[11px] uppercase tracking-widest text-ink/60">
+          Live preview
+        </p>
+      </div>
+
+      <ThemePicker value={theme} onChange={setTheme} />
+
       {/* Cover photo */}
       <div className="space-y-2">
         <label className="label">Cover photo (recommended)</label>
@@ -84,54 +89,54 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
           onChange={(e) => e.target.files?.[0] && onCover(e.target.files[0])} />
         {coverPreview ? (
           <button type="button" onClick={() => fileRef.current?.click()}
-            className="relative w-full aspect-[3/2] rounded-3xl2 overflow-hidden shadow-card">
+            className="relative w-full aspect-[4/3] rounded-3xl2 overflow-hidden shadow-card">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={coverPreview} alt="" className="size-full object-cover" />
-            <span className="absolute bottom-3 right-3 glass-dark text-cream rounded-full px-3 py-1 text-xs">Change</span>
+            <span className="absolute bottom-3 right-3 glass-dark text-white rounded-full px-3 py-1 text-xs">Change</span>
           </button>
         ) : (
           <button type="button" onClick={() => fileRef.current?.click()}
-            className="w-full aspect-[3/2] rounded-3xl2 border-2 border-dashed border-plum/20 grid place-items-center text-plum/60 hover:bg-plum/5 transition">
+            className="w-full aspect-[4/3] rounded-3xl2 border-2 border-dashed border-ink/15 grid place-items-center text-ink/55 hover:bg-ink/5 transition">
             {uploading ? "Uploading…" : "+ Add a photo of the celebrant"}
           </button>
         )}
         {coverPath && <input type="hidden" name="coverPhotoPath" value={coverPath} />}
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="label">Page title</label>
         <input name="title" className="field" placeholder="Tunde turns 30 🎉" required maxLength={80} />
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="label">Who is it for?</label>
         <input name="recipientName" className="field" placeholder="Tunde Bakare" required maxLength={60} />
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="label">Type of celebration</label>
         <select name="eventType" className="field" defaultValue="birthday" required>
           {EVENT_OPTIONS.map(([v, l]) => (<option key={v} value={v}>{l}</option>))}
         </select>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="label">Celebration date</label>
         <input type="datetime-local" name="celebrationDate" className="field" min={minDate()} required />
-        <p className="text-xs text-plum/50">Contributions close 72 hours before this date.</p>
+        <p className="text-xs text-ink/50">Contributions close 72 hours before this date.</p>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         <label className="label">A note from you (optional)</label>
         <textarea name="messageFromCreator" className="field min-h-[88px] resize-none"
           placeholder="Let's spoil her this year ❤️" maxLength={280} />
       </div>
 
-      <div className="pt-4 border-t border-plum/10">
-        <p className="font-serif text-2xl text-plum">Where the gift goes</p>
-        <p className="text-sm text-plum/60 mt-1">Locked once the page is live. Contributors see this for transparency.</p>
+      <div className="pt-4 border-t border-ink/10">
+        <p className="serif text-2xl text-ink">Where the gift goes</p>
+        <p className="text-sm text-ink/60 mt-1">Locked once the page is live. Contributors see this for transparency.</p>
 
-        <div className="space-y-1 mt-4">
+        <div className="space-y-1.5 mt-4">
           <label className="label">Recipient's bank</label>
           <select name="recipientBankCode" className="field" required
             value={bankCode} onChange={(e) => setBankCode(e.target.value)}>
@@ -140,7 +145,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
           </select>
         </div>
 
-        <div className="space-y-1 mt-3">
+        <div className="space-y-1.5 mt-3">
           <label className="label">Account number</label>
           <input name="recipientAccountNumber" className="field" inputMode="numeric" pattern="\d{10}"
             maxLength={10} required value={accountNumber}
@@ -148,17 +153,17 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
         </div>
 
         <div className="mt-3 min-h-[44px]" aria-live="polite">
-          {resolving && <p className="text-sm text-plum/60">Verifying account…</p>}
+          {resolving && <p className="text-sm text-ink/60">Verifying account…</p>}
           {resolved && (
-            <p className="text-sm rounded-2xl bg-terracotta/10 text-terracotta-700 px-4 py-2 font-medium">
+            <p className="text-sm rounded-2xl bg-[var(--accent-soft)] text-[var(--accent)] px-4 py-2 font-medium">
               ✓ {resolved}
             </p>
           )}
-          {resolveError && <p className="text-sm rounded-2xl bg-terracotta/10 text-terracotta-700 px-4 py-2">{resolveError}</p>}
+          {resolveError && <p className="text-sm rounded-2xl bg-red-50 text-red-700 px-4 py-2">{resolveError}</p>}
         </div>
       </div>
 
-      {state.error && <p className="text-sm text-terracotta">{state.error}</p>}
+      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
       <button className="btn-accent w-full py-5 text-base shadow-glow" disabled={!resolved || resolving}>
         Create celebration page

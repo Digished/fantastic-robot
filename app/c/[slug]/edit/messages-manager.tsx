@@ -33,32 +33,32 @@ export function MessagesManager({
   }
 
   if (!rows.length) {
-    return <p className="mt-4 text-plum/60 text-sm">No wall posts yet.</p>;
+    return <p className="mt-4 text-ink/60 text-sm">No wall posts yet.</p>;
   }
 
   return (
     <ul className="mt-4 space-y-3">
       {rows.map((r) => (
         <li key={r.id} className="glass rounded-2xl p-4 flex gap-3 items-start">
-          <div className="size-14 shrink-0 rounded-xl bg-plum/5 grid place-items-center overflow-hidden">
+          <div className="size-14 shrink-0 rounded-xl bg-ink/5 grid place-items-center overflow-hidden">
             {r.media_kind === "image" && r.media_path && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={publicUrl(r.media_path)} alt="" className="size-full object-cover" />
             )}
             {r.media_kind === "video" && <span>▶</span>}
             {r.media_kind === "audio" && <span>🎙</span>}
-            {r.media_kind === "none" && <span className="font-serif text-plum">"</span>}
+            {r.media_kind === "none" && <span className="serif text-ink">"</span>}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-plum/55 uppercase tracking-wide">
+            <p className="text-xs text-ink/55 uppercase tracking-wide">
               {r.is_anonymous ? "Someone special" : r.contributor_name}
             </p>
-            {r.body && <p className="text-plum text-sm mt-1 line-clamp-2">{r.body}</p>}
+            {r.body && <p className="text-ink text-sm mt-1 line-clamp-2">{r.body}</p>}
           </div>
           <button
             onClick={() => remove(r.id)}
             disabled={busy}
-            className="text-xs text-terracotta hover:underline shrink-0"
+            className="text-xs text-[var(--accent)] hover:underline shrink-0"
           >
             Remove
           </button>

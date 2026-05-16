@@ -3,6 +3,7 @@ import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { EditForm } from "./form";
 import { MessagesManager } from "./messages-manager";
+import { isTheme, type Theme } from "@/lib/themes";
 
 export default async function EditPage({
   params,
@@ -14,7 +15,7 @@ export default async function EditPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, title, recipient_name, message_from_creator, cover_photo_path, celebration_date, creator_id")
+    .select("id, slug, title, recipient_name, message_from_creator, cover_photo_path, celebration_date, creator_id, theme")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) notFound();
@@ -27,13 +28,15 @@ export default async function EditPage({
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
+  const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
+
   return (
-    <main className="relative min-h-[100dvh] mesh-warm grain pb-32">
-      <div className="relative z-10 px-5 pt-6 max-w-md mx-auto">
-        <Link href={`/c/${slug}`} className="text-plum/60 text-sm">← Back to page</Link>
-        <h1 className="font-serif text-5xl text-plum mt-6 leading-[0.95]">Edit page</h1>
-        <p className="text-plum/65 mt-3 text-sm">
-          For {page.recipient_name}. Recipient bank details are locked — they can't be changed.
+    <main className="min-h-[100dvh] bg-white pb-32">
+      <div className="page-shell pt-6">
+        <Link href={`/c/${slug}`} className="text-ink/55 text-sm">← Back to page</Link>
+        <h1 className="serif text-5xl text-ink mt-6">Edit page</h1>
+        <p className="text-ink/60 mt-3 text-sm">
+          For {page.recipient_name}. Recipient bank details are locked.
         </p>
 
         <EditForm
@@ -42,12 +45,13 @@ export default async function EditPage({
             title: page.title,
             messageFromCreator: page.message_from_creator ?? "",
             coverPhotoPath: page.cover_photo_path ?? null,
+            theme,
           }}
         />
 
         <section className="mt-12">
-          <h2 className="font-serif text-3xl text-plum">Wall posts</h2>
-          <p className="text-plum/60 text-sm mt-1">{messages?.length ?? 0} cards. Tap remove to hide a card.</p>
+          <h2 className="serif text-3xl text-ink">Wall posts</h2>
+          <p className="text-ink/55 text-sm mt-1">{messages?.length ?? 0} cards.</p>
           <MessagesManager slug={slug} messages={messages ?? []} />
         </section>
       </div>

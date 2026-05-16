@@ -57,8 +57,8 @@ export function ContributeForm({ slug }: { slug: string }) {
               onClick={() => setAmountNaira(n)}
               className={`rounded-full py-2 text-sm border ${
                 amountNaira === n
-                  ? "bg-plum text-cream border-plum"
-                  : "border-plum/15 text-plum"
+                  ? "bg-ink text-white border-ink"
+                  : "border-ink/15 text-ink"
               }`}
             >
               ₦{n.toLocaleString()}
@@ -92,12 +92,12 @@ export function ContributeForm({ slug }: { slug: string }) {
         <label className="label">Phone (optional)</label>
         <input className="field" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
       </div>
-      <label className="flex items-center gap-2 text-sm text-plum">
+      <label className="flex items-center gap-2 text-sm text-ink">
         <input type="checkbox" checked={anon} onChange={(e) => setAnon(e.target.checked)} />
         Make my contribution anonymous
       </label>
 
-      {error && <p className="text-sm text-terracotta">{error}</p>}
+      {error && <p className="text-sm text-[var(--accent)]">{error}</p>}
 
       <button className="btn-primary w-full py-4" disabled={!valid || busy}>
         {busy ? "Starting…" : `Pay ${formatNaira(Number(totalKobo))}`}

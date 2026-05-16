@@ -56,16 +56,16 @@ export function WallGrid({
 
   if (messages.length === 0) {
     return (
-      <div className="glass rounded-3xl2 mt-4 p-8 text-center">
-        <p className="font-serif text-2xl text-plum">A wall waiting to be filled.</p>
-        <p className="text-plum/60 mt-1 text-sm">Be the first to drop a card 💌</p>
+      <div className="card mt-4 text-center">
+        <p className="serif text-2xl text-ink">A wall waiting to be filled.</p>
+        <p className="text-ink/55 mt-1 text-sm">Be the first to drop a card 💌</p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="mt-4 columns-2 gap-3 [column-fill:_balance]">
+      <div className="mt-5 columns-2 gap-3 [column-fill:_balance]">
         {messages.map((m, i) => (
           <button
             key={m.id}
@@ -100,24 +100,24 @@ function CardPreview({ m }: { m: Message }) {
         <img src={publicUrl(m.media_path)} alt="" className="w-full rounded-md aspect-square object-cover" />
       )}
       {m.media_kind === "video" && m.media_path && (
-        <div className="relative w-full aspect-[3/4] rounded-md overflow-hidden bg-plum/10">
+        <div className="relative w-full aspect-[3/4] rounded-md overflow-hidden bg-ink/10">
           <video src={publicUrl(m.media_path)} muted playsInline className="size-full object-cover" />
           <div className="absolute inset-0 grid place-items-center">
-            <span className="glass rounded-full size-10 grid place-items-center text-plum">▶</span>
+            <span className="glass rounded-full size-10 grid place-items-center text-ink">▶</span>
           </div>
         </div>
       )}
       {m.media_kind === "audio" && (
-        <div className="w-full aspect-[3/2] rounded-md grid place-items-center bg-white/40 text-plum">
+        <div className="w-full aspect-[3/2] rounded-md grid place-items-center bg-white/50 text-ink">
           <span className="text-3xl">🎙</span>
         </div>
       )}
       {m.body && (
-        <p className={`mt-3 text-plum leading-snug whitespace-pre-wrap ${m.body.length < 60 ? "font-serif text-xl" : "text-sm"}`}>
+        <p className={`mt-3 text-ink leading-snug whitespace-pre-wrap ${m.body.length < 60 ? "serif text-xl" : "text-sm"}`}>
           {m.body}
         </p>
       )}
-      <p className="mt-3 text-[10px] uppercase tracking-widest text-plum/55">— {name}</p>
+      <p className="mt-3 text-[10px] uppercase tracking-widest text-ink/55">— {name}</p>
     </>
   );
 }

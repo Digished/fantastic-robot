@@ -12,40 +12,45 @@ export default async function Dashboard() {
 
   const { data: pages } = await supabase
     .from("celebrations")
-    .select("id, slug, title, recipient_name, event_type, celebration_date, status, total_raised_kobo, contributor_count")
+    .select("id, slug, title, recipient_name, event_type, celebration_date, status, total_raised_kobo, contributor_count, theme")
     .eq("creator_id", user.id)
     .order("created_at", { ascending: false });
 
   return (
-    <main className="relative min-h-[100dvh] mesh-warm grain pb-32">
-      <div className="relative z-10 px-5 pt-6 max-w-md mx-auto">
+    <main className="min-h-[100dvh] bg-white pb-32">
+      <div className="page-shell pt-6">
         <header className="flex items-center justify-between">
-          <Link href="/" className="font-serif text-2xl text-plum">Spendbox</Link>
-          <form action={logout}><button className="text-sm text-plum/60 hover:text-plum">Sign out</button></form>
+          <Link href="/" className="serif text-2xl text-ink">Spendbox</Link>
+          <form action={logout}><button className="text-sm text-ink/55 hover:text-ink">Sign out</button></form>
         </header>
 
-        <h1 className="fade-up font-serif text-5xl text-plum mt-10">Your<br/>celebrations</h1>
+        <h1 className="fade-up serif text-5xl text-ink mt-12">Your<br/>celebrations</h1>
 
         <div className="mt-8 space-y-3">
           {!pages?.length && (
-            <div className="glass rounded-3xl2 p-8 text-center">
-              <p className="font-serif text-2xl text-plum">Nothing here yet.</p>
-              <p className="text-plum/60 mt-2 text-sm">Build a beautiful page in a minute.</p>
+            <div className="card text-center">
+              <p className="serif text-2xl text-ink">Nothing here yet.</p>
+              <p className="text-ink/55 mt-2 text-sm">Build a beautiful page in a minute.</p>
               <Link href="/create" className="btn-accent mt-5 inline-flex">+ Create your first page</Link>
             </div>
           )}
           {pages?.map((p, i) => (
-            <Link key={p.id} href={`/c/${p.slug}`} className="glass rounded-3xl2 p-5 block fade-up" style={{ animationDelay: `${i * 0.04}s` }}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] uppercase tracking-widest text-plum/50">{p.event_type.replace("_", " ")}</p>
-                  <p className="font-serif text-2xl text-plum mt-1 truncate">{p.title}</p>
-                  <p className="text-sm text-plum/60 mt-1">For {p.recipient_name} · {formatDate(p.celebration_date)}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="font-serif text-2xl text-terracotta">{formatNaira(Number(p.total_raised_kobo ?? 0))}</p>
-                  <p className="text-xs text-plum/50 mt-1">{p.contributor_count ?? 0} cards</p>
-                </div>
+            <Link
+              key={p.id}
+              href={`/c/${p.slug}`}
+              data-theme={p.theme ?? "ivory"}
+              className="card flex items-stretch gap-4 hover:shadow-card transition fade-up"
+              style={{ animationDelay: `${i * 0.04}s` }}
+            >
+              <div className="size-16 shrink-0 rounded-2xl theme-mesh" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] uppercase tracking-widest text-ink/50">{p.event_type.replace("_", " ")}</p>
+                <p className="serif text-2xl text-ink mt-0.5 truncate">{p.title}</p>
+                <p className="text-sm text-ink/55 mt-0.5">For {p.recipient_name} · {formatDate(p.celebration_date)}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="serif text-xl text-[var(--accent)]">{formatNaira(Number(p.total_raised_kobo ?? 0))}</p>
+                <p className="text-xs text-ink/45 mt-1">{p.contributor_count ?? 0} cards</p>
               </div>
             </Link>
           ))}

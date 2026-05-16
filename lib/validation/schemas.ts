@@ -20,6 +20,7 @@ export const createCelebrationSchema = z.object({
     "birthday", "graduation", "wedding", "appreciation",
     "farewell", "baby_shower", "surprise_gift", "other",
   ]),
+  theme: z.enum(["ivory", "midnight", "bloom", "sage", "ocean", "dusk"]).default("ivory"),
   celebrationDate: z.string().refine(
     (s) => {
       const d = new Date(s);

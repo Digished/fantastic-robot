@@ -93,7 +93,7 @@ export function PostForm({ slug }: { slug: string }) {
             type="button"
             onClick={() => switchTab(t)}
             className={`flex-1 py-2 rounded-full text-xs capitalize transition ${
-              tab === t ? "bg-plum text-cream" : "text-plum/70"
+              tab === t ? "bg-ink text-white" : "text-ink/70"
             }`}
           >
             {t}
@@ -107,7 +107,7 @@ export function PostForm({ slug }: { slug: string }) {
           <textarea
             name="body"
             maxLength={500}
-            className="field min-h-[160px] resize-none font-serif text-xl leading-snug"
+            className="field min-h-[160px] resize-none serif text-xl leading-snug"
             placeholder="Wishing you the most wonderful day…"
           />
         </div>
@@ -122,7 +122,7 @@ export function PostForm({ slug }: { slug: string }) {
           )}
           {recording && (
             <div className="space-y-3">
-              <p className="font-serif text-2xl text-terracotta animate-pulse">● Recording</p>
+              <p className="serif text-2xl text-[var(--accent)] animate-pulse">● Recording</p>
               <button type="button" onClick={() => stopAndUpload(tab)} className="btn-outline">Stop</button>
             </div>
           )}
@@ -150,7 +150,7 @@ export function PostForm({ slug }: { slug: string }) {
               📷 Choose a photo
             </button>
           )}
-          {uploading && <p className="text-plum">Uploading…</p>}
+          {uploading && <p className="text-ink">Uploading…</p>}
           {preview && (
             <div className="space-y-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -176,7 +176,7 @@ export function PostForm({ slug }: { slug: string }) {
       {mediaPath && <input type="hidden" name="mediaPath" value={mediaPath} />}
       {mediaDurationMs != null && <input type="hidden" name="mediaDurationMs" value={mediaDurationMs} />}
 
-      <div className="pt-3 border-t border-plum/10 space-y-3">
+      <div className="pt-3 border-t border-ink/10 space-y-3">
         <div className="space-y-1">
           <label className="label">Your name</label>
           <input name="contributorName" className="field" required maxLength={60} />
@@ -185,13 +185,13 @@ export function PostForm({ slug }: { slug: string }) {
           <label className="label">Email (optional)</label>
           <input name="contributorEmail" type="email" className="field" />
         </div>
-        <label className="flex items-center gap-2 text-sm text-plum/80">
+        <label className="flex items-center gap-2 text-sm text-ink/80">
           <input type="checkbox" name="isAnonymous" className="accent-terracotta" />
           Post anonymously
         </label>
       </div>
 
-      {state.error && <p className="text-sm text-terracotta">{state.error}</p>}
+      {state.error && <p className="text-sm text-[var(--accent)]">{state.error}</p>}
 
       <button
         className="btn-accent w-full py-4 shadow-soft"

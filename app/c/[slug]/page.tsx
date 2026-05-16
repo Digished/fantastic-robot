@@ -6,6 +6,7 @@ import { formatDate, timeUntil } from "@/lib/time";
 import { WallGrid } from "./wall-grid";
 import { ShareBar } from "./share-bar";
 import { ClaimButton } from "./claim-button";
+import { isTheme, type Theme } from "@/lib/themes";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function WallPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -32,6 +33,7 @@ export default async function WallPage({
 
   const { data: { user } } = await supabase.auth.getUser();
   const isCreator = !!user && user.id === page.creator_id;
+  const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
 
   const { data: messages } = await supabase
     .from("messages")
@@ -47,112 +49,112 @@ export default async function WallPage({
   const cover = coverUrl(page.cover_photo_path);
 
   return (
-    <main className="relative min-h-[100dvh] mesh-warm grain pb-40">
-      {/* HERO */}
-      <section className="relative">
-        <div className="relative h-[58vh] min-h-[440px] w-full overflow-hidden">
-          {cover ? (
-            // Full-bleed cover photo
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={cover} alt="" className="absolute inset-0 size-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-b from-plum/10 via-plum/30 to-cream" />
-            </>
-          ) : (
-            <div className="absolute inset-0 mesh-dusk" />
-          )}
+    <main className="min-h-[100dvh] bg-white pb-32" data-theme={theme}>
+      <div className="page-shell pt-4">
 
-          <div className="absolute inset-0 flex flex-col">
-            <header className="relative z-10 px-5 pt-6 flex items-center justify-between">
-              <Link href="/" className="font-serif text-xl text-cream/90 drop-shadow">Spendbox</Link>
-              {isCreator && (
-                <Link
-                  href={`/c/${page.slug}/edit`}
-                  className="glass-dark rounded-full px-3 py-1.5 text-xs text-cream"
-                >
-                  Edit page
-                </Link>
-              )}
-            </header>
+        {/* HERO — constrained to phone width even on desktop */}
+        <section className="relative rounded-3xl2 overflow-hidden shadow-card">
+          <div className="relative aspect-[4/5]">
+            {cover ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={cover} alt="" className="absolute inset-0 size-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/75" />
+              </>
+            ) : (
+              <div className="absolute inset-0 theme-mesh" />
+            )}
 
-            <div className="relative z-10 mt-auto px-5 pb-8 max-w-md mx-auto w-full text-cream">
-              <p className="fade-up text-[11px] uppercase tracking-[0.3em] text-cream/80">
-                {page.event_type.replace("_", " ")} · {formatDate(page.celebration_date)}
-              </p>
-              <h1 className="fade-up mt-3 font-serif text-[56px] leading-[0.95] drop-shadow-sm">
-                {page.title}
-              </h1>
-              <p className="fade-up mt-2 text-cream/85 text-lg">For {page.recipient_name}</p>
+            <div className="absolute inset-0 flex flex-col">
+              <header className="relative z-10 px-5 pt-5 flex items-center justify-between">
+                <Link href="/" className="serif text-lg text-white drop-shadow">Spendbox</Link>
+                {isCreator && (
+                  <Link
+                    href={`/c/${page.slug}/edit`}
+                    className="glass-dark rounded-full px-3 py-1.5 text-xs text-white"
+                  >
+                    Edit page
+                  </Link>
+                )}
+              </header>
+
+              <div className="relative z-10 mt-auto px-5 pb-6 text-white">
+                <p className="fade-up text-[10px] uppercase tracking-[0.3em] text-white/85">
+                  {page.event_type.replace("_", " ")} · {formatDate(page.celebration_date)}
+                </p>
+                <h1 className="fade-up mt-3 serif text-[44px] leading-[0.95] drop-shadow-sm">
+                  {page.title}
+                </h1>
+                <p className="fade-up mt-2 text-white/85 text-base">For {page.recipient_name}</p>
+              </div>
             </div>
+          </div>
+        </section>
+
+        {/* STATS — separate block below, no overlap */}
+        <div className="mt-3 rounded-3xl2 bg-white shadow-ring p-4 grid grid-cols-2 gap-4 fade-up">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-ink/55">Raised</p>
+            <p className="serif text-3xl text-ink mt-1">{formatNaira(Number(page.total_raised_kobo))}</p>
+            <p className="text-xs text-ink/55 mt-1">{page.contributor_count} contributors</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-widest text-ink/55">
+              {closed ? (claimable ? "Celebration" : "Closing") : "Closes in"}
+            </p>
+            <p className="serif text-3xl text-ink mt-1">
+              {closed && claimable ? "today" : timeUntil(page.deadline_at)}
+            </p>
+            <p className="text-xs text-ink/55 mt-1 truncate">to {page.recipient_account_name}</p>
           </div>
         </div>
 
-        {/* Floating stats card */}
-        <div className="relative z-10 -mt-12 px-5 max-w-md mx-auto">
-          <div className="glass rounded-3xl2 p-5 grid grid-cols-2 gap-4 shadow-card fade-up">
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-plum/60">Raised</p>
-              <p className="font-serif text-3xl text-plum mt-1">{formatNaira(Number(page.total_raised_kobo))}</p>
-              <p className="text-xs text-plum/60 mt-1">{page.contributor_count} contributors</p>
-            </div>
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-widest text-plum/60">
-                {closed ? (claimable ? "Celebration" : "Closing") : "Closes in"}
-              </p>
-              <p className="font-serif text-3xl text-plum mt-1">
-                {closed && claimable ? "today" : timeUntil(page.deadline_at)}
-              </p>
-              <p className="text-xs text-plum/60 mt-1">to {page.recipient_account_name}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Note + actions */}
-      <section className="px-5 max-w-md mx-auto mt-6">
+        {/* NOTE + ACTIONS */}
         {page.message_from_creator && (
-          <blockquote className="fade-up font-serif text-plum text-2xl leading-tight italic">
+          <blockquote className="mt-6 serif text-ink text-2xl leading-tight italic">
             "{page.message_from_creator}"
           </blockquote>
         )}
 
         {claimable && page.payout_status !== "paid" && Number(page.total_raised_kobo) > 0 && (
-          <div className="mt-6 fade-up"><ClaimButton slug={page.slug} amountKobo={Number(page.total_raised_kobo)} /></div>
+          <div className="mt-6 fade-up">
+            <ClaimButton slug={page.slug} amountKobo={Number(page.total_raised_kobo)} />
+          </div>
         )}
         {claimable && page.payout_status === "paid" && (
-          <p className="mt-6 text-center text-sm text-plum/70 fade-up">
+          <p className="mt-6 text-center text-sm text-ink/70 fade-up">
             ✓ Gift delivered to {page.recipient_account_name}
           </p>
         )}
 
         {!closed && (
           <div className="mt-6 flex gap-3 fade-up">
-            <Link href={`/c/${page.slug}/post`} className="btn-glass flex-1">Leave a message</Link>
+            <Link href={`/c/${page.slug}/post`} className="btn-outline flex-1">Leave a message</Link>
             <Link href={`/c/${page.slug}/contribute`} className="btn-accent flex-1 shadow-soft">Contribute</Link>
           </div>
         )}
         {closed && !claimable && (
-          <p className="mt-6 text-center text-sm text-plum/70 fade-up">
+          <p className="mt-6 text-center text-sm text-ink/65 fade-up">
             Contributions closed. The gift unlocks on {formatDate(page.celebration_date)}.
           </p>
         )}
 
         <ShareBar slug={page.slug} title={page.title} recipient={page.recipient_name} />
-      </section>
 
-      {/* WALL */}
-      <section className="px-4 mt-12 max-w-md mx-auto">
-        <div className="px-1 flex items-baseline justify-between">
-          <h2 className="font-serif text-3xl text-plum">The wall</h2>
-          <p className="text-xs uppercase tracking-widest text-plum/50">{messages?.length ?? 0} cards</p>
-        </div>
-        <WallGrid
-          messages={messages ?? []}
-          celebrationId={page.id}
-          slug={page.slug}
-          isCreator={isCreator}
-        />
-      </section>
+        {/* WALL */}
+        <section className="mt-12">
+          <div className="flex items-baseline justify-between">
+            <h2 className="serif text-3xl text-ink">The wall</h2>
+            <p className="text-[10px] uppercase tracking-widest text-ink/45">{messages?.length ?? 0} cards</p>
+          </div>
+          <WallGrid
+            messages={messages ?? []}
+            celebrationId={page.id}
+            slug={page.slug}
+            isCreator={isCreator}
+          />
+        </section>
+      </div>
     </main>
   );
 }

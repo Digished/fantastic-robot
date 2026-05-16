@@ -10,6 +10,7 @@ const editSchema = z.object({
   title: z.string().min(2).max(80),
   messageFromCreator: z.string().max(280).optional(),
   coverPhotoPath: z.string().optional(),
+  theme: z.enum(["ivory", "midnight", "bloom", "sage", "ocean", "dusk"]).optional(),
 });
 
 export type EditState = { error?: string; ok?: boolean };
@@ -27,6 +28,7 @@ export async function editCelebration(
     title: formData.get("title"),
     messageFromCreator: (formData.get("messageFromCreator") as string) || undefined,
     coverPhotoPath: (formData.get("coverPhotoPath") as string) || undefined,
+    theme: (formData.get("theme") as string) || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -46,6 +48,7 @@ export async function editCelebration(
       ...(parsed.data.coverPhotoPath
         ? { cover_photo_path: parsed.data.coverPhotoPath }
         : {}),
+      ...(parsed.data.theme ? { theme: parsed.data.theme } : {}),
     })
     .eq("id", page.id);
   if (error) return { error: error.message };

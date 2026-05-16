@@ -33,10 +33,10 @@ export function ClaimButton({ slug, amountKobo }: { slug: string; amountKobo: nu
   }
 
   return (
-    <div className="glass rounded-3xl2 p-5">
-      <p className="font-serif text-plum text-xl">Send {formatNaira(amountKobo)} now?</p>
-      <p className="text-plum/60 text-sm mt-1">Goes straight to the saved bank account.</p>
-      {error && <p className="text-sm text-terracotta mt-2">{error}</p>}
+    <div className="card">
+      <p className="serif text-ink text-xl">Send {formatNaira(amountKobo)} now?</p>
+      <p className="text-ink/60 text-sm mt-1">Goes straight to the saved bank account.</p>
+      {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
       <div className="mt-4 flex gap-2">
         <button className="btn-outline flex-1" onClick={() => setConfirm(false)} disabled={loading}>Not yet</button>
         <button className="btn-accent flex-1" onClick={trigger} disabled={loading}>
