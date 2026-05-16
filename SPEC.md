@@ -128,10 +128,17 @@ file uploads).
 
 | Phase | Scope | Status |
 |---|---|---|
-| 0 | Scaffold, Tailwind, shadcn, Supabase, auth, layout | in progress |
-| 1 | Create celebration flow + Paystack account resolution | — |
-| 2 | Public wall (read) | — |
-| 3 | Messages (text / audio / video) | — |
-| 4 | Contributions + Paystack charge + webhook | — |
-| 5 | Deadline close + claim + Paystack transfer | — |
-| 6 | Polish, OG images, Lighthouse, Sentry | — |
+| 0 | Scaffold, Tailwind, Supabase, auth, layout | ✅ done |
+| 1 | Create celebration flow + Paystack account resolution | ✅ done |
+| 2 | Public wall (read) + share + claim button | ✅ done |
+| 3 | Messages (text / audio / video) with caps | ✅ done |
+| 4 | Contributions + Paystack charge + webhook | ✅ done |
+| 5 | Deadline close + claim + Paystack transfer | ✅ done |
+| 6 | OG images, creator delete, storage bucket migration | ✅ done |
+
+## Post-MVP backlog
+- Birthday reminders cron (column already collected).
+- Sentry + observability.
+- Refund / dispute reconciliation flow.
+- Optional Supabase Edge Function for server-side ffmpeg compression fallback.
+- Lighthouse pass on a real device + Vercel preview.
