@@ -15,7 +15,7 @@ export default async function EditPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, title, recipient_name, message_from_creator, cover_photo_path, celebration_date, creator_id, theme")
+    .select("id, slug, title, recipient_name, message_from_creator, cover_photo_path, celebration_date, creator_id, theme, security_question")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) notFound();
@@ -46,6 +46,7 @@ export default async function EditPage({
             messageFromCreator: page.message_from_creator ?? "",
             coverPhotoPath: page.cover_photo_path ?? null,
             theme,
+            securityQuestion: page.security_question ?? null,
           }}
         />
 

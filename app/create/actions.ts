@@ -6,6 +6,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paystack, PaystackError } from "@/lib/paystack/client";
 import { createCelebrationSchema } from "@/lib/validation/schemas";
+import { hashAnswer } from "@/lib/security";
 
 const slugId = customAlphabet("23456789abcdefghjkmnpqrstvwxyz", 10);
 
@@ -29,6 +30,8 @@ export async function createCelebration(
     recipientBankCode: formData.get("recipientBankCode"),
     recipientAccountNumber: formData.get("recipientAccountNumber"),
     coverPhotoPath: formData.get("coverPhotoPath") || undefined,
+    securityQuestion: (formData.get("securityQuestion") as string) || undefined,
+    securityAnswer:   (formData.get("securityAnswer")   as string) || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message };
@@ -62,6 +65,8 @@ export async function createCelebration(
     recipient_bank_code: parsed.data.recipientBankCode,
     recipient_account_number: parsed.data.recipientAccountNumber,
     recipient_account_name: accountName,
+    security_question:    parsed.data.securityQuestion ?? null,
+    security_answer_hash: parsed.data.securityAnswer ? hashAnswer(parsed.data.securityAnswer) : null,
   });
 
   if (error) return { error: error.message };

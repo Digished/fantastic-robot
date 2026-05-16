@@ -13,7 +13,13 @@ export function EditForm({
   slug, initial,
 }: {
   slug: string;
-  initial: { title: string; messageFromCreator: string; coverPhotoPath: string | null; theme: Theme };
+  initial: {
+    title: string;
+    messageFromCreator: string;
+    coverPhotoPath: string | null;
+    theme: Theme;
+    securityQuestion: string | null;
+  };
 }) {
   const action = editCelebration.bind(null, slug);
   const [state, dispatch] = useActionState<EditState, FormData>(action, {});
@@ -85,6 +91,26 @@ export function EditForm({
         <textarea className="field min-h-[100px] resize-none" name="messageFromCreator"
           defaultValue={initial.messageFromCreator} maxLength={280}
           placeholder="Tell everyone what this is for…" />
+      </div>
+
+      <div className="pt-4 border-t border-ink/10 space-y-3">
+        <div>
+          <p className="serif text-xl text-ink">Security question</p>
+          <p className="text-ink/55 text-xs mt-1">
+            Asked before the celebrant can open their page. Leave answer blank to keep the existing one.
+          </p>
+        </div>
+        <div className="space-y-1.5">
+          <label className="label">Question</label>
+          <input className="field" name="securityQuestion"
+            defaultValue={initial.securityQuestion ?? ""} maxLength={140}
+            placeholder="What was your childhood nickname?" />
+        </div>
+        <div className="space-y-1.5">
+          <label className="label">Answer (only if changing)</label>
+          <input className="field" name="securityAnswer" maxLength={140}
+            placeholder="Leave blank to keep the old answer" />
+        </div>
       </div>
 
       {state.error && <p className="text-sm text-red-600">{state.error}</p>}

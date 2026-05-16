@@ -48,6 +48,9 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [resolving, startResolve] = useTransition();
 
+  const [securityQuestion, setSecurityQuestion] = useState("");
+  const [securityAnswer, setSecurityAnswer] = useState("");
+
   const fileRef = useRef<HTMLInputElement>(null);
 
   // resolve bank account live
@@ -90,7 +93,8 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     if (step === 0) return true; // theme + cover both optional
     if (step === 1) return title.trim().length >= 2 && recipientName.trim().length >= 1 &&
                            !!celebrationDate && new Date(celebrationDate).getTime() > Date.now() + 96*3600*1000;
-    if (step === 2) return !!resolved && !!bankCode && accountNumber.length === 10;
+    if (step === 2) return !!resolved && !!bankCode && accountNumber.length === 10
+      && securityQuestion.trim().length >= 3 && securityAnswer.trim().length >= 1;
     return true;
   }
 
@@ -109,6 +113,8 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     if (coverPath) fd.set("coverPhotoPath", coverPath);
     fd.set("recipientBankCode", bankCode);
     fd.set("recipientAccountNumber", accountNumber);
+    fd.set("securityQuestion", securityQuestion);
+    fd.set("securityAnswer",   securityAnswer);
 
     const result = await createCelebration({}, fd);
     if (result && "error" in result && result.error) {
@@ -240,6 +246,28 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
               {resolveError && (
                 <p className="text-sm rounded-2xl bg-red-50 text-red-700 px-4 py-2">{resolveError}</p>
               )}
+            </div>
+
+            <div className="pt-5 border-t border-ink/10">
+              <h3 className="serif text-2xl text-ink">A secret door</h3>
+              <p className="text-ink/55 text-sm mt-1">
+                Before {recipientName || "the celebrant"} can open their page, they'll
+                answer this question. Share it with them privately — not in the group chat.
+              </p>
+
+              <div className="space-y-1.5 mt-4">
+                <label className="label">Question only they can answer</label>
+                <input className="field" value={securityQuestion}
+                  onChange={(e) => setSecurityQuestion(e.target.value)}
+                  placeholder="What was your childhood nickname?" maxLength={140} />
+              </div>
+              <div className="space-y-1.5 mt-3">
+                <label className="label">The answer</label>
+                <input className="field" value={securityAnswer}
+                  onChange={(e) => setSecurityAnswer(e.target.value)}
+                  placeholder="lowercase, casing doesn't matter" maxLength={140} />
+                <p className="text-xs text-ink/45">We store a one-way hash — even we can't read it.</p>
+              </div>
             </div>
           </div>
         )}
