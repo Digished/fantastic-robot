@@ -7,6 +7,9 @@ import { WallGrid } from "./wall-grid";
 import { ShareBar } from "./share-bar";
 import { ClaimButton } from "./claim-button";
 import { isTheme, type Theme } from "@/lib/themes";
+import { AnimatedNaira } from "@/components/animated-counter";
+import { Sparkles } from "@/components/sparkles";
+import { CelebrantLinkButton } from "./celebrant-link-button";
 
 export const dynamic = "force-dynamic";
 
@@ -56,14 +59,16 @@ export default async function WallPage({
         <section className="relative rounded-3xl2 overflow-hidden shadow-card">
           <div className="relative aspect-[4/5]">
             {cover ? (
-              <>
+              <div className="absolute inset-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={cover} alt="" className="absolute inset-0 size-full object-cover" />
+                <img src={cover} alt="" className="absolute inset-0 size-full object-cover ken-burns" />
                 <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/75" />
-              </>
+              </div>
             ) : (
               <div className="absolute inset-0 theme-mesh" />
             )}
+
+            <Sparkles count={8} />
 
             <div className="absolute inset-0 flex flex-col">
               <header className="relative z-10 px-5 pt-5 flex items-center justify-between">
@@ -95,7 +100,9 @@ export default async function WallPage({
         <div className="mt-3 rounded-3xl2 bg-white shadow-ring p-4 grid grid-cols-2 gap-4 fade-up">
           <div>
             <p className="text-[10px] uppercase tracking-widest text-ink/55">Raised</p>
-            <p className="serif text-3xl text-ink mt-1">{formatNaira(Number(page.total_raised_kobo))}</p>
+            <p className="serif text-3xl text-[var(--accent)] mt-1">
+              <AnimatedNaira kobo={Number(page.total_raised_kobo)} />
+            </p>
             <p className="text-xs text-ink/55 mt-1">{page.contributor_count} contributors</p>
           </div>
           <div className="text-right">
@@ -140,6 +147,8 @@ export default async function WallPage({
         )}
 
         <ShareBar slug={page.slug} title={page.title} recipient={page.recipient_name} />
+
+        {isCreator && <CelebrantLinkButton slug={page.slug} recipient={page.recipient_name} />}
 
         {/* WALL */}
         <section className="mt-12">

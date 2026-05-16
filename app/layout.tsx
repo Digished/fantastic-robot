@@ -1,18 +1,12 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Geist } from "next/font/google";
+import { Poppins } from "next/font/google";
 
-const geist = Geist({
+const poppins = Poppins({
   subsets: ["latin"],
-  variable: "--font-geist",
+  variable: "--font-poppins",
+  weight: ["300", "400", "500", "600", "700", "800"],
   display: "swap",
-});
-
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-  axes: ["opsz", "SOFT"],
 });
 
 export const metadata: Metadata = {
@@ -36,7 +30,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} ${fraunces.variable}`}>
+    <html lang="en" className={poppins.variable}>
       <body className="min-h-[100dvh] bg-white text-ink">{children}</body>
     </html>
   );

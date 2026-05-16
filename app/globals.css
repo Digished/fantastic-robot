@@ -12,14 +12,13 @@
   html, body { background: #FFFFFF; color: #0F0E0D; }
   body {
     font-family: theme(fontFamily.sans);
-    font-feature-settings: "ss01", "cv11";
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
-  h1, h2, h3, .serif {
-    font-family: theme(fontFamily.serif);
-    letter-spacing: -0.025em;
-    font-variation-settings: "opsz" 144, "SOFT" 30;
+  h1, h2, h3, .serif, .display {
+    font-family: theme(fontFamily.display);
+    letter-spacing: -0.035em;
+    font-weight: 700;
     line-height: 0.98;
   }
 }
@@ -59,7 +58,6 @@
 @layer components {
   .page-shell { @apply mx-auto w-full max-w-phone px-5; }
 
-  /* Theme-driven hero background */
   .theme-mesh {
     background-color: var(--mesh-a);
     background-image:
@@ -68,9 +66,8 @@
       radial-gradient(at 50% 96%, var(--mesh-d) 0px, transparent 55%);
   }
 
-  /* Glass surfaces */
   .glass {
-    background: rgba(255,255,255,0.72);
+    background: rgba(255,255,255,0.75);
     backdrop-filter: blur(18px) saturate(140%);
     -webkit-backdrop-filter: blur(18px) saturate(140%);
     border: 1px solid rgba(15,14,13,0.06);
@@ -82,23 +79,19 @@
     border: 1px solid rgba(255,255,255,0.15);
   }
 
-  /* Buttons */
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-3
            text-sm font-medium transition-all active:scale-[0.97] disabled:opacity-50
            disabled:pointer-events-none select-none;
   }
   .btn-primary { @apply btn bg-ink text-white hover:bg-ink/90 shadow-soft; }
-  .btn-accent  {
-    @apply btn text-white shadow-soft;
-    background-color: var(--accent);
-  }
+  .btn-accent  { @apply btn text-white shadow-soft;
+                 background-color: var(--accent); }
   .btn-accent:hover { filter: brightness(0.92); }
   .btn-outline { @apply btn border border-ink/15 bg-white text-ink hover:bg-ink/5; }
   .btn-ghost   { @apply btn text-ink hover:bg-ink/5; }
   .btn-glass   { @apply btn glass text-ink; }
 
-  /* Inputs */
   .field {
     @apply w-full rounded-2xl border border-ink/10 bg-white px-4 py-3
            text-base text-ink placeholder:text-ink/35 focus:outline-none
@@ -106,8 +99,7 @@
            transition-shadow;
   }
   .label { @apply text-[13px] font-medium text-ink/70; }
-
-  .card { @apply rounded-3xl2 bg-white shadow-ring p-5; }
+  .card  { @apply rounded-3xl2 bg-white shadow-ring p-5; }
 
   /* Polaroid wall cards */
   .polaroid {
@@ -122,20 +114,49 @@
   .polaroid--d { --rot:   2.2deg; }
   .polaroid--e { --rot:  -0.5deg; }
 
-  /* Subtle card tints (themed) */
   .tint-1 { background: linear-gradient(160deg, color-mix(in srgb, var(--accent-soft) 65%, white) 0%, #FFFFFF 100%); }
   .tint-2 { background: linear-gradient(160deg, color-mix(in srgb, var(--mesh-b)     35%, white) 0%, #FFFFFF 100%); }
   .tint-3 { background: linear-gradient(160deg, color-mix(in srgb, var(--mesh-d)     50%, white) 0%, #FFFFFF 100%); }
   .tint-4 { background: linear-gradient(160deg, color-mix(in srgb, var(--mesh-c)     30%, white) 0%, #FFFFFF 100%); }
   .tint-5 { background: linear-gradient(160deg, color-mix(in srgb, var(--accent-soft) 80%, white) 0%, #FFFFFF 100%); }
 
-  /* Animations */
   .fade-up { animation: fadeUp .55s cubic-bezier(.2,.7,.2,1) both; }
   .fade-in { animation: fadeIn .45s ease both; }
+  .ken-burns { animation: kenBurns 22s ease-in-out infinite alternate; }
+  .float-y   { animation: floatY 7s ease-in-out infinite; }
+  .shimmer-text {
+    background: linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, white) 50%, var(--accent) 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: shimmer 6s linear infinite;
+  }
+  .marquee {
+    animation: marquee 36s linear infinite;
+    will-change: transform;
+  }
+  .sparkle {
+    position: absolute; pointer-events: none; opacity: 0;
+    animation: sparkle 4s linear infinite;
+  }
 }
 
 @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes kenBurns {
+  0%   { transform: scale(1.05) translate(0, 0); }
+  100% { transform: scale(1.18) translate(-2%, -2%); }
+}
+@keyframes floatY {
+  0%, 100% { transform: translateY(0px); }
+  50%      { transform: translateY(-8px); }
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+@keyframes sparkle {
+  0%   { opacity: 0; transform: translateY(0)   scale(0.6) rotate(0deg); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-60px) scale(1)   rotate(120deg); }
+}
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
