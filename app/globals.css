@@ -146,8 +146,9 @@
 }
 .lid-float { animation: lidFloat 3s ease-in-out infinite; }
 
-@keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUpBig { from { opacity: 0; transform: translateY(40px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes kenBurns {
   0%   { transform: scale(1.05) translate(0, 0); }
   100% { transform: scale(1.18) translate(-2%, -2%); }

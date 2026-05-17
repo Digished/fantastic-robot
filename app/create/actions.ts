@@ -29,7 +29,7 @@ export async function createCelebration(
     celebrationDate: formData.get("celebrationDate"),
     messageFromCreator: formData.get("messageFromCreator") || undefined,
     tagline: formData.get("tagline") || undefined,
-    celebrantDescription: formData.get("celebrantDescription") || undefined,
+    celebrantDescription: (formData.get("celebrantDescription") as string) ?? "",
     recipientBankCode: formData.get("recipientBankCode"),
     recipientAccountNumber: formData.get("recipientAccountNumber"),
     coverPhotoPath: formData.get("coverPhotoPath") || undefined,
@@ -66,7 +66,6 @@ export async function createCelebration(
     celebrationDate: parsed.data.celebrationDate,
     celebrationTitle: parsed.data.title,
     celebrantDescription: parsed.data.celebrantDescription ?? null,
-    messageCount: 0,
   });
 
   const { error } = await admin.from("celebrations").insert({

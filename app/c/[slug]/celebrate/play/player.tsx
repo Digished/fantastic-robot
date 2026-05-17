@@ -46,10 +46,10 @@ const SCENES = [
 
 function sceneFor(i: number) { return SCENES[i % SCENES.length]; }
 
-const EVENT_EMOJI: Record<string, string> = {
+const EVENT_FALLBACK_EMOJI: Record<string, string> = {
   birthday: "🎂", graduation: "🎓", wedding: "💍",
-  appreciation: "🙏", farewell: "👋", baby_shower: "🍼",
-  surprise_gift: "🎁", other: "🎉",
+  appreciation: "🙏", farewell: "🌟", baby_shower: "🌙",
+  surprise_gift: "🎁", other: "✨",
 };
 
 function formatDate(iso: string): string {
@@ -67,12 +67,12 @@ function buildIntroSlides(
     : !!(celebrantDescription && celebrantDescription.trim().length > 20);
 
   const slides: IntroSlide[] = [
-    { id: "welcome",  kind: "intro-welcome",  duration: 4000 },
-    { id: "occasion", kind: "intro-occasion", duration: 3500 },
-    { id: "together", kind: "intro-together", duration: 3500 },
+    { id: "welcome",  kind: "intro-welcome",  duration: 4500 },
+    { id: "occasion", kind: "intro-occasion", duration: 4000 },
+    { id: "together", kind: "intro-together", duration: 4000 },
   ];
-  if (hasAbout) slides.push({ id: "about", kind: "intro-about", duration: 5000 });
-  slides.push({ id: "ready", kind: "intro-ready", duration: 2500 });
+  if (hasAbout) slides.push({ id: "about", kind: "intro-about", duration: 5500 });
+  slides.push({ id: "ready", kind: "intro-ready", duration: 3000 });
   return slides;
 }
 
@@ -207,7 +207,7 @@ export function Player({
                 className={`flex-1 h-0.5 rounded-full overflow-hidden ${isIntroSlide ? "bg-white/20" : "bg-white/30"}`}
               >
                 <div
-                  className={`h-full transition-[width] duration-100 ${isIntroSlide ? "bg-white/60" : "bg-white"}`}
+                  className={`h-full transition-[width] duration-100 ${isIntroSlide ? "bg-white/55" : "bg-white"}`}
                   style={{ width: `${idx < i ? 100 : idx === i ? progress * 100 : 0}%` }}
                 />
               </div>
@@ -244,7 +244,6 @@ export function Player({
             tagline={tagline}
             celebrantDescription={celebrantDescription}
             introContent={introContent}
-            messageCount={messages.length}
           />
         ) : currentMsg ? (
           <MessageSlide
@@ -276,7 +275,7 @@ export function Player({
 
 function IntroSlideView({
   slide, firstName, eventType, celebrationDate, celebrationTitle,
-  tagline, celebrantDescription, introContent, messageCount,
+  tagline, celebrantDescription, introContent,
 }: {
   slide: IntroSlide;
   firstName: string;
@@ -286,115 +285,241 @@ function IntroSlideView({
   tagline: string | null;
   celebrantDescription: string | null;
   introContent: IntroContent | null;
-  messageCount: number;
 }) {
-  // Pull AI content or fall back to template strings
   const ai = introContent;
 
+  // ── Welcome ──────────────────────────────────────────────────────────────────
   if (slide.kind === "intro-welcome") {
-    const emoji = ai?.welcome.emoji ?? "🎉";
+    const emoji = ai?.welcome.emoji ?? "✨";
     const subtext = ai?.welcome.subtext ?? tagline ?? null;
     return (
-      <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
-        <span className="text-6xl mb-6 animate-bounce">{emoji}</span>
-        <h1 className="serif text-6xl text-ink leading-[0.9] drop-shadow-sm">
-          Hi {firstName},
-        </h1>
-        {subtext && (
-          <p className="mt-5 text-ink/80 text-xl leading-snug max-w-sm">{subtext}</p>
-        )}
-        <div className="mt-8 flex gap-2 justify-center">
-          <span className="text-2xl">💛</span>
-          <span className="text-2xl">🌟</span>
-          <span className="text-2xl">💛</span>
+      <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
+        {/* Ambient orbs */}
+        <div className="absolute -top-24 -right-24 size-80 rounded-full bg-white/[0.08] blur-3xl pointer-events-none" aria-hidden />
+        <div className="absolute -bottom-24 -left-24 size-64 rounded-full bg-white/[0.06] blur-3xl pointer-events-none" aria-hidden />
+
+        <div className="relative z-10">
+          <span
+            className="block mb-10 leading-none float-y"
+            style={{ fontSize: "clamp(4rem,18vw,7rem)", animationDuration: "5s" }}
+          >
+            {emoji}
+          </span>
+          <h1
+            className="serif text-ink leading-[0.85] fade-up"
+            style={{ fontSize: "clamp(2.8rem,11vw,5.5rem)" }}
+          >
+            Hi {firstName},
+          </h1>
+          {subtext && (
+            <p
+              className="mt-6 text-ink/75 text-xl leading-snug max-w-sm fade-up"
+              style={{ animationDelay: "180ms" }}
+            >
+              {subtext}
+            </p>
+          )}
+        </div>
+
+        {/* Decorative rule */}
+        <div
+          className="absolute bottom-14 left-0 right-0 flex items-center justify-center gap-5 fade-up"
+          style={{ animationDelay: "350ms" }}
+        >
+          <span className="h-px w-14 bg-ink/20" />
+          <span className="text-[9px] uppercase tracking-[0.4em] text-ink/30">your moment</span>
+          <span className="h-px w-14 bg-ink/20" />
         </div>
       </section>
     );
   }
 
+  // ── Occasion ─────────────────────────────────────────────────────────────────
   if (slide.kind === "intro-occasion") {
-    const emoji = ai?.occasion.emoji ?? EVENT_EMOJI[eventType] ?? "🎉";
+    const emoji = ai?.occasion.emoji ?? (EVENT_FALLBACK_EMOJI[eventType] ?? "✨");
     const title = ai?.occasion.title ?? celebrationTitle;
-    const subtext = ai?.occasion.subtext ?? formatDate(celebrationDate);
+    const subtext = ai?.occasion.subtext ?? null;
     return (
-      <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
-        <span className="text-7xl mb-7">{emoji}</span>
-        <h2 className="serif text-4xl text-ink leading-tight max-w-xs">{title}</h2>
-        <p className="mt-4 text-ink/70 text-lg leading-snug max-w-xs">{subtext}</p>
-        {!ai && (
-          <div className="mt-5 inline-flex items-center gap-2 bg-white/40 backdrop-blur rounded-full px-5 py-2">
-            <span className="text-base">📅</span>
-            <span className="text-ink/75 text-sm font-medium">{formatDate(celebrationDate)}</span>
-          </div>
-        )}
+      <section className="absolute inset-0 overflow-hidden">
+        {/* Giant ghost emoji — purely decorative background */}
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          aria-hidden
+        >
+          <span
+            className="leading-none select-none float-y opacity-[0.06]"
+            style={{ fontSize: "clamp(12rem,55vw,28rem)", animationDuration: "9s" }}
+          >
+            {emoji}
+          </span>
+        </div>
+
+        {/* Bottom-anchored content */}
+        <div className="absolute inset-x-0 bottom-0 pb-16 px-10 text-center">
+          <p className="text-[11px] uppercase tracking-[0.28em] text-ink/45 mb-4 fade-up">
+            {formatDate(celebrationDate)}
+          </p>
+          <h2
+            className="serif text-ink leading-[0.9] fade-up"
+            style={{ fontSize: "clamp(2.4rem,9vw,4.5rem)", animationDelay: "110ms" }}
+          >
+            {title}
+          </h2>
+          {subtext && (
+            <p
+              className="mt-4 text-ink/65 text-[1.1rem] leading-snug max-w-xs mx-auto fade-up"
+              style={{ animationDelay: "230ms" }}
+            >
+              {subtext}
+            </p>
+          )}
+          <span
+            className="block mt-7 float-y fade-up"
+            style={{ fontSize: "clamp(2rem,8vw,3.2rem)", animationDelay: "360ms", animationDuration: "4s" }}
+          >
+            {emoji}
+          </span>
+        </div>
       </section>
     );
   }
 
+  // ── Together (no message references) ─────────────────────────────────────────
   if (slide.kind === "intro-together") {
     return (
-      <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
-        <div className="flex justify-center gap-1 mb-8 text-3xl">
-          {["❤️", "🧡", "💛", "💚", "💙"].map((e, idx) => (
-            <span key={idx} style={{ animationDelay: `${idx * 120}ms` }} className="animate-bounce">{e}</span>
-          ))}
+      <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
+        {/* Radiating rings */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
+          <div className="absolute size-[520px] rounded-full border border-white/[0.08]" />
+          <div className="absolute size-80 rounded-full border border-white/[0.07]" />
+          <div className="absolute size-44 rounded-full border border-white/[0.06]" />
         </div>
-        {ai ? (
-          <>
-            <h2 className="serif text-3xl text-ink leading-snug max-w-sm">{ai.together.headline}</h2>
-            {ai.together.subtext && (
-              <p className="mt-4 text-ink/70 text-lg max-w-xs leading-snug">{ai.together.subtext}</p>
-            )}
-          </>
-        ) : messageCount > 0 ? (
-          <>
-            <h2 className="serif text-6xl text-ink leading-tight">{messageCount}</h2>
-            <p className="mt-3 serif text-2xl text-ink/75">
-              {messageCount === 1 ? "person wrote to you" : "people wrote to you"}
+
+        <div className="relative z-10">
+          {ai ? (
+            <>
+              <h2
+                className="serif text-ink leading-[1.05] max-w-sm fade-up"
+                style={{ fontSize: "clamp(2rem,8vw,3.4rem)" }}
+              >
+                {ai.together.headline}
+              </h2>
+              {ai.together.subtext && (
+                <p
+                  className="mt-5 text-ink/70 text-xl leading-snug max-w-xs fade-up"
+                  style={{ animationDelay: "170ms" }}
+                >
+                  {ai.together.subtext}
+                </p>
+              )}
+            </>
+          ) : (
+            <p
+              className="serif text-ink/75 leading-tight max-w-xs fade-up"
+              style={{ fontSize: "clamp(1.8rem,7vw,2.8rem)" }}
+            >
+              {firstName}, today is yours.
             </p>
-          </>
-        ) : null}
+          )}
+        </div>
       </section>
     );
   }
 
+  // ── About ─────────────────────────────────────────────────────────────────────
   if (slide.kind === "intro-about") {
     const aiAbout = ai?.about;
     return (
-      <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
-        <span className="text-4xl mb-6">🌸</span>
-        {aiAbout ? (
-          <>
-            <h2 className="serif text-3xl text-ink leading-snug max-w-sm mb-5">
-              {aiAbout.headline}
-            </h2>
-            <ul className="space-y-3">
-              {aiAbout.lines.map((line, idx) => (
-                <li key={idx} className="text-ink/80 text-lg leading-snug">{line}</li>
-              ))}
-            </ul>
-          </>
-        ) : (
-          <blockquote className="serif text-ink text-xl leading-relaxed max-w-sm line-clamp-6 italic">
-            &ldquo;{celebrantDescription}&rdquo;
-          </blockquote>
-        )}
+      <section className="absolute inset-0 flex flex-col justify-center px-10 overflow-hidden">
+        {/* Ambient orb */}
+        <div
+          className="absolute top-1/3 -right-28 size-80 rounded-full bg-white/[0.07] blur-3xl pointer-events-none"
+          aria-hidden
+        />
+
+        <div className="relative z-10">
+          {aiAbout ? (
+            <>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-ink/40 mb-6 fade-up">
+                About you
+              </p>
+              <h2
+                className="serif text-ink leading-[1.05] mb-9 fade-up"
+                style={{ fontSize: "clamp(1.9rem,7.5vw,3rem)", animationDelay: "90ms" }}
+              >
+                {aiAbout.headline}
+              </h2>
+              <div className="space-y-5">
+                {aiAbout.lines.map((line, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-3 fade-up"
+                    style={{ animationDelay: `${180 + idx * 140}ms` }}
+                  >
+                    <span className="text-ink/30 shrink-0 mt-[5px]" style={{ fontSize: "0.45rem" }}>✦</span>
+                    <p className="text-ink/85 text-[1.1rem] leading-snug">{line}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : celebrantDescription ? (
+            <blockquote className="serif text-ink text-2xl leading-relaxed line-clamp-6 italic fade-up">
+              &ldquo;{celebrantDescription}&rdquo;
+            </blockquote>
+          ) : null}
+        </div>
       </section>
     );
   }
 
-  // intro-ready
+  // ── Ready ─────────────────────────────────────────────────────────────────────
+  const readyEmoji = ai?.welcome?.emoji ?? "✨";
   return (
-    <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
-      <span className="text-5xl mb-6">💌</span>
+    <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
+      {/* Decorative horizontal rules */}
+      <div
+        className="absolute inset-x-8 top-16 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none"
+        aria-hidden
+      />
+      <div
+        className="absolute inset-x-8 bottom-16 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none"
+        aria-hidden
+      />
+
+      <span
+        className="block mb-10 float-y leading-none"
+        style={{ fontSize: "clamp(3rem,14vw,5.5rem)", animationDuration: "4s" }}
+      >
+        {readyEmoji}
+      </span>
+
       {ai ? (
         <>
-          <h2 className="serif text-4xl text-ink leading-tight">{ai.ready.headline}</h2>
+          <h2
+            className="serif text-ink leading-[0.9] fade-up"
+            style={{ fontSize: "clamp(2.4rem,9vw,4.2rem)" }}
+          >
+            {ai.ready.headline}
+          </h2>
           {ai.ready.subtext && (
-            <p className="mt-4 text-ink/65 text-lg leading-snug max-w-xs">{ai.ready.subtext}</p>
+            <p
+              className="mt-5 text-ink/65 text-lg leading-snug max-w-xs fade-up"
+              style={{ animationDelay: "160ms" }}
+            >
+              {ai.ready.subtext}
+            </p>
           )}
         </>
+      ) : tagline ? (
+        <p className="serif text-2xl text-ink/80 fade-up">{tagline}</p>
       ) : null}
+
+      <p
+        className="mt-12 text-[10px] uppercase tracking-[0.4em] text-ink/30 fade-up"
+        style={{ animationDelay: "380ms" }}
+      >
+        tap to open
+      </p>
     </section>
   );
 }

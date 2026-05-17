@@ -30,7 +30,7 @@ export const createCelebrationSchema = z.object({
   ),
   messageFromCreator: z.string().max(280).optional(),
   tagline: z.string().max(140).optional(),
-  celebrantDescription: z.string().max(1500).optional(),
+  celebrantDescription: z.string().min(20, "Please tell us a little about the person you're celebrating.").max(1500),
   recipientBankCode: z.string().min(2).max(10),
   recipientAccountNumber: naijaAccountNumber,
   coverPhotoPath: z.string().optional(),

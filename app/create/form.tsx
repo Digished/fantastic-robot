@@ -45,6 +45,10 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
   const [tagline, setTagline] = useState("");
   const [celebrantDescription, setCelebrantDescription] = useState("");
 
+  // AI message suggestions state
+  const [suggestions, setSuggestions] = useState<string[] | null>(null);
+  const [loadingSuggestions, startSuggestions] = useTransition();
+
   const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [resolved, setResolved] = useState<string | null>(null);
@@ -104,7 +108,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
   function canAdvance(): boolean {
     if (step === 0) return true;
     if (step === 1) return step1Errors().length === 0;
-    if (step === 2) return true;
+    if (step === 2) return celebrantDescription.trim().length >= 20;
     if (step === 3) {
       if (!resolved || !bankCode || accountNumber.length !== 10) return false;
       const hasQ = securityQuestion.trim().length >= 3;
@@ -118,6 +122,28 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
   function next() { if (canAdvance() && step < 4) setStep((s) => (s + 1) as Step); }
   function back() { if (step > 0) setStep((s) => (s - 1) as Step); }
 
+  function fetchSuggestions() {
+    setSuggestions(null);
+    startSuggestions(async () => {
+      try {
+        const res = await fetch("/api/ai/suggest-messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            description: celebrantDescription,
+            recipientName,
+            eventType,
+          }),
+        });
+        const json = await res.json();
+        if (res.ok && Array.isArray(json.messages)) setSuggestions(json.messages);
+        else setSuggestions([]);
+      } catch {
+        setSuggestions([]);
+      }
+    });
+  }
+
   async function submit() {
     setSubmitting(true); setSubmitError(null);
     const fd = new FormData();
@@ -128,7 +154,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     fd.set("celebrationDate", celebrationDate);
     if (messageFromCreator) fd.set("messageFromCreator", messageFromCreator);
     if (tagline) fd.set("tagline", tagline);
-    if (celebrantDescription) fd.set("celebrantDescription", celebrantDescription);
+    fd.set("celebrantDescription", celebrantDescription);
     if (coverPath) fd.set("coverPhotoPath", coverPath);
     fd.set("recipientBankCode", bankCode);
     fd.set("recipientAccountNumber", accountNumber);
@@ -142,14 +168,31 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     }
   }
 
+  const firstName = recipientName.split(" ")[0] || "them";
+
   return (
     <div data-theme={theme} className="mt-8">
-      {/* Progress */}
-      <div className="flex items-center gap-2">
+      {/* Progress — mobile: simple bar; desktop: labelled steps */}
+      <div className="sm:hidden mb-2">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs text-ink/50">
+            Step {step + 1} of {STEPS.length}
+          </p>
+          <p className="text-xs font-medium text-ink">{STEPS[step]}</p>
+        </div>
+        <div className="h-1.5 rounded-full bg-ink/10">
+          <div
+            className="h-full rounded-full bg-[var(--accent)] transition-all duration-300"
+            style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      <div className="hidden sm:flex items-center gap-2 mb-0">
         {STEPS.map((s, i) => (
           <div key={s} className="flex-1">
             <div className={`h-1.5 rounded-full transition-all ${i <= step ? "bg-[var(--accent)]" : "bg-ink/10"}`} />
-            <p className={`mt-1.5 text-[11px] uppercase tracking-widest ${i === step ? "text-ink" : "text-ink/40"}`}>
+            <p className={`mt-1.5 text-[11px] uppercase tracking-widest truncate ${i === step ? "text-ink" : "text-ink/40"}`}>
               {s}
             </p>
           </div>
@@ -232,7 +275,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
             </div>
 
             {step1Errors().length > 0 && (title || recipientName || celebrationDate) && (
-              <ul className="text-xs text-red-600 space-y-0.5 mt-1">
+              <ul className="text-xs text-red-600 space-y-0.5">
                 {step1Errors().map((e) => <li key={e}>• {e}</li>)}
               </ul>
             )}
@@ -242,26 +285,69 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
         {step === 2 && (
           <div className="space-y-5">
             <div>
-              <h2 className="serif text-3xl text-ink">About {recipientName.split(" ")[0] || "them"}</h2>
+              <h2 className="serif text-3xl text-ink">About {firstName}</h2>
               <p className="text-ink/55 text-sm mt-1">
-                This helps create a beautiful, personalised opening when {recipientName.split(" ")[0] || "the celebrant"} presses Play.
-                The more you share, the richer the experience. ✨
+                This creates a beautiful, personalised opening when {firstName} presses Play. ✨
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="label">Who is this person to you? (optional)</label>
+              <label className="label">
+                Tell us about {firstName}
+                <span className="text-red-500 ml-0.5">*</span>
+              </label>
               <textarea
-                className="field min-h-[140px] resize-none"
+                className="field min-h-[160px] resize-none"
                 value={celebrantDescription}
-                onChange={(e) => setCelebrantDescription(e.target.value)}
-                placeholder={`Tell us about ${recipientName.split(" ")[0] || "them"} — their personality, what they love, what makes them special, and why you're celebrating them. This appears as a beautiful story before their messages.`}
+                onChange={(e) => { setCelebrantDescription(e.target.value); setSuggestions(null); }}
+                placeholder={`Their personality, what they love, what makes them who they are, why this celebration matters — the more you share, the richer the experience.`}
                 maxLength={1500}
               />
-              <p className="text-xs text-ink/45">{celebrantDescription.length}/1500 characters</p>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-ink/45">{celebrantDescription.length}/1500</span>
+                {celebrantDescription.trim().length < 20 && (
+                  <span className="text-xs text-ink/40">at least 20 characters to continue</span>
+                )}
+              </div>
             </div>
 
-            <div className="space-y-1.5 pt-2 border-t border-ink/10">
+            {/* AI message inspiration */}
+            {celebrantDescription.trim().length >= 20 && (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={fetchSuggestions}
+                  disabled={loadingSuggestions}
+                  className="text-sm text-[var(--accent)] font-medium flex items-center gap-1.5 hover:opacity-75 transition disabled:opacity-50"
+                >
+                  {loadingSuggestions ? (
+                    <>
+                      <span className="size-3.5 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
+                      Generating examples…
+                    </>
+                  ) : (
+                    <>✦ See what contributors might write</>
+                  )}
+                </button>
+
+                {suggestions && suggestions.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    <p className="text-xs uppercase tracking-widest text-ink/40">Message examples</p>
+                    {suggestions.map((msg, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-2xl bg-[var(--accent-soft)] border border-[var(--accent)]/15 px-4 py-3"
+                      >
+                        <p className="text-sm text-ink/80 leading-snug italic">&ldquo;{msg}&rdquo;</p>
+                      </div>
+                    ))}
+                    <p className="text-xs text-ink/40">Share these with contributors as inspiration.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-1.5 pt-3 border-t border-ink/10">
               <label className="label">Custom tagline (optional)</label>
               <input
                 className="field"
@@ -271,7 +357,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
                 maxLength={140}
               />
               <p className="text-xs text-ink/45">
-                This appears on {recipientName.split(" ")[0] || "the celebrant"}'s cover page. Leave blank to hide it.
+                Shown on {firstName}&apos;s cover page. Leave blank to hide it.
               </p>
             </div>
           </div>
@@ -282,13 +368,13 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
             <div>
               <h2 className="serif text-3xl text-ink">Where the gift goes</h2>
               <p className="text-ink/55 text-sm mt-1">
-                For monetary gifts friends may send to {recipientName.split(" ")[0] || "the celebrant"}.
+                For monetary gifts friends may send to {firstName}.
                 Locked once the page is live.
               </p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="label">Recipient's bank</label>
+              <label className="label">Recipient&apos;s bank</label>
               <select className="field" value={bankCode} onChange={(e) => setBankCode(e.target.value)}>
                 <option value="" disabled>Select a bank</option>
                 {banks.map((b) => (<option key={b.code} value={b.code}>{b.name}</option>))}
@@ -316,8 +402,8 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
             <div className="pt-5 border-t border-ink/10">
               <h3 className="serif text-2xl text-ink">A secret door <span className="text-ink/40 text-base font-sans not-italic ml-1">— optional</span></h3>
               <p className="text-ink/55 text-sm mt-1">
-                Set a security question so only {recipientName.split(" ")[0] || "the celebrant"} can open their page.
-                Share the answer with them privately — not in the group chat.
+                Set a security question so only {firstName} can open their page.
+                Share the answer with them privately.
                 Leave both fields blank to skip.
               </p>
 

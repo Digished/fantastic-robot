@@ -27,7 +27,7 @@ export default async function PostPage({
         {closed ? (
           <p className="text-ink/65 mt-8">Messages are closed for this celebration.</p>
         ) : (
-          <PostForm slug={slug} />
+          <PostForm slug={slug} recipientName={page.recipient_name} />
         )}
       </div>
     </main>

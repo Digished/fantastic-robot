@@ -20,7 +20,7 @@ const MEDIA_TABS: { id: MediaTab; label: string; Icon: typeof Type }[] = [
   { id: "image", label: "Photo", Icon: ImageIcon },
 ];
 
-export function PostForm({ slug }: { slug: string }) {
+export function PostForm({ slug, recipientName }: { slug: string; recipientName?: string }) {
   const action = postMessage.bind(null, slug);
   const [state, dispatch] = useActionState<PostState, FormData>(action, {});
 
@@ -48,6 +48,8 @@ export function PostForm({ slug }: { slug: string }) {
   const rafRef = useRef<number | null>(null);
   const startedAtRef = useRef<number>(0);
 
+  const [expanding, setExpanding] = useState(false);
+
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
 
@@ -57,6 +59,22 @@ export function PostForm({ slug }: { slug: string }) {
   const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => { setSessionId(getOrCreateContributorId()); }, []);
+
+  async function expandBody() {
+    if (!body.trim() || expanding) return;
+    setExpanding(true);
+    try {
+      const res = await fetch("/api/ai/expand-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ draft: body, recipientName }),
+      });
+      const json = await res.json();
+      if (res.ok && json.expanded) setBody(json.expanded.slice(0, 500));
+    } finally {
+      setExpanding(false);
+    }
+  }
 
   function switchMediaTab(t: MediaTab) {
     setMediaTab(t);
@@ -271,9 +289,26 @@ export function PostForm({ slug }: { slug: string }) {
           placeholder={
             mode === "surprise"
               ? "The hidden message…"
-              : "Wishing you the most wonderful day…"
+              : "Write something from the heart…"
           }
         />
+        {body.trim().length >= 5 && mediaTab === "text" && (
+          <div className="flex items-center justify-between -mt-1">
+            <span className="text-[11px] text-ink/35">{body.length}/500</span>
+            <button
+              type="button"
+              onClick={expandBody}
+              disabled={expanding}
+              className="text-xs text-ink/50 hover:text-ink/75 transition flex items-center gap-1 disabled:opacity-40"
+            >
+              {expanding ? (
+                <><span className="size-3 rounded-full border border-ink/50 border-t-transparent animate-spin" /> Polishing…</>
+              ) : (
+                <>✦ Make it shine</>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Audio / video */}
         {(mediaTab === "audio" || mediaTab === "video") && (

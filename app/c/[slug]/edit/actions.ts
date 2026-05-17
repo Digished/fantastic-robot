@@ -64,7 +64,6 @@ export async function editCelebration(
     celebrationDate: page.celebration_date,
     celebrationTitle: parsed.data.title,
     celebrantDescription: parsed.data.celebrantDescription ?? null,
-    messageCount: Number(page.contributor_count ?? 0),
   });
 
   const { error } = await admin
