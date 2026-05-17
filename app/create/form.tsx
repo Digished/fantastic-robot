@@ -562,7 +562,7 @@ function BankCombobox({
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-2 left-0 right-0 rounded-2xl bg-white shadow-card border border-ink/8 overflow-hidden">
+        <div className="absolute z-50 mt-2 left-0 right-0 rounded-2xl bg-white shadow-card border border-ink/8 overflow-hidden">
           <div className="px-3 py-2 border-b border-ink/8 flex items-center gap-2">
             <Search className="size-4 text-ink/40 shrink-0" />
             <input
