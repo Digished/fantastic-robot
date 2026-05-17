@@ -54,6 +54,56 @@
   --accent: #9333EA; --accent-soft: #F3E8FF; --accent-glow: rgba(147,51,234,.45);
   --hero-ink: #2A0040;
 }
+[data-theme="coral"] {
+  --mesh-a: #FFE4E0; --mesh-b: #FCA5A5; --mesh-c: #FECDD3; --mesh-d: #FFF1F0;
+  --accent: #E11D48; --accent-soft: #FFE4E6; --accent-glow: rgba(225,29,72,.45);
+  --hero-ink: #4C0519;
+}
+[data-theme="lavender"] {
+  --mesh-a: #EDE9FE; --mesh-b: #DDD6FE; --mesh-c: #C4B5FD; --mesh-d: #F5F3FF;
+  --accent: #7C3AED; --accent-soft: #EDE9FE; --accent-glow: rgba(124,58,237,.45);
+  --hero-ink: #2E1065;
+}
+[data-theme="gold"] {
+  --mesh-a: #FEF3C7; --mesh-b: #FDE68A; --mesh-c: #FCD34D; --mesh-d: #FFFBEB;
+  --accent: #B45309; --accent-soft: #FEF3C7; --accent-glow: rgba(180,83,9,.45);
+  --hero-ink: #451A03;
+}
+[data-theme="forest"] {
+  --mesh-a: #D1FAE5; --mesh-b: #A7F3D0; --mesh-c: #6EE7B7; --mesh-d: #ECFDF5;
+  --accent: #047857; --accent-soft: #D1FAE5; --accent-glow: rgba(4,120,87,.45);
+  --hero-ink: #022C22;
+}
+[data-theme="berry"] {
+  --mesh-a: #FCE7F3; --mesh-b: #FBCFE8; --mesh-c: #F472B6; --mesh-d: #FDF2F8;
+  --accent: #9D174D; --accent-soft: #FCE7F3; --accent-glow: rgba(157,23,77,.45);
+  --hero-ink: #500724;
+}
+[data-theme="sky"] {
+  --mesh-a: #E0F2FE; --mesh-b: #BAE6FD; --mesh-c: #7DD3FC; --mesh-d: #F0F9FF;
+  --accent: #0284C7; --accent-soft: #E0F2FE; --accent-glow: rgba(2,132,199,.45);
+  --hero-ink: #082F49;
+}
+[data-theme="sunset"] {
+  --mesh-a: #FFEDD5; --mesh-b: #FED7AA; --mesh-c: #FDBA74; --mesh-d: #FFF7ED;
+  --accent: #EA580C; --accent-soft: #FFEDD5; --accent-glow: rgba(234,88,12,.45);
+  --hero-ink: #431407;
+}
+[data-theme="mint"] {
+  --mesh-a: #CCFBF1; --mesh-b: #99F6E4; --mesh-c: #5EEAD4; --mesh-d: #F0FDFA;
+  --accent: #0D9488; --accent-soft: #CCFBF1; --accent-glow: rgba(13,148,136,.45);
+  --hero-ink: #042F2E;
+}
+[data-theme="peach"] {
+  --mesh-a: #FFE8D6; --mesh-b: #FFD4B8; --mesh-c: #FFBE99; --mesh-d: #FFF5EC;
+  --accent: #BE123C; --accent-soft: #FFE4E6; --accent-glow: rgba(190,18,60,.45);
+  --hero-ink: #4C0519;
+}
+[data-theme="noir"] {
+  --mesh-a: #1C1917; --mesh-b: #292524; --mesh-c: #0C0A09; --mesh-d: #44403C;
+  --accent: #D6A756; --accent-soft: #FBF1DD; --accent-glow: rgba(214,167,86,.45);
+  --hero-ink: #FAF5E9;
+}
 
 @layer components {
   .page-shell { @apply mx-auto w-full max-w-phone px-5; }

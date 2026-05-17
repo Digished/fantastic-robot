@@ -5,6 +5,7 @@ import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { generateIntroContent } from "@/lib/openai/generate-intro";
+import { THEME_IDS } from "@/lib/themes";
 
 const editSchema = z.object({
   title: z.string().min(2).max(80),
@@ -12,7 +13,7 @@ const editSchema = z.object({
   tagline: z.string().max(140).optional(),
   celebrantDescription: z.string().max(1500).optional(),
   coverPhotoPath: z.string().optional(),
-  theme: z.enum(["ivory", "midnight", "bloom", "sage", "ocean", "dusk"]).optional(),
+  theme: z.enum(THEME_IDS).optional(),
   galleryImages: z.string().optional(),
 });
 

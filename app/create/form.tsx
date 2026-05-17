@@ -153,7 +153,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
   }
 
   function canAdvance(): boolean {
-    if (step === 0) return true;
+    if (step === 0) return !!coverPath;
     if (step === 1) return step1Errors().length === 0;
     if (step === 2) return celebrantDescription.trim().length >= 20;
     if (step === 3) return !!(resolved && bankCode && accountNumber.length === 10);
@@ -247,7 +247,9 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
             <ThemePicker value={theme} onChange={setTheme} />
 
             <div className="space-y-2 pt-2">
-              <label className="label">Cover photo (recommended)</label>
+              <label className="label">
+                Cover photo<span className="text-red-500 ml-0.5">*</span>
+              </label>
               <input ref={fileRef} type="file" accept="image/*" className="hidden"
                 onChange={(e) => e.target.files?.[0] && onCover(e.target.files[0])} />
               {coverPreview ? (
@@ -262,6 +264,9 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
                   className="w-full aspect-[4/3] rounded-3xl2 border-2 border-dashed border-ink/15 grid place-items-center text-ink/55 hover:bg-ink/5 transition">
                   {uploading ? "Uploading…" : "+ Add a photo of the celebrant"}
                 </button>
+              )}
+              {!coverPath && (
+                <p className="text-xs text-ink/45">A cover photo is required to continue.</p>
               )}
             </div>
           </div>

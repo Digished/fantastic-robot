@@ -3,12 +3,10 @@ import Link from "next/link";
 import { Play, Gift } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/time";
-import { ClaimButton } from "../claim-button";
 import { isTheme, type Theme } from "@/lib/themes";
 import { Sparkles } from "@/components/sparkles";
 import { NavLoadingLink } from "@/components/nav-loading-link";
 import { GalleryStrip } from "@/components/gallery-strip";
-import { GalleryUploadButton } from "@/components/gallery-upload-button";
 import { WallGrid } from "../wall-grid";
 
 export const dynamic = "force-dynamic";
@@ -43,9 +41,6 @@ export default async function CelebrantPage({
     .limit(200);
 
   const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
-  const now = Date.now();
-  const claimable = new Date(page.claimable_at).getTime() <= now;
-  const active = page.status === "active" && new Date(page.deadline_at).getTime() > now;
   const cover = coverUrl(page.cover_photo_path);
   const firstName = page.recipient_name.split(" ")[0];
   const galleryImages = (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [];
@@ -125,16 +120,10 @@ export default async function CelebrantPage({
             </section>
 
             {/* Gallery */}
-            {(galleryImages.length > 0 || active) && (
+            {galleryImages.length > 0 && (
               <div className="rounded-3xl2 bg-white shadow-ring p-3">
-                <div className="flex items-center justify-between px-1 mb-2">
-                  <p className="text-[10px] uppercase tracking-widest text-ink/40">Gallery</p>
-                  {active && <GalleryUploadButton slug={slug} />}
-                </div>
-                {galleryImages.length > 0
-                  ? <GalleryStrip images={galleryImages} />
-                  : <p className="text-xs text-ink/40 text-center py-2">Be the first to add a photo!</p>
-                }
+                <p className="text-[10px] uppercase tracking-widest text-ink/40 px-1 mb-2">Gallery</p>
+                <GalleryStrip images={galleryImages} />
               </div>
             )}
           </div>
@@ -169,24 +158,14 @@ export default async function CelebrantPage({
               </blockquote>
             )}
 
-            {/* Payout notice */}
-            {Number(page.total_raised_kobo) > 0 && !claimable && page.payout_status !== "paid" && (
+            {/* Gift status */}
+            {Number(page.total_raised_kobo) > 0 && page.payout_status !== "paid" && (
               <p className="text-sm text-ink/55 text-center fade-up flex items-center justify-center gap-1.5">
                 <Gift className="size-4 text-[var(--accent)]" />
-                A cash gift is waiting — paid to your bank on {formatDate(page.celebration_date)}.
+                A cash gift is waiting — play your surprise to receive it.
               </p>
             )}
-
-            {/* Claim */}
-            {claimable && page.payout_status !== "paid" && Number(page.total_raised_kobo) > 0 && (
-              <div className="fade-up">
-                <p className="text-center text-[11px] uppercase tracking-[0.3em] text-ink/40 mb-3 flex items-center justify-center gap-1.5">
-                  <Gift className="size-3.5" /> A gift is waiting for you
-                </p>
-                <ClaimButton slug={page.slug} amountKobo={Number(page.total_raised_kobo)} />
-              </div>
-            )}
-            {claimable && page.payout_status === "paid" && (
+            {page.payout_status === "paid" && (
               <p className="text-center text-sm text-ink/70 fade-up">
                 ✓ Gift delivered to {page.recipient_account_name}
               </p>
@@ -201,6 +180,7 @@ export default async function CelebrantPage({
                   celebrationId={page.id}
                   slug={page.slug}
                   isCreator={false}
+                  allowOwnControls={false}
                 />
               </section>
             )}

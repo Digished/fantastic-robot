@@ -161,9 +161,6 @@ export default async function Landing() {
         </Link>
       </section>
 
-      <footer className="pb-10 text-center text-xs text-ink/40">
-        ₦ delivered straight to the bank · powered by Paystack
-      </footer>
     </main>
   );
 }

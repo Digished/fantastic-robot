@@ -15,7 +15,7 @@ export default async function PlayPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, recipient_name, event_type, celebration_date, title, tagline, celebrant_description, intro_content, gallery_images, theme, creator_id")
+    .select("id, slug, recipient_name, event_type, celebration_date, title, tagline, celebrant_description, intro_content, gallery_images, theme, creator_id, total_raised_kobo, claimable_at, payout_status")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -44,6 +44,9 @@ export default async function PlayPage({
       introContent={(page.intro_content as IntroContent) ?? null}
       galleryImages={galleryImages}
       messages={messages ?? []}
+      totalRaisedKobo={Number(page.total_raised_kobo ?? 0)}
+      claimableAt={page.claimable_at}
+      payoutStatus={page.payout_status ?? ""}
     />
   );
 }
