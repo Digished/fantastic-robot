@@ -92,14 +92,21 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     setCoverPreview(URL.createObjectURL(file));
   }
 
+  function step1Errors(): string[] {
+    const errs: string[] = [];
+    if (title.trim().length < 2) errs.push("Page title is required (at least 2 characters).");
+    if (recipientName.trim().length < 1) errs.push("Recipient name is required.");
+    if (!celebrationDate) errs.push("Please pick a celebration date.");
+    else if (new Date(celebrationDate).getTime() <= Date.now()) errs.push("Celebration date must be in the future.");
+    return errs;
+  }
+
   function canAdvance(): boolean {
     if (step === 0) return true;
-    if (step === 1) return title.trim().length >= 2 && recipientName.trim().length >= 1 &&
-                           !!celebrationDate && new Date(celebrationDate).getTime() > Date.now() + 96*3600*1000;
-    if (step === 2) return true; // about-them is fully optional
+    if (step === 1) return step1Errors().length === 0;
+    if (step === 2) return true;
     if (step === 3) {
       if (!resolved || !bankCode || accountNumber.length !== 10) return false;
-      // security is optional — if either field has content, both must be filled
       const hasQ = securityQuestion.trim().length >= 3;
       const hasA = securityAnswer.trim().length >= 1;
       if ((hasQ && !hasA) || (!hasQ && hasA)) return false;
@@ -223,6 +230,12 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
                 value={messageFromCreator} onChange={(e) => setMessageFromCreator(e.target.value)}
                 placeholder="Let's spoil her this year ❤️" maxLength={280} />
             </div>
+
+            {step1Errors().length > 0 && (title || recipientName || celebrationDate) && (
+              <ul className="text-xs text-red-600 space-y-0.5 mt-1">
+                {step1Errors().map((e) => <li key={e}>• {e}</li>)}
+              </ul>
+            )}
           </div>
         )}
 
