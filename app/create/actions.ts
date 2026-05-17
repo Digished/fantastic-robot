@@ -7,6 +7,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paystack, PaystackError } from "@/lib/paystack/client";
 import { createCelebrationSchema } from "@/lib/validation/schemas";
 import { hashAnswer } from "@/lib/security";
+import { generateIntroContent } from "@/lib/openai/generate-intro";
 
 const slugId = customAlphabet("23456789abcdefghjkmnpqrstvwxyz", 10);
 
@@ -39,7 +40,7 @@ export async function createCelebration(
     return { error: parsed.error.issues[0].message };
   }
 
-  // Resolve the recipient bank account. If Paystack can't confirm it, refuse.
+  // Resolve the recipient bank account.
   let accountName: string;
   try {
     const { data } = await paystack.resolveAccount(
@@ -54,6 +55,20 @@ export async function createCelebration(
 
   const slug = slugId();
   const admin = supabaseAdmin();
+
+  // Generate AI intro slides in parallel with any remaining setup.
+  // If OpenAI is unavailable or fails, introContent is null and templates are used.
+  const firstName = parsed.data.recipientName.split(" ")[0];
+  const introContent = await generateIntroContent({
+    firstName,
+    recipientName: parsed.data.recipientName,
+    eventType: parsed.data.eventType,
+    celebrationDate: parsed.data.celebrationDate,
+    celebrationTitle: parsed.data.title,
+    celebrantDescription: parsed.data.celebrantDescription ?? null,
+    messageCount: 0,
+  });
+
   const { error } = await admin.from("celebrations").insert({
     slug,
     creator_id: user.id,
@@ -65,6 +80,7 @@ export async function createCelebration(
     message_from_creator: parsed.data.messageFromCreator ?? null,
     tagline: parsed.data.tagline ?? null,
     celebrant_description: parsed.data.celebrantDescription ?? null,
+    intro_content: introContent ?? null,
     cover_photo_path: parsed.data.coverPhotoPath ?? null,
     recipient_bank_code: parsed.data.recipientBankCode,
     recipient_account_number: parsed.data.recipientAccountNumber,

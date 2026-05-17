@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X } from "lucide-react";
 import type { Theme } from "@/lib/themes";
+import type { IntroContent } from "@/lib/openai/generate-intro";
 import { Interactive, type InteractiveKind } from "@/components/interactives";
 
 type Msg = {
@@ -46,14 +47,9 @@ const SCENES = [
 function sceneFor(i: number) { return SCENES[i % SCENES.length]; }
 
 const EVENT_EMOJI: Record<string, string> = {
-  birthday: "🎂",
-  graduation: "🎓",
-  wedding: "💍",
-  appreciation: "🙏",
-  farewell: "👋",
-  baby_shower: "🍼",
-  surprise_gift: "🎁",
-  other: "🎉",
+  birthday: "🎂", graduation: "🎓", wedding: "💍",
+  appreciation: "🙏", farewell: "👋", baby_shower: "🍼",
+  surprise_gift: "🎁", other: "🎉",
 };
 
 function formatDate(iso: string): string {
@@ -62,15 +58,20 @@ function formatDate(iso: string): string {
   });
 }
 
-function buildIntroSlides(celebrantDescription: string | null): IntroSlide[] {
+function buildIntroSlides(
+  introContent: IntroContent | null,
+  celebrantDescription: string | null,
+): IntroSlide[] {
+  const hasAbout = introContent
+    ? !!introContent.about
+    : !!(celebrantDescription && celebrantDescription.trim().length > 20);
+
   const slides: IntroSlide[] = [
-    { id: "welcome", kind: "intro-welcome", duration: 4000 },
+    { id: "welcome",  kind: "intro-welcome",  duration: 4000 },
     { id: "occasion", kind: "intro-occasion", duration: 3500 },
     { id: "together", kind: "intro-together", duration: 3500 },
   ];
-  if (celebrantDescription && celebrantDescription.trim().length > 20) {
-    slides.push({ id: "about", kind: "intro-about", duration: 5000 });
-  }
+  if (hasAbout) slides.push({ id: "about", kind: "intro-about", duration: 5000 });
   slides.push({ id: "ready", kind: "intro-ready", duration: 2500 });
   return slides;
 }
@@ -86,7 +87,7 @@ function durationFor(m: Msg): number {
 
 export function Player({
   slug, theme, recipientName, eventType, celebrationDate, celebrationTitle,
-  tagline, celebrantDescription, messages,
+  tagline, celebrantDescription, introContent, messages,
 }: {
   slug: string;
   theme: Theme;
@@ -96,11 +97,12 @@ export function Player({
   celebrationTitle: string;
   tagline: string | null;
   celebrantDescription: string | null;
+  introContent: IntroContent | null;
   messages: Msg[];
 }) {
   const introSlides = useMemo(
-    () => buildIntroSlides(celebrantDescription),
-    [celebrantDescription],
+    () => buildIntroSlides(introContent, celebrantDescription),
+    [introContent, celebrantDescription],
   );
 
   const allSlides: AnySlide[] = useMemo(() => [
@@ -241,6 +243,7 @@ export function Player({
             celebrationTitle={celebrationTitle}
             tagline={tagline}
             celebrantDescription={celebrantDescription}
+            introContent={introContent}
             messageCount={messages.length}
           />
         ) : currentMsg ? (
@@ -273,7 +276,7 @@ export function Player({
 
 function IntroSlideView({
   slide, firstName, eventType, celebrationDate, celebrationTitle,
-  tagline, celebrantDescription, messageCount,
+  tagline, celebrantDescription, introContent, messageCount,
 }: {
   slide: IntroSlide;
   firstName: string;
@@ -282,22 +285,22 @@ function IntroSlideView({
   celebrationTitle: string;
   tagline: string | null;
   celebrantDescription: string | null;
+  introContent: IntroContent | null;
   messageCount: number;
 }) {
+  // Pull AI content or fall back to template strings
+  const ai = introContent;
+
   if (slide.kind === "intro-welcome") {
+    const emoji = ai?.welcome.emoji ?? "🎉";
+    const subtext = ai?.welcome.subtext ?? (tagline || "Something special was made just for you ✨");
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
-        <span className="text-6xl mb-6 animate-bounce">🎉</span>
+        <span className="text-6xl mb-6 animate-bounce">{emoji}</span>
         <h1 className="serif text-6xl text-ink leading-[0.9] drop-shadow-sm">
           Hi {firstName},
         </h1>
-        {tagline ? (
-          <p className="mt-5 text-ink/80 text-xl leading-snug max-w-xs">{tagline}</p>
-        ) : (
-          <p className="mt-5 text-ink/70 text-lg leading-snug max-w-xs">
-            Something special was made just for you ✨
-          </p>
-        )}
+        <p className="mt-5 text-ink/80 text-xl leading-snug max-w-sm">{subtext}</p>
         <div className="mt-8 flex gap-2 justify-center">
           <span className="text-2xl">💛</span>
           <span className="text-2xl">🌟</span>
@@ -308,65 +311,90 @@ function IntroSlideView({
   }
 
   if (slide.kind === "intro-occasion") {
-    const emoji = EVENT_EMOJI[eventType] ?? "🎉";
+    const emoji = ai?.occasion.emoji ?? EVENT_EMOJI[eventType] ?? "🎉";
+    const title = ai?.occasion.title ?? celebrationTitle;
+    const subtext = ai?.occasion.subtext ?? formatDate(celebrationDate);
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
         <span className="text-7xl mb-7">{emoji}</span>
-        <h2 className="serif text-4xl text-ink leading-tight max-w-xs">
-          {celebrationTitle}
-        </h2>
-        <div className="mt-6 inline-flex items-center gap-2 bg-white/40 backdrop-blur rounded-full px-5 py-2">
-          <span className="text-base">📅</span>
-          <span className="text-ink/75 text-sm font-medium">{formatDate(celebrationDate)}</span>
-        </div>
+        <h2 className="serif text-4xl text-ink leading-tight max-w-xs">{title}</h2>
+        <p className="mt-4 text-ink/70 text-lg leading-snug max-w-xs">{subtext}</p>
+        {!ai && (
+          <div className="mt-5 inline-flex items-center gap-2 bg-white/40 backdrop-blur rounded-full px-5 py-2">
+            <span className="text-base">📅</span>
+            <span className="text-ink/75 text-sm font-medium">{formatDate(celebrationDate)}</span>
+          </div>
+        )}
       </section>
     );
   }
 
   if (slide.kind === "intro-together") {
+    const headline = ai?.together.headline ?? (messageCount > 0
+      ? `${messageCount} ${messageCount === 1 ? "person" : "people"} wrote to you`
+      : "Your celebration is just getting started 🌱");
+    const subtext = ai?.together.subtext ?? (messageCount > 0 ? "Each one thought of you ✨" : null);
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
         <div className="flex justify-center gap-1 mb-8 text-3xl">
-          {["❤️", "🧡", "💛", "💚", "💙"].map((e, i) => (
-            <span key={i} style={{ animationDelay: `${i * 120}ms` }} className="animate-bounce">{e}</span>
+          {["❤️", "🧡", "💛", "💚", "💙"].map((e, idx) => (
+            <span key={idx} style={{ animationDelay: `${idx * 120}ms` }} className="animate-bounce">{e}</span>
           ))}
         </div>
-        {messageCount > 0 ? (
+        {ai ? (
           <>
-            <h2 className="serif text-6xl text-ink leading-tight">
-              {messageCount}
-            </h2>
+            <h2 className="serif text-3xl text-ink leading-snug max-w-sm">{headline}</h2>
+            {subtext && <p className="mt-4 text-ink/70 text-lg max-w-xs leading-snug">{subtext}</p>}
+          </>
+        ) : messageCount > 0 ? (
+          <>
+            <h2 className="serif text-6xl text-ink leading-tight">{messageCount}</h2>
             <p className="mt-3 serif text-2xl text-ink/75">
               {messageCount === 1 ? "person wrote to you" : "people wrote to you"}
             </p>
           </>
         ) : (
-          <h2 className="serif text-3xl text-ink leading-snug max-w-xs">
-            Your celebration is just getting started 🌱
-          </h2>
+          <h2 className="serif text-3xl text-ink leading-snug max-w-xs">{headline}</h2>
         )}
       </section>
     );
   }
 
   if (slide.kind === "intro-about") {
+    const aiAbout = ai?.about;
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
         <span className="text-4xl mb-6">🌸</span>
-        <blockquote className="serif text-ink text-xl leading-relaxed max-w-sm line-clamp-6 italic">
-          &ldquo;{celebrantDescription}&rdquo;
-        </blockquote>
+        {aiAbout ? (
+          <>
+            <h2 className="serif text-3xl text-ink leading-snug max-w-sm mb-5">
+              {aiAbout.headline}
+            </h2>
+            <ul className="space-y-3">
+              {aiAbout.lines.map((line, idx) => (
+                <li key={idx} className="text-ink/80 text-lg leading-snug">{line}</li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <blockquote className="serif text-ink text-xl leading-relaxed max-w-sm line-clamp-6 italic">
+            &ldquo;{celebrantDescription}&rdquo;
+          </blockquote>
+        )}
       </section>
     );
   }
 
   // intro-ready
+  const readyHeadline = ai?.ready.headline ?? (messageCount > 0 ? "Your messages await" : "Your celebration awaits");
+  const readySubtext = ai?.ready.subtext ?? null;
   return (
     <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
       <span className="text-5xl mb-6">💌</span>
-      <h2 className="serif text-4xl text-ink leading-tight">
-        {messageCount > 0 ? "Your messages await" : "Your celebration awaits"}
-      </h2>
+      <h2 className="serif text-4xl text-ink leading-tight">{readyHeadline}</h2>
+      {readySubtext && (
+        <p className="mt-4 text-ink/65 text-lg leading-snug max-w-xs">{readySubtext}</p>
+      )}
     </section>
   );
 }

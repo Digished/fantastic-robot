@@ -5,6 +5,7 @@ import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { hashAnswer } from "@/lib/security";
+import { generateIntroContent } from "@/lib/openai/generate-intro";
 
 const editSchema = z.object({
   title: z.string().min(2).max(80),
@@ -15,7 +16,6 @@ const editSchema = z.object({
   theme: z.enum(["ivory", "midnight", "bloom", "sage", "ocean", "dusk"]).optional(),
   securityQuestion: z.string().min(3).max(140).optional(),
   securityAnswer:   z.string().min(1).max(140).optional(),
-  // sentinel to distinguish "blank to clear" from "not submitted"
   securityQuestionRaw: z.string().optional(),
 });
 
@@ -48,13 +48,24 @@ export async function editCelebration(
   const admin = supabaseAdmin();
   const { data: page } = await admin
     .from("celebrations")
-    .select("id, creator_id")
+    .select("id, creator_id, recipient_name, event_type, celebration_date, contributor_count")
     .eq("slug", slug)
     .maybeSingle();
   if (!page || page.creator_id !== user.id) return { error: "Not allowed." };
 
-  // When question field is explicitly blank, clear both question and hash.
   const clearingSecurity = securityQuestionRaw === "";
+
+  // Regenerate intro content whenever title or description changes.
+  const firstName = page.recipient_name.split(" ")[0];
+  const introContent = await generateIntroContent({
+    firstName,
+    recipientName: page.recipient_name,
+    eventType: page.event_type,
+    celebrationDate: page.celebration_date,
+    celebrationTitle: parsed.data.title,
+    celebrantDescription: parsed.data.celebrantDescription ?? null,
+    messageCount: Number(page.contributor_count ?? 0),
+  });
 
   const { error } = await admin
     .from("celebrations")
@@ -63,9 +74,8 @@ export async function editCelebration(
       message_from_creator: parsed.data.messageFromCreator ?? null,
       tagline: parsed.data.tagline ?? null,
       celebrant_description: parsed.data.celebrantDescription ?? null,
-      ...(parsed.data.coverPhotoPath
-        ? { cover_photo_path: parsed.data.coverPhotoPath }
-        : {}),
+      ...(introContent ? { intro_content: introContent } : {}),
+      ...(parsed.data.coverPhotoPath ? { cover_photo_path: parsed.data.coverPhotoPath } : {}),
       ...(parsed.data.theme ? { theme: parsed.data.theme } : {}),
       ...(clearingSecurity
         ? { security_question: null, security_answer_hash: null }
