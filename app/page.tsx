@@ -38,7 +38,7 @@ export default async function Landing() {
               <em className="shimmer-text not-italic">together</em>
             </h1>
             <p className="fade-up mt-6 text-ink/65 text-lg leading-relaxed max-w-sm" style={{ animationDelay: "120ms" }}>
-              A beautiful surprise page your whole group fills with messages, voice notes and a group gift — delivered straight to their bank.
+              Gather everyone who loves them. Their messages, voice notes and videos collect on one secret page — then unwrap as a cinematic surprise, with a cash gift waiting at the end.
             </p>
             <div className="fade-up mt-9 flex flex-col sm:flex-row gap-3 max-w-sm" style={{ animationDelay: "180ms" }}>
               <Link href="/create" className="btn-accent text-base py-4 shadow-glow flex-1 text-center">
