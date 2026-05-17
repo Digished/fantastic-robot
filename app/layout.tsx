@@ -15,6 +15,10 @@ export const metadata: Metadata = {
   title: "Spendbox — celebrate together",
   description:
     "Create a celebration page friends can fill with messages, voice notes and a group gift. Built for WhatsApp.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
   openGraph: {
     title: "Spendbox",
     description: "A digital wall for celebrating the people you love.",
