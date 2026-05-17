@@ -293,14 +293,16 @@ function IntroSlideView({
 
   if (slide.kind === "intro-welcome") {
     const emoji = ai?.welcome.emoji ?? "🎉";
-    const subtext = ai?.welcome.subtext ?? (tagline || "Something special was made just for you ✨");
+    const subtext = ai?.welcome.subtext ?? tagline ?? null;
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
         <span className="text-6xl mb-6 animate-bounce">{emoji}</span>
         <h1 className="serif text-6xl text-ink leading-[0.9] drop-shadow-sm">
           Hi {firstName},
         </h1>
-        <p className="mt-5 text-ink/80 text-xl leading-snug max-w-sm">{subtext}</p>
+        {subtext && (
+          <p className="mt-5 text-ink/80 text-xl leading-snug max-w-sm">{subtext}</p>
+        )}
         <div className="mt-8 flex gap-2 justify-center">
           <span className="text-2xl">💛</span>
           <span className="text-2xl">🌟</span>
@@ -330,10 +332,6 @@ function IntroSlideView({
   }
 
   if (slide.kind === "intro-together") {
-    const headline = ai?.together.headline ?? (messageCount > 0
-      ? `${messageCount} ${messageCount === 1 ? "person" : "people"} wrote to you`
-      : "Your celebration is just getting started 🌱");
-    const subtext = ai?.together.subtext ?? (messageCount > 0 ? "Each one thought of you ✨" : null);
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
         <div className="flex justify-center gap-1 mb-8 text-3xl">
@@ -343,8 +341,10 @@ function IntroSlideView({
         </div>
         {ai ? (
           <>
-            <h2 className="serif text-3xl text-ink leading-snug max-w-sm">{headline}</h2>
-            {subtext && <p className="mt-4 text-ink/70 text-lg max-w-xs leading-snug">{subtext}</p>}
+            <h2 className="serif text-3xl text-ink leading-snug max-w-sm">{ai.together.headline}</h2>
+            {ai.together.subtext && (
+              <p className="mt-4 text-ink/70 text-lg max-w-xs leading-snug">{ai.together.subtext}</p>
+            )}
           </>
         ) : messageCount > 0 ? (
           <>
@@ -353,9 +353,7 @@ function IntroSlideView({
               {messageCount === 1 ? "person wrote to you" : "people wrote to you"}
             </p>
           </>
-        ) : (
-          <h2 className="serif text-3xl text-ink leading-snug max-w-xs">{headline}</h2>
-        )}
+        ) : null}
       </section>
     );
   }
@@ -386,15 +384,17 @@ function IntroSlideView({
   }
 
   // intro-ready
-  const readyHeadline = ai?.ready.headline ?? (messageCount > 0 ? "Your messages await" : "Your celebration awaits");
-  const readySubtext = ai?.ready.subtext ?? null;
   return (
     <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
       <span className="text-5xl mb-6">💌</span>
-      <h2 className="serif text-4xl text-ink leading-tight">{readyHeadline}</h2>
-      {readySubtext && (
-        <p className="mt-4 text-ink/65 text-lg leading-snug max-w-xs">{readySubtext}</p>
-      )}
+      {ai ? (
+        <>
+          <h2 className="serif text-4xl text-ink leading-tight">{ai.ready.headline}</h2>
+          {ai.ready.subtext && (
+            <p className="mt-4 text-ink/65 text-lg leading-snug max-w-xs">{ai.ready.subtext}</p>
+          )}
+        </>
+      ) : null}
     </section>
   );
 }
