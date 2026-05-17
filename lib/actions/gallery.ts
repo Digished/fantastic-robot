@@ -23,6 +23,7 @@ export async function addGalleryItem(
   }
 
   const existing = (page.gallery_images as GalleryItem[]) ?? [];
+  if (existing.length >= 20) return { error: "Gallery is full (20 items max)" };
   const { error } = await admin
     .from("celebrations")
     .update({ gallery_images: [...existing, item] })

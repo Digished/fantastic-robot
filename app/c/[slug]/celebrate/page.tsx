@@ -8,6 +8,7 @@ import { Sparkles } from "@/components/sparkles";
 import { NavLoadingLink } from "@/components/nav-loading-link";
 import { GalleryStrip } from "@/components/gallery-strip";
 import { WallGrid } from "../wall-grid";
+import { getCreatorLabel } from "@/lib/creator";
 
 export const dynamic = "force-dynamic";
 
@@ -25,12 +26,16 @@ export default async function CelebrantPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, tagline, total_raised_kobo, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, tagline, total_raised_kobo, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation",
     )
     .eq("slug", slug)
     .maybeSingle();
 
   if (!page) notFound();
+  if (page.is_paid_for_creation === false) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id !== page.creator_id) notFound();
+  }
 
   const { data: messages } = await supabase
     .from("messages")
@@ -47,6 +52,7 @@ export default async function CelebrantPage({
   const eventLabel = !["other", "surprise_gift"].includes(page.event_type)
     ? page.event_type.replace(/_/g, " ")
     : "";
+  const createdBy = await getCreatorLabel(page.creator_id);
 
   return (
     <main className="min-h-[100dvh] bg-white pb-20" data-theme={theme}>
@@ -58,7 +64,7 @@ export default async function CelebrantPage({
             Spendbox
           </Link>
           <span className="rounded-full border border-ink/15 px-3 py-1 text-[10px] uppercase tracking-widest text-ink/60">
-            For you
+            For {firstName}
           </span>
         </header>
 
@@ -90,7 +96,7 @@ export default async function CelebrantPage({
                       Spendbox
                     </Link>
                     <span className="glass-dark rounded-full px-3 py-1 text-[10px] uppercase tracking-widest text-white">
-                      For you
+                      For {firstName}
                     </span>
                   </header>
 
@@ -99,9 +105,6 @@ export default async function CelebrantPage({
                     <p className="fade-up text-[10px] uppercase tracking-[0.35em] text-white/80">
                       {eventLabel && <span>{eventLabel} · </span>}
                       {formatDate(page.celebration_date)}
-                    </p>
-                    <p className="fade-up mt-2 text-white/65 text-sm" style={{ animationDelay: "60ms" }}>
-                      Hi {firstName},
                     </p>
                     <h1
                       className="fade-up mt-1 serif leading-[0.92] drop-shadow-sm md:hidden"
@@ -136,8 +139,7 @@ export default async function CelebrantPage({
               <p className="text-[10px] uppercase tracking-[0.3em] text-ink/50 font-medium">
                 {eventLabel && `${eventLabel} · `}{formatDate(page.celebration_date)}
               </p>
-              <p className="text-ink/55 mt-2 text-lg">Hi {firstName},</p>
-              <h2 className="serif text-5xl text-ink mt-1 leading-[0.92]">{page.title}</h2>
+              <h2 className="serif text-5xl text-ink mt-2 leading-[0.92]">{page.title}</h2>
               {page.tagline && <p className="text-ink/60 text-lg mt-3 italic serif">{page.tagline}</p>}
             </div>
 
@@ -185,7 +187,12 @@ export default async function CelebrantPage({
               </section>
             )}
 
-            <footer className="pt-8 text-center md:text-left">
+            <footer className="pt-8 text-center md:text-left space-y-1">
+              {createdBy && (
+                <p className="text-[11px] text-ink/45">
+                  Put together by <span className="text-ink/70">{createdBy}</span>
+                </p>
+              )}
               <p className="text-[11px] text-ink/35">Made with Spendbox · for {page.recipient_name}</p>
             </footer>
           </div>

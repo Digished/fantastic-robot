@@ -26,6 +26,7 @@ export function ThemePicker({
             <button
               key={t.id}
               type="button"
+              data-no-loading="true"
               onClick={() => onChange(t.id)}
               title={t.label}
               aria-label={t.label}

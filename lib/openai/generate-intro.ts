@@ -1,5 +1,11 @@
 import { openaiClient } from "./client";
 
+export type IntroChapter = {
+  headline: string;
+  body: string;
+  emoji?: string;
+};
+
 export type IntroContent = {
   welcome: {
     subtext: string;
@@ -18,9 +24,15 @@ export type IntroContent = {
     headline: string;
     lines: string[];
   };
+  chapters?: IntroChapter[];
   ready: {
     headline: string;
     subtext: string;
+  };
+  final: {
+    headline: string;
+    subtext: string;
+    emoji?: string;
   };
 };
 
@@ -28,10 +40,12 @@ const SYSTEM_PROMPT = `You write short, warm, personalised copy for a digital ce
 These are intro slides the recipient reads as a personal welcome experience.
 The tone is joyful, sincere, and a little poetic — never corporate or generic.
 
+You will produce a sequence of up to 10 slides total: 5 fixed slides (welcome, occasion, together, about, ready) plus a "final" closing slide, plus up to 4 extra "chapters" that explore unique facets of the recipient drawn from their description.
+
 Output ONLY valid JSON with this exact structure:
 {
   "welcome": {
-    "subtext": "string (≤90 chars) — a warm opening line about them or this moment",
+    "subtext": "string (≤90 chars) — a warm opening line about this moment. MUST NOT contain the recipient's name (the slide already greets them).",
     "emoji": "string — one fitting emoji (not ❤️ or 🎉 — pick something fresh and specific)"
   },
   "occasion": {
@@ -47,22 +61,37 @@ Output ONLY valid JSON with this exact structure:
     "headline": "string (≤60 chars) — a poetic, specific description of who they are",
     "lines": ["string (≤70 chars)", "string (≤70 chars)", "string (≤70 chars)"]
   },
+  "chapters": [
+    {
+      "headline": "string (≤55 chars) — a small, specific theme drawn from the description (a passion, a quality, a memory)",
+      "body": "string (≤140 chars) — one or two sentences expanding the theme, warm and specific",
+      "emoji": "string — one fitting emoji"
+    }
+  ],
   "ready": {
     "headline": "string (≤55 chars) — the anticipation before they dive in",
     "subtext": "string (≤80 chars) — a warm, personal send-off"
+  },
+  "final": {
+    "headline": "string (≤55 chars) — the closing statement after every memory has been seen",
+    "subtext": "string (≤90 chars) — a quiet, lasting parting thought",
+    "emoji": "string — one fitting emoji"
   }
 }
 
 Rules:
 - The "about" field MUST be included only if a description is provided. Omit it entirely if no description.
 - "about.lines" should have 2–3 items drawn from the description — specific details, not generic praise.
+- "chapters" should have 0–4 items. Include chapters ONLY if you can draw them from the description (specific passions, qualities, memorable details). Skip if generic.
+- Together with the fixed slides, total slide count must stay at or under 10.
+- The "final" slide ALWAYS appears — it is the parting statement after the recipient has seen everything.
 - Never use the words: wonderful, amazing, truly, really, special, tapestry, symphony, mosaic, kaleidoscope, journey, testament, chapter, narrative (find fresher, more specific words).
 - Never reference other people sending messages or friends gathering — keep it between this page and the recipient.
 - Avoid heart emojis (❤️, 💕, 💖) and generic party emojis. Choose emojis that feel specific to this person.
-- Do not repeat the recipient's name more than once across all fields.
+- Do NOT repeat the recipient's name anywhere. The slides already display their name separately; repeating it in copy reads awkwardly.
 - Use complete sentences with proper grammar and capitalisation.
 - Be specific and creative — avoid clichés. Draw from the description to say something only this person would recognise.
-- NEVER use placeholder syntax like {name}, {firstName}, or any curly-brace template — write the recipient's actual name or "you" directly.
+- NEVER use placeholder syntax like {name}, {firstName}, or any curly-brace template — write "you" directly instead.
 - Keep everything tight — every word earns its place.`;
 
 function buildUserMessage(params: {
@@ -86,6 +115,17 @@ function buildUserMessage(params: {
   return lines.join("\n");
 }
 
+function stripName(text: string, firstName: string, fullName: string): string {
+  const names = [firstName, ...fullName.split(/\s+/)].filter(Boolean);
+  let out = text;
+  for (const n of names) {
+    if (n.length < 2) continue;
+    const re = new RegExp(`(^|[\\s,!.?;:—-])${n}([\\s,!.?;:—-]|$)`, "gi");
+    out = out.replace(re, (_, a, b) => (a + b));
+  }
+  return out.replace(/\s+([,.!?;:])/g, "$1").replace(/\s{2,}/g, " ").replace(/^[\s,]+|[\s,]+$/g, "").trim();
+}
+
 export async function generateIntroContent(params: {
   firstName: string;
   recipientName: string;
@@ -102,7 +142,7 @@ export async function generateIntroContent(params: {
       model: "gpt-4o-mini",
       response_format: { type: "json_object" },
       temperature: 0.85,
-      max_tokens: 600,
+      max_tokens: 1100,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: buildUserMessage(params) },
@@ -114,8 +154,23 @@ export async function generateIntroContent(params: {
 
     const parsed = JSON.parse(raw) as IntroContent;
 
-    if (!parsed.welcome?.subtext || !parsed.occasion?.title || !parsed.ready?.headline) {
+    if (
+      !parsed.welcome?.subtext ||
+      !parsed.occasion?.title ||
+      !parsed.ready?.headline ||
+      !parsed.final?.headline
+    ) {
       return null;
+    }
+
+    // Defense in depth: strip stray name mentions from welcome subtext.
+    parsed.welcome.subtext = stripName(parsed.welcome.subtext, params.firstName, params.recipientName);
+
+    // Enforce slide cap: at most 4 chapters, total ≤10 slides.
+    if (Array.isArray(parsed.chapters)) {
+      parsed.chapters = parsed.chapters
+        .filter((c) => c?.headline && c?.body)
+        .slice(0, 4);
     }
 
     return parsed;

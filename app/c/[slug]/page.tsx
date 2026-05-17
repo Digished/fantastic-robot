@@ -14,6 +14,7 @@ import { CelebrantLinkButton } from "./celebrant-link-button";
 import { GalleryStrip } from "@/components/gallery-strip";
 import { GalleryUploadButton } from "@/components/gallery-upload-button";
 import { NavLoadingLink } from "@/components/nav-loading-link";
+import { getCreatorLabel } from "@/lib/creator";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function WallPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -40,6 +41,9 @@ export default async function WallPage({
 
   const { data: { user } } = await supabase.auth.getUser();
   const isCreator = !!user && user.id === page.creator_id;
+
+  // Page-creation fee gate: unpaid pages are invisible to anyone but the creator.
+  if (page.is_paid_for_creation === false && !isCreator) notFound();
   const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
 
   const { data: messages } = await supabase
@@ -56,6 +60,7 @@ export default async function WallPage({
   const cover = coverUrl(page.cover_photo_path);
   const galleryImages = (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [];
   const eventLabel = page.event_type.replace(/_/g, " ");
+  const createdBy = await getCreatorLabel(page.creator_id);
 
   return (
     <main className="min-h-[100dvh] bg-white pb-20" data-theme={theme}>
@@ -246,6 +251,12 @@ export default async function WallPage({
                 isCreator={isCreator}
               />
             </section>
+
+            {createdBy && (
+              <p className="pt-6 text-center md:text-left text-[11px] text-ink/45">
+                Put together by <span className="text-ink/70">{createdBy}</span>
+              </p>
+            )}
           </div>
         </div>
       </div>

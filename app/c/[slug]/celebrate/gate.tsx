@@ -37,7 +37,7 @@ export function CelebrantGate({
           <div className="mx-auto size-12 rounded-full bg-[var(--accent-soft)] grid place-items-center text-[var(--accent)]">
             <Lock className="size-5" />
           </div>
-          <h1 className="serif text-3xl text-ink mt-5">Hi {recipientName.split(" ")[0]} —</h1>
+          <h1 className="serif text-3xl text-ink mt-5">For {recipientName.split(" ")[0]}</h1>
           <p className="text-ink/60 mt-2 text-sm">
             Your friends made something for you. Answer this to open it.
           </p>

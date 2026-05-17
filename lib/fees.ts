@@ -4,6 +4,7 @@
 
 export const PLATFORM_FEE_BPS = 500n; // 5.00%
 export const MIN_CONTRIBUTION_KOBO = 50_000n; // ₦500
+export const PAGE_CREATION_FEE_KOBO = 50_000n; // ₦500 to publish a page
 
 export function computeCharge(amountKobo: bigint) {
   if (amountKobo < MIN_CONTRIBUTION_KOBO) {
