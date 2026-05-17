@@ -34,11 +34,11 @@ export default async function Landing() {
           <div className="md:order-1">
             <p className="text-[11px] uppercase tracking-[0.3em] text-ink/50 mb-6 fade-up">Celebrations, reimagined</p>
             <h1 className="fade-up serif text-ink text-[52px] md:text-[68px] leading-[0.9]" style={{ animationDelay: "60ms" }}>
-              celebrate<br />
-              <em className="shimmer-text not-italic">together</em>
+              Celebrate Together,<br />
+              <em className="shimmer-text not-italic">Perfectly</em>
             </h1>
             <p className="fade-up mt-6 text-ink/65 text-lg leading-relaxed max-w-sm" style={{ animationDelay: "120ms" }}>
-              A beautiful surprise page your whole group fills with messages, voice notes and a group gift — delivered straight to their bank.
+              Create a beautiful group surprise page filled with heartfelt messages, voice notes, photos, and cash gifts — delivered straight to their bank account.
             </p>
             <div className="fade-up mt-9 flex flex-col sm:flex-row gap-3 max-w-sm" style={{ animationDelay: "180ms" }}>
               <Link href="/create" className="btn-accent text-base py-4 shadow-glow flex-1 text-center">

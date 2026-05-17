@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X, Video, Gift, Lock, Loader2 } from "lucide-react";
 import type { Theme } from "@/lib/themes";
+import { musicSrc } from "@/lib/music";
 import type { IntroContent } from "@/lib/openai/generate-intro";
 import { Interactive, type InteractiveKind } from "@/components/interactives";
 
@@ -263,12 +264,13 @@ function durationFor(m: Msg): number {
 // ─── Player ───────────────────────────────────────────────────────────────────
 
 export function Player({
-  slug, theme, recipientName, eventType, celebrationDate, celebrationTitle,
+  slug, theme, backgroundMusic, recipientName, eventType, celebrationDate, celebrationTitle,
   tagline, celebrantDescription, introContent, messages, galleryImages,
   totalRaisedKobo, claimableAt, payoutStatus, createdBy,
 }: {
   slug: string;
   theme: Theme;
+  backgroundMusic: string | null;
   recipientName: string;
   eventType: string;
   celebrationDate: string;
@@ -317,6 +319,35 @@ export function Player({
 
   const scene = useMemo(() => sceneFor(i), [i]);
 
+  // Background music ducks (pauses) whenever a slide is itself playing sound:
+  // voice-note / video cards, or a gallery video.
+  const musicRef = useRef<HTMLAudioElement | null>(null);
+  const galleryVideoPlaying =
+    current?.kind === "intro" &&
+    current.intro.kind === "intro-gallery" &&
+    current.intro.gallery?.kind === "video";
+  const messageMediaPlaying =
+    !!currentMsg && (currentMsg.media_kind === "audio" || currentMsg.media_kind === "video");
+  const duckMusic = done || paused || messageMediaPlaying || galleryVideoPlaying;
+
+  function resumeMusic() {
+    const audio = musicRef.current;
+    if (!audio || duckMusic) return;
+    audio.volume = 0.32;
+    audio.play().catch(() => { /* autoplay blocked — retried on next tap */ });
+  }
+
+  useEffect(() => {
+    const audio = musicRef.current;
+    if (!audio) return;
+    if (duckMusic) {
+      audio.pause();
+    } else {
+      audio.volume = 0.32;
+      audio.play().catch(() => { /* autoplay blocked — retried on next tap */ });
+    }
+  }, [duckMusic]);
+
   useEffect(() => { setInteractiveReady(false); }, [i]);
 
   useEffect(() => {
@@ -357,12 +388,17 @@ export function Player({
       className="fixed inset-0 select-none overflow-hidden"
       style={{ background: done ? "white" : scene.bg }}
       onClick={(e) => {
+        resumeMusic();
         if (done) return;
         if (isInteractive && !interactiveReady) return;
         const x = e.clientX; const w = window.innerWidth;
         if (x < w / 3) prev(); else next();
       }}
     >
+      {backgroundMusic && (
+        // eslint-disable-next-line jsx-a11y/media-has-caption
+        <audio ref={musicRef} src={musicSrc(backgroundMusic)} loop preload="auto" />
+      )}
       {/* Progress bar — hidden in gallery view */}
       {!done && (
         <div className="absolute inset-x-0 top-0 px-3 pt-3 z-30 flex items-center gap-2">
