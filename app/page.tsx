@@ -52,26 +52,57 @@ export default async function Landing() {
 
           {/* Right: Visual */}
           <div className="md:order-2 mt-12 md:mt-0 flex items-center justify-center">
-            <div className="relative" style={{ width: 340, height: 400 }}>
+            <div className="relative" style={{ width: 340, height: 440 }}>
 
               {/* Ambient glow */}
               <div
                 className="absolute rounded-full blur-[80px] opacity-25 pointer-events-none"
-                style={{ background: "var(--accent)", width: 260, height: 260, top: 60, left: 40 }}
+                style={{ background: "var(--accent)", width: 260, height: 260, top: 80, left: 40 }}
               />
 
-              {/* Back card — celebration cover */}
+              {/* Back card — Chiamaka */}
+              <div
+                className="absolute rounded-[26px] overflow-hidden shadow-2xl"
+                style={{
+                  width: 195, height: 265,
+                  right: 10, top: 15,
+                  transform: "rotate(8deg)",
+                  zIndex: 0,
+                  animation: "floatY 11s ease-in-out infinite 1.8s",
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://hxhjbqmzhpmfmyrmtmhr.supabase.co/storage/v1/object/public/landingpage-assets/african%20female.jpeg"
+                  alt=""
+                  className="absolute inset-0 size-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/70" />
+                <div className="absolute bottom-0 left-0 right-0 p-4">
+                  <p className="text-[8px] uppercase tracking-[0.28em] text-white/65 font-medium">Wedding · 22 Aug</p>
+                  <p className="serif text-white text-lg mt-1 leading-[1.1]">Chiamaka&apos;s<br />big day</p>
+                  <p className="text-white/60 text-[10px] mt-0.5">For Chiamaka Eze</p>
+                </div>
+              </div>
+
+              {/* Front card — Tunde Bakare */}
               <div
                 className="absolute rounded-[26px] overflow-hidden shadow-2xl"
                 style={{
                   width: 210, height: 285,
-                  left: 0, top: 20,
+                  left: 0, top: 30,
                   transform: "rotate(-7deg)",
+                  zIndex: 1,
                   animation: "floatY 9s ease-in-out infinite",
                 }}
               >
-                <div className="absolute inset-0 theme-mesh" />
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/60" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://hxhjbqmzhpmfmyrmtmhr.supabase.co/storage/v1/object/public/landingpage-assets/african%20male.jpeg"
+                  alt=""
+                  className="absolute inset-0 size-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/65" />
                 <div className="absolute bottom-0 left-0 right-0 p-5">
                   <p className="text-[8px] uppercase tracking-[0.28em] text-white/65 font-medium">Birthday · 14 June</p>
                   <p className="serif text-white text-xl mt-1.5 leading-[1.1]">Tunde<br />turns 30</p>
@@ -83,23 +114,25 @@ export default async function Landing() {
               <div
                 className="absolute bg-white rounded-[22px] shadow-2xl p-5"
                 style={{
-                  width: 210, height: "auto",
-                  right: 0, top: 55,
-                  transform: "rotate(5deg)",
+                  width: 195, height: "auto",
+                  right: 0, top: 220,
+                  transform: "rotate(4deg)",
+                  zIndex: 2,
                   animation: "floatY 12s ease-in-out infinite 2.5s",
                 }}
               >
-                <p className="serif text-ink text-base leading-snug">
+                <p className="serif text-ink text-sm leading-snug">
                   &ldquo;You&apos;ve changed my life. Happy birthday, my love.&rdquo;
                 </p>
-                <p className="text-[10px] uppercase tracking-wide text-ink/40 mt-3">— Chidinma</p>
+                <p className="text-[10px] uppercase tracking-wide text-ink/40 mt-2.5">— Chidinma</p>
               </div>
 
               {/* Gift pill */}
               <div
                 className="absolute bg-white rounded-2xl shadow-card px-5 py-3.5"
                 style={{
-                  bottom: 16, left: 24,
+                  bottom: 12, left: 20,
+                  zIndex: 3,
                   animation: "floatY 7s ease-in-out infinite 1.2s",
                 }}
               >
