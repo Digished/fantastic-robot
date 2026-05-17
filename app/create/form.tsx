@@ -59,8 +59,6 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
   // Step 2: About them
   const [tagline, setTagline] = useState("");
   const [celebrantDescription, setCelebrantDescription] = useState("");
-  const [suggestions, setSuggestions] = useState<string[] | null>(null);
-  const [loadingSuggestions, startSuggestions] = useTransition();
 
   // Gallery (step 2)
   const galleryFileRef = useRef<HTMLInputElement>(null);
@@ -163,23 +161,6 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
   function next() { if (canAdvance() && step < 4) setStep((s) => (s + 1) as Step); }
   function back() { if (step > 0) setStep((s) => (s - 1) as Step); }
 
-  function fetchSuggestions() {
-    setSuggestions(null);
-    startSuggestions(async () => {
-      try {
-        const res = await fetch("/api/ai/suggest-messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ description: celebrantDescription, recipientName, eventType }),
-        });
-        const json = await res.json();
-        if (res.ok && Array.isArray(json.messages)) setSuggestions(json.messages);
-        else setSuggestions([]);
-      } catch {
-        setSuggestions([]);
-      }
-    });
-  }
 
   async function submit() {
     setSubmitting(true); setSubmitError(null);
@@ -327,7 +308,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
             <div>
               <h2 className="serif text-3xl text-ink">About {firstName}</h2>
               <p className="text-ink/55 text-sm mt-1">
-                This creates a beautiful, personalised opening when {firstName} presses Play. ✨
+                This is used to craft everything on {firstName}&apos;s page — the opening, the messages, and the experience. Be as expressive as you like. The more you share about who they are, the richer and more personal their surprise will be.
               </p>
             </div>
 
@@ -339,7 +320,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
               <textarea
                 className="field min-h-[160px] resize-none"
                 value={celebrantDescription}
-                onChange={(e) => { setCelebrantDescription(e.target.value); setSuggestions(null); }}
+                onChange={(e) => { setCelebrantDescription(e.target.value); }}
                 placeholder={`Their personality, what they love, what makes them who they are — the more you share, the richer the experience.`}
                 maxLength={1500}
               />
@@ -351,34 +332,6 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
               </div>
             </div>
 
-            {celebrantDescription.trim().length >= 20 && (
-              <div className="pt-1">
-                <button
-                  type="button"
-                  onClick={fetchSuggestions}
-                  disabled={loadingSuggestions}
-                  className="text-sm text-[var(--accent)] font-medium flex items-center gap-1.5 hover:opacity-75 transition disabled:opacity-50"
-                >
-                  {loadingSuggestions ? (
-                    <><span className="size-3.5 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" /> Generating…</>
-                  ) : (
-                    <>✦ See what contributors might write</>
-                  )}
-                </button>
-
-                {suggestions && suggestions.length > 0 && (
-                  <div className="mt-4 space-y-3">
-                    <p className="text-xs uppercase tracking-widest text-ink/40">Message examples</p>
-                    {suggestions.map((msg, idx) => (
-                      <div key={idx} className="rounded-2xl bg-[var(--accent-soft)] border border-[var(--accent)]/15 px-4 py-3">
-                        <p className="text-sm text-ink/80 leading-snug italic">&ldquo;{msg}&rdquo;</p>
-                      </div>
-                    ))}
-                    <p className="text-xs text-ink/40">Share these with contributors as inspiration.</p>
-                  </div>
-                )}
-              </div>
-            )}
 
             <div className="space-y-1.5 pt-3 border-t border-ink/10">
               <label className="label">Custom tagline (optional)</label>

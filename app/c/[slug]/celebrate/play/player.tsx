@@ -587,12 +587,12 @@ function IntroSlideView({
     const { path, caption, kind } = slide.gallery;
     const isVideo = kind === "video";
     return (
-      <section className="absolute inset-0 overflow-hidden fade-in">
+      <section className="absolute inset-0 overflow-hidden fade-in bg-black">
         {isVideo ? (
           // eslint-disable-next-line jsx-a11y/media-has-caption
           <video
             src={publicUrl(path)}
-            className="absolute inset-0 size-full object-cover"
+            className="absolute inset-0 size-full object-contain"
             autoPlay
             playsInline
             loop
@@ -602,7 +602,7 @@ function IntroSlideView({
           <img
             src={publicUrl(path)}
             alt={caption || ""}
-            className="absolute inset-0 size-full object-cover ken-burns"
+            className="absolute inset-0 size-full object-contain"
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/10 to-black/65" />

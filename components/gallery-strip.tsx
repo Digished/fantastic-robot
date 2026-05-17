@@ -93,14 +93,15 @@ export function GalleryStrip({ images, className }: { images: GalleryItem[]; cla
           )}
 
           <div
-            className="max-w-4xl max-h-[85vh] w-full text-center"
+            className="flex flex-col items-center w-full max-w-4xl"
+            style={{ maxHeight: "calc(100dvh - 6rem)" }}
             onClick={(e) => e.stopPropagation()}
           >
             {current.kind === "video" ? (
               // eslint-disable-next-line jsx-a11y/media-has-caption
               <video
                 src={publicUrl(current.path)}
-                className="max-h-[75vh] max-w-full mx-auto rounded-2xl shadow-2xl"
+                className="max-h-[calc(100dvh-10rem)] max-w-full mx-auto rounded-2xl shadow-2xl object-contain"
                 autoPlay
                 controls
                 playsInline
@@ -110,7 +111,7 @@ export function GalleryStrip({ images, className }: { images: GalleryItem[]; cla
               <img
                 src={publicUrl(current.path)}
                 alt={current.caption || ""}
-                className="max-h-[75vh] max-w-full mx-auto rounded-2xl shadow-2xl object-contain"
+                className="max-h-[calc(100dvh-10rem)] max-w-full mx-auto rounded-2xl shadow-2xl object-contain"
               />
             )}
             {current.caption && (
