@@ -97,100 +97,38 @@ function mulberry32(seed: number) {
   };
 }
 
-const SPRINKLE_KINDS = ["confetti", "sparkles", "glitter", "petals"] as const;
-type SprinkleKind = typeof SPRINKLE_KINDS[number];
-
-function pickSprinkle(slideId: string): SprinkleKind {
-  return SPRINKLE_KINDS[hashSeed(slideId) % SPRINKLE_KINDS.length];
-}
-
+// Subtle, theme-aware ambient: a handful of slow-drifting accent motes.
+// Deterministic per slide id so positions stay stable across re-renders,
+// but uniform in style across the whole experience so it never feels busy.
 function SprinkleOverlay({ slideId }: { slideId: string }) {
-  const kind = pickSprinkle(slideId);
-  const rand = useMemo(() => mulberry32(hashSeed(slideId)), [slideId]);
-  const accent = "var(--accent)";
-
-  if (kind === "confetti") {
-    const pieces = Array.from({ length: 22 }, (_, i) => ({
-      left: `${Math.floor(rand() * 100)}%`,
-      delay: `${(rand() * 1.6).toFixed(2)}s`,
-      dur:   `${(3.5 + rand() * 3).toFixed(2)}s`,
-      cx:    `${Math.floor(rand() * 120 - 60)}px`,
-      color: [accent, "var(--mesh-b)", "var(--mesh-c)", "#E8B84B", "#fff"][Math.floor(rand() * 5)],
-      w:     6 + Math.floor(rand() * 6),
-      h:     8 + Math.floor(rand() * 10),
+  const motes = useMemo(() => {
+    const rand = mulberry32(hashSeed(slideId));
+    return Array.from({ length: 6 }, (_, i) => ({
       key: i,
+      left: `${(rand() * 92 + 4).toFixed(1)}%`,
+      top:  `${(rand() * 92 + 4).toFixed(1)}%`,
+      size: 3 + Math.floor(rand() * 4),
+      dur:  `${(9 + rand() * 6).toFixed(2)}s`,
+      delay: `${(rand() * 5).toFixed(2)}s`,
+      tone: rand() < 0.55 ? "var(--accent)" : "var(--mesh-b)",
     }));
-    return (
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
-        {pieces.map((p) => (
-          <span
-            key={p.key}
-            className="absolute top-0 rounded-[2px]"
-            style={{
-              left: p.left,
-              width: p.w, height: p.h,
-              background: p.color,
-              animation: `confettiFall ${p.dur} linear ${p.delay} infinite`,
-              ["--cx" as string]: p.cx,
-            } as React.CSSProperties}
-          />
-        ))}
-      </div>
-    );
-  }
+  }, [slideId]);
 
-  if (kind === "petals") {
-    const pieces = Array.from({ length: 14 }, (_, i) => ({
-      left: `${Math.floor(rand() * 100)}%`,
-      delay: `${(rand() * 2).toFixed(2)}s`,
-      dur:   `${(6 + rand() * 5).toFixed(2)}s`,
-      cx:    `${Math.floor(rand() * 200 - 100)}px`,
-      key: i,
-    }));
-    return (
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
-        {pieces.map((p) => (
-          <span
-            key={p.key}
-            className="absolute top-0 text-[18px] select-none opacity-80"
-            style={{
-              left: p.left,
-              animation: `confettiFall ${p.dur} linear ${p.delay} infinite`,
-              ["--cx" as string]: p.cx,
-            } as React.CSSProperties}
-          >
-            🌸
-          </span>
-        ))}
-      </div>
-    );
-  }
-
-  // sparkles / glitter
-  const count = kind === "glitter" ? 28 : 18;
-  const pieces = Array.from({ length: count }, (_, i) => ({
-    left: `${Math.floor(rand() * 100)}%`,
-    top:  `${Math.floor(rand() * 100)}%`,
-    delay: `${(rand() * 3).toFixed(2)}s`,
-    dur:   `${(2.4 + rand() * 2.4).toFixed(2)}s`,
-    size:  kind === "glitter" ? 6 + Math.floor(rand() * 6) : 10 + Math.floor(rand() * 10),
-    key: i,
-  }));
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
-      {pieces.map((p) => (
+      {motes.map((m) => (
         <span
-          key={p.key}
-          className="absolute select-none text-white/90"
+          key={m.key}
+          className="absolute rounded-full"
           style={{
-            left: p.left, top: p.top,
-            fontSize: p.size,
-            animation: `sparklePop ${p.dur} ease-in-out ${p.delay} infinite`,
-            textShadow: "0 0 8px rgba(255,255,255,0.6)",
+            left: m.left, top: m.top,
+            width: m.size, height: m.size,
+            background: m.tone,
+            opacity: 0.18,
+            filter: "blur(0.5px)",
+            animation: `floatDrift ${m.dur} ease-in-out ${m.delay} infinite`,
           }}
-        >
-          ✦
-        </span>
+        />
       ))}
     </div>
   );
@@ -306,7 +244,7 @@ function durationFor(m: Msg): number {
 export function Player({
   slug, theme, recipientName, eventType, celebrationDate, celebrationTitle,
   tagline, celebrantDescription, introContent, messages, galleryImages,
-  totalRaisedKobo, claimableAt, payoutStatus,
+  totalRaisedKobo, claimableAt, payoutStatus, createdBy,
 }: {
   slug: string;
   theme: Theme;
@@ -322,6 +260,7 @@ export function Player({
   totalRaisedKobo: number;
   claimableAt: string;
   payoutStatus: string;
+  createdBy: string | null;
 }) {
   const introSlides = useMemo(
     () => buildIntroSequence(introContent, celebrantDescription, galleryImages),
@@ -468,6 +407,7 @@ export function Player({
           totalRaisedKobo={totalRaisedKobo}
           claimableAt={claimableAt}
           payoutStatus={payoutStatus}
+          createdBy={createdBy}
           onSelectSlide={selectSlide}
           onReplay={replay}
         />
@@ -1133,7 +1073,7 @@ function GiftReveal({
 
 function PostPlayGallery({
   allSlides, firstName, slug, introContent, celebrationTitle,
-  totalRaisedKobo, claimableAt, payoutStatus, onSelectSlide, onReplay,
+  totalRaisedKobo, claimableAt, payoutStatus, createdBy, onSelectSlide, onReplay,
 }: {
   allSlides: AnySlide[];
   firstName: string;
@@ -1143,6 +1083,7 @@ function PostPlayGallery({
   totalRaisedKobo: number;
   claimableAt: string;
   payoutStatus: string;
+  createdBy: string | null;
   onSelectSlide: (idx: number) => void;
   onReplay: () => void;
 }) {
@@ -1202,6 +1143,11 @@ function PostPlayGallery({
           <Link href={`/c/${slug}/celebrate`} className="btn-outline inline-flex">
             Back to your page
           </Link>
+          {createdBy && (
+            <p className="text-[11px] text-ink/40 mt-6">
+              This page was put together by <span className="text-ink/60">{createdBy}</span>
+            </p>
+          )}
         </div>
       </div>
     </div>

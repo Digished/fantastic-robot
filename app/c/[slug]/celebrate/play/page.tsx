@@ -4,6 +4,7 @@ import { isTheme, type Theme } from "@/lib/themes";
 import type { IntroContent } from "@/lib/openai/generate-intro";
 import type { GalleryImage } from "./player";
 import { Player } from "./player";
+import { getCreatorLabel } from "@/lib/creator";
 
 export const dynamic = "force-dynamic";
 
@@ -30,9 +31,11 @@ export default async function PlayPage({
 
   const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
   const galleryImages = (page.gallery_images as GalleryImage[]) ?? [];
+  const createdBy = await getCreatorLabel(page.creator_id);
 
   return (
     <Player
+      createdBy={createdBy}
       slug={slug}
       theme={theme}
       recipientName={page.recipient_name}

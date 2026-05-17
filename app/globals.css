@@ -242,17 +242,7 @@
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 
-/* ─── Surprise-play sprinkles ──────────────────────────────────────── */
-@keyframes confettiFall {
-  0%   { opacity: 0; transform: translate3d(0,-110vh,0) rotate(0deg); }
-  10%  { opacity: 1; }
-  100% { opacity: 0; transform: translate3d(var(--cx,0px), 110vh, 0) rotate(720deg); }
-}
-@keyframes sparklePop {
-  0%   { opacity: 0; transform: scale(0.2) rotate(0deg); }
-  40%  { opacity: 1; transform: scale(1)   rotate(60deg); }
-  100% { opacity: 0; transform: scale(1.4) rotate(180deg); }
-}
+/* ─── Surprise-play subtle word entrance ───────────────────────────── */
 @keyframes wordIn {
   from { opacity: 0; transform: translateY(14px); filter: blur(4px); }
   to   { opacity: 1; transform: translateY(0);    filter: blur(0); }

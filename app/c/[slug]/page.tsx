@@ -14,6 +14,7 @@ import { CelebrantLinkButton } from "./celebrant-link-button";
 import { GalleryStrip } from "@/components/gallery-strip";
 import { GalleryUploadButton } from "@/components/gallery-upload-button";
 import { NavLoadingLink } from "@/components/nav-loading-link";
+import { getCreatorLabel } from "@/lib/creator";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,7 @@ export default async function WallPage({
   const cover = coverUrl(page.cover_photo_path);
   const galleryImages = (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [];
   const eventLabel = page.event_type.replace(/_/g, " ");
+  const createdBy = await getCreatorLabel(page.creator_id);
 
   return (
     <main className="min-h-[100dvh] bg-white pb-20" data-theme={theme}>
@@ -249,6 +251,12 @@ export default async function WallPage({
                 isCreator={isCreator}
               />
             </section>
+
+            {createdBy && (
+              <p className="pt-6 text-center md:text-left text-[11px] text-ink/45">
+                Put together by <span className="text-ink/70">{createdBy}</span>
+              </p>
+            )}
           </div>
         </div>
       </div>

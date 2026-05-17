@@ -8,6 +8,7 @@ import { Sparkles } from "@/components/sparkles";
 import { NavLoadingLink } from "@/components/nav-loading-link";
 import { GalleryStrip } from "@/components/gallery-strip";
 import { WallGrid } from "../wall-grid";
+import { getCreatorLabel } from "@/lib/creator";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,7 @@ export default async function CelebrantPage({
   const eventLabel = !["other", "surprise_gift"].includes(page.event_type)
     ? page.event_type.replace(/_/g, " ")
     : "";
+  const createdBy = await getCreatorLabel(page.creator_id);
 
   return (
     <main className="min-h-[100dvh] bg-white pb-20" data-theme={theme}>
@@ -185,7 +187,12 @@ export default async function CelebrantPage({
               </section>
             )}
 
-            <footer className="pt-8 text-center md:text-left">
+            <footer className="pt-8 text-center md:text-left space-y-1">
+              {createdBy && (
+                <p className="text-[11px] text-ink/45">
+                  Put together by <span className="text-ink/70">{createdBy}</span>
+                </p>
+              )}
               <p className="text-[11px] text-ink/35">Made with Spendbox · for {page.recipient_name}</p>
             </footer>
           </div>
