@@ -1,8 +1,8 @@
 // Free background-music library for celebration pages.
 //
-// Audio files live in `public/music/<id>.mp3` and are served statically.
-// `src` resolves to that path. Tracks are royalty-free / public-domain so
-// creators can use them at no cost. See `public/music/README.md`.
+// Audio files live in `public/music/<id>.wav` and are served statically.
+// They are synthesised, royalty-free instrumentals — regenerate any time
+// with `python3 scripts/generate-music.py`. See `public/music/README.md`.
 
 export type MusicTrack = {
   id: string;
@@ -33,5 +33,5 @@ export function musicTrack(id: string | null | undefined): MusicTrack | null {
 }
 
 export function musicSrc(id: string): string {
-  return `/music/${id}.mp3`;
+  return `/music/${id}.wav`;
 }

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { THEME_IDS } from "@/lib/themes";
+import { MUSIC_IDS } from "@/lib/music";
 
 export const signupSchema = z.object({
   email: z.string().email().max(120),
@@ -22,6 +23,7 @@ export const createCelebrationSchema = z.object({
     "farewell", "baby_shower", "surprise_gift", "other",
   ]),
   theme: z.enum(THEME_IDS).default("ivory"),
+  backgroundMusic: z.enum(MUSIC_IDS).nullable().optional(),
   celebrationDate: z.string().refine(
     (s) => {
       const d = new Date(s);

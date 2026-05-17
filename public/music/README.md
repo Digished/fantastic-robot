@@ -1,23 +1,22 @@
 # Background music library
 
-These tracks power the **Background music** picker on the celebration editor.
-Each track in `lib/music.ts` expects a matching MP3 file in this folder, named
-`<id>.mp3`. They are served statically at `/music/<id>.mp3`.
+These WAV files power the **Background music** picker in the celebration
+editor. Each track in `lib/music.ts` has a matching `<id>.wav` here, served
+statically at `/music/<id>.wav`.
 
-Required files (one per track id in `lib/music.ts`):
+The tracks are synthesised, royalty-free instrumental loops — no licensing
+needed. They are produced by `scripts/generate-music.py`. To regenerate (or
+after editing `MUSIC_TRACKS` in `lib/music.ts`):
 
-- `happy-birthday.mp3`
-- `birthday-bounce.mp3`
-- `celebration.mp3`
-- `warm-piano.mp3`
-- `acoustic-sunshine.mp3`
-- `dreamy.mp3`
-- `party-pop.mp3`
-- `soft-strings.mp3`
+```bash
+pip install numpy
+python3 scripts/generate-music.py
+```
 
-Use only royalty-free / public-domain audio so the library stays free for
-creators. Keep files small (ideally < 2 MB, ~128 kbps mono is plenty for
-background ambience). If a file is missing the slideshow simply plays silently.
+Each clip is a short, seamlessly-looping phrase (~15–30s) and is kept small
+(22 kHz mono) since it plays quietly under the slideshow. If a file is missing
+the slideshow simply plays silently.
 
-To add or remove a track, update the `MUSIC_TRACKS` array in `lib/music.ts`
-and drop the corresponding MP3 here.
+To add or swap a track: add a `t_<name>()` builder + entry in `TRACKS` in the
+script, add the matching entry to `MUSIC_TRACKS` in `lib/music.ts`, then rerun
+the script.

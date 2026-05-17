@@ -18,7 +18,7 @@ npm run dev
 2. In Auth settings, disable "Confirm email".
 3. Run the SQL migrations in `supabase/migrations/` in order (`0001_init.sql` … `0012_background_music.sql`).
 4. Create a public storage bucket named `celebrations` for cover photos and media.
-5. Add the background-music MP3s to `public/music/` — see `public/music/README.md`.
+5. Background music ships pre-generated in `public/music/`; regenerate with `python3 scripts/generate-music.py` (see `public/music/README.md`).
 
 ## Paystack setup
 

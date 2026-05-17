@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createCelebration } from "./actions";
 import { ThemePicker } from "@/components/theme-picker";
+import { MusicPicker } from "@/components/music-picker";
+import { musicTrack } from "@/lib/music";
 import type { Theme } from "@/lib/themes";
 import { X, ImagePlus, Loader2, Video, Search, Check } from "lucide-react";
 
@@ -45,6 +47,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
 
   // Step 0: Vibe
   const [theme, setTheme] = useState<Theme>("ivory");
+  const [backgroundMusic, setBackgroundMusic] = useState<string | null>(null);
   const [coverPath, setCoverPath] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -169,6 +172,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     fd.set("recipientName", recipientName);
     fd.set("eventType", eventType);
     fd.set("theme", theme);
+    if (backgroundMusic) fd.set("backgroundMusic", backgroundMusic);
     fd.set("celebrationDate", celebrationDate);
     if (messageFromCreator) fd.set("messageFromCreator", messageFromCreator);
     if (tagline) fd.set("tagline", tagline);
@@ -230,6 +234,10 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
               <p className="absolute bottom-3 left-4 text-[11px] uppercase tracking-widest text-ink/60">Live preview</p>
             </div>
             <ThemePicker value={theme} onChange={setTheme} />
+
+            <div className="pt-2">
+              <MusicPicker value={backgroundMusic} onChange={setBackgroundMusic} />
+            </div>
 
             <div className="space-y-2 pt-2">
               <label className="label">
@@ -480,6 +488,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
               <li className="py-2 flex justify-between"><span className="text-ink/55">Recipient</span><span className="text-ink">{resolved ?? "—"}</span></li>
               <li className="py-2 flex justify-between"><span className="text-ink/55">Account</span><span className="text-ink">****{accountNumber.slice(-4)}</span></li>
               <li className="py-2 flex justify-between"><span className="text-ink/55">Theme</span><span className="text-ink capitalize">{theme}</span></li>
+              <li className="py-2 flex justify-between"><span className="text-ink/55">Music</span><span className="text-ink">{musicTrack(backgroundMusic)?.label ?? "None"}</span></li>
               <li className="py-2 flex justify-between"><span className="text-ink/55">Gallery</span><span className="text-ink">{galleryImages.length > 0 ? `${galleryImages.length} item${galleryImages.length > 1 ? "s" : ""}` : "None"}</span></li>
             </ul>
 
