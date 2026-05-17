@@ -53,6 +53,7 @@ export async function POST(req: Request) {
       recipient: recipientCode,
       reference,
       reason: `Spendbox gift — ${page.title}`,
+      idempotencyKey: page.id,
     });
 
     await admin.from("payouts").insert({
