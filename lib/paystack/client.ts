@@ -8,12 +8,14 @@ async function paystackFetch<T>(
   path: string,
   init: RequestInit & { idempotencyKey?: string } = {},
 ): Promise<PaystackResponse<T>> {
+  const { idempotencyKey, ...fetchInit } = init;
   const res = await fetch(`${BASE}${path}`, {
-    ...init,
+    ...fetchInit,
     headers: {
       Authorization: `Bearer ${env.paystackSecret()}`,
       "Content-Type": "application/json",
-      ...(init.headers ?? {}),
+      ...(idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}),
+      ...(fetchInit.headers ?? {}),
     },
     cache: "no-store",
   });
@@ -87,10 +89,12 @@ export const paystack = {
     recipient: string;         // recipient_code
     reference: string;
     reason?: string;
+    idempotencyKey?: string;
   }) {
+    const { idempotencyKey, ...rest } = body;
     return paystackFetch<{ transfer_code: string; status: string; reference: string }>(
       "/transfer",
-      { method: "POST", body: JSON.stringify({ source: "balance", ...body }) },
+      { method: "POST", body: JSON.stringify({ source: "balance", ...rest }), idempotencyKey },
     );
   },
 };
