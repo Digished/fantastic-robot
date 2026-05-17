@@ -17,6 +17,7 @@ const editSchema = z.object({
   securityQuestion: z.string().min(3).max(140).optional(),
   securityAnswer:   z.string().min(1).max(140).optional(),
   securityQuestionRaw: z.string().optional(),
+  galleryImages: z.string().optional(),
 });
 
 export type EditState = { error?: string; ok?: boolean };
@@ -42,6 +43,7 @@ export async function editCelebration(
     securityQuestion: securityQuestionRaw || undefined,
     securityAnswer:   (formData.get("securityAnswer") as string) || undefined,
     securityQuestionRaw,
+    galleryImages: (formData.get("galleryImages") as string) || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -66,6 +68,9 @@ export async function editCelebration(
     celebrantDescription: parsed.data.celebrantDescription ?? null,
   });
 
+  let galleryImages: { path: string; caption: string }[] = [];
+  try { galleryImages = JSON.parse(parsed.data.galleryImages || "[]"); } catch { /* keep empty */ }
+
   const { error } = await admin
     .from("celebrations")
     .update({
@@ -73,6 +78,7 @@ export async function editCelebration(
       message_from_creator: parsed.data.messageFromCreator ?? null,
       tagline: parsed.data.tagline ?? null,
       celebrant_description: parsed.data.celebrantDescription ?? null,
+      gallery_images: galleryImages,
       ...(introContent ? { intro_content: introContent } : {}),
       ...(parsed.data.coverPhotoPath ? { cover_photo_path: parsed.data.coverPhotoPath } : {}),
       ...(parsed.data.theme ? { theme: parsed.data.theme } : {}),

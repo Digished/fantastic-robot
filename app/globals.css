@@ -146,9 +146,29 @@
 }
 .lid-float { animation: lidFloat 3s ease-in-out infinite; }
 
-@keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes slideUpBig { from { opacity: 0; transform: translateY(40px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes fadeUp    { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUpBig{ from { opacity: 0; transform: translateY(40px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes ringPulse {
+  0%, 100% { transform: scale(1); opacity: 0.08; }
+  50%       { transform: scale(1.1); opacity: 0.15; }
+}
+@keyframes slowSpin  { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes glowBreath {
+  0%, 100% { filter: drop-shadow(0 0 12px rgba(255,255,255,0.06)); }
+  50%       { filter: drop-shadow(0 0 50px rgba(255,255,255,0.24)); }
+}
+@keyframes floatDrift {
+  0%   { transform: translate(0, 0)      rotate(0deg)   scale(1); }
+  25%  { transform: translate(5px,-10px) rotate(12deg)  scale(1.1); }
+  50%  { transform: translate(-3px,-6px) rotate(-6deg)  scale(0.95); }
+  75%  { transform: translate(4px,-13px) rotate(9deg)   scale(1.05); }
+  100% { transform: translate(0, 0)      rotate(0deg)   scale(1); }
+}
+@keyframes lineGrow {
+  from { transform: scaleY(0); transform-origin: top; }
+  to   { transform: scaleY(1); transform-origin: top; }
+}
 @keyframes kenBurns {
   0%   { transform: scale(1.05) translate(0, 0); }
   100% { transform: scale(1.18) translate(-2%, -2%); }

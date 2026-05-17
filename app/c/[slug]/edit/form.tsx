@@ -4,10 +4,13 @@ import { useActionState, useRef, useState } from "react";
 import { editCelebration, type EditState } from "./actions";
 import { ThemePicker } from "@/components/theme-picker";
 import type { Theme } from "@/lib/themes";
+import { X, ImagePlus, Loader2 } from "lucide-react";
 
 function publicUrl(path: string) {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${path}`;
 }
+
+type GalleryItem = { path: string; caption: string; preview: string };
 
 export function EditForm({
   slug, initial,
@@ -22,6 +25,7 @@ export function EditForm({
     theme: Theme;
     securityQuestion: string | null;
     recipientName: string;
+    galleryImages: { path: string; caption: string }[];
   };
 }) {
   const action = editCelebration.bind(null, slug);
@@ -34,6 +38,13 @@ export function EditForm({
     initial.coverPhotoPath ? publicUrl(initial.coverPhotoPath) : null,
   );
   const [uploading, setUploading] = useState(false);
+
+  // Gallery images
+  const galleryFileRef = useRef<HTMLInputElement>(null);
+  const [galleryImages, setGalleryImages] = useState<GalleryItem[]>(
+    initial.galleryImages.map((img) => ({ ...img, preview: publicUrl(img.path) })),
+  );
+  const [uploadingGallery, setUploadingGallery] = useState(false);
 
   async function onCover(file: File) {
     if (!file.type.startsWith("image/")) return;
@@ -52,6 +63,34 @@ export function EditForm({
     if (!put.ok) { alert("Upload failed"); return; }
     setCoverPath(sign.path);
     setCoverPreview(URL.createObjectURL(file));
+  }
+
+  async function onGalleryFile(file: File) {
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 8 * 1024 * 1024) { alert("Image must be under 8 MB."); return; }
+    if (galleryImages.length >= 8) { alert("Maximum 8 gallery photos."); return; }
+    setUploadingGallery(true);
+    const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+    const res = await fetch("/api/media/sign-gallery", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ext: ["jpg","jpeg","png","webp"].includes(ext) ? ext : "jpg" }),
+    });
+    const sign = await res.json();
+    if (!res.ok) { setUploadingGallery(false); alert(sign.error ?? "Upload failed"); return; }
+    const put = await fetch(sign.signedUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+    setUploadingGallery(false);
+    if (!put.ok) { alert("Upload failed"); return; }
+    const preview = URL.createObjectURL(file);
+    setGalleryImages((prev) => [...prev, { path: sign.path, caption: "", preview }]);
+  }
+
+  function removeGalleryImage(idx: number) {
+    setGalleryImages((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function updateCaption(idx: number, caption: string) {
+    setGalleryImages((prev) => prev.map((img, i) => i === idx ? { ...img, caption } : img));
   }
 
   const firstName = initial.recipientName.split(" ")[0];
@@ -86,6 +125,70 @@ export function EditForm({
         {coverPath && <input type="hidden" name="coverPhotoPath" value={coverPath} />}
       </div>
 
+      {/* Gallery images */}
+      <div className="space-y-3">
+        <div>
+          <label className="label">Photo gallery (optional)</label>
+          <p className="text-xs text-ink/45 mt-0.5">
+            These photos appear as full-screen slides during {firstName}&apos;s opening sequence. Up to 8 photos.
+          </p>
+        </div>
+
+        {galleryImages.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            {galleryImages.map((img, idx) => (
+              <div key={idx} className="relative rounded-2xl overflow-hidden shadow-ring bg-ink/5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img.preview} alt="" className="w-full aspect-[4/3] object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeGalleryImage(idx)}
+                  className="absolute top-2 right-2 size-6 rounded-full glass-dark text-white grid place-items-center"
+                  aria-label="Remove photo"
+                >
+                  <X className="size-3" />
+                </button>
+                <input
+                  type="text"
+                  placeholder="Add a caption…"
+                  maxLength={100}
+                  value={img.caption}
+                  onChange={(e) => updateCaption(idx, e.target.value)}
+                  className="w-full px-3 py-2 text-sm text-ink/80 bg-white/80 border-0 focus:outline-none focus:ring-0 placeholder:text-ink/35"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
+        <input
+          ref={galleryFileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && onGalleryFile(e.target.files[0])}
+        />
+        {galleryImages.length < 8 && (
+          <button
+            type="button"
+            onClick={() => galleryFileRef.current?.click()}
+            disabled={uploadingGallery}
+            className="btn-outline inline-flex text-sm disabled:opacity-50"
+          >
+            {uploadingGallery
+              ? <><Loader2 className="size-4 animate-spin" /> Uploading…</>
+              : <><ImagePlus className="size-4" /> Add a photo</>
+            }
+          </button>
+        )}
+
+        <input
+          type="hidden"
+          name="galleryImages"
+          value={JSON.stringify(galleryImages.map(({ path, caption }) => ({ path, caption })))}
+        />
+      </div>
+
       <div className="space-y-1.5">
         <label className="label">Page title</label>
         <input className="field" name="title" defaultValue={initial.title} required maxLength={80} />
@@ -100,17 +203,17 @@ export function EditForm({
           maxLength={140}
           placeholder={`e.g. "We got you, queen ✨" or leave blank to hide`}
         />
-        <p className="text-xs text-ink/45">Shown on {firstName}'s cover page. Leave blank to hide.</p>
+        <p className="text-xs text-ink/45">Shown on {firstName}&apos;s cover page. Leave blank to hide.</p>
       </div>
 
       <div className="space-y-1.5">
-        <label className="label">About {firstName} (optional)</label>
+        <label className="label">About {firstName}</label>
         <textarea
           className="field min-h-[120px] resize-none"
           name="celebrantDescription"
           defaultValue={initial.celebrantDescription}
           maxLength={1500}
-          placeholder={`Tell us about ${firstName} — their personality, what they love, what makes them special. This creates a personalised opening experience when they press Play.`}
+          placeholder={`Tell us about ${firstName} — their personality, what they love, what makes them who they are. This creates a personalised opening when they press Play.`}
         />
       </div>
 

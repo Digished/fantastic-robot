@@ -56,10 +56,12 @@ Output ONLY valid JSON with this exact structure:
 Rules:
 - The "about" field MUST be included only if a description is provided. Omit it entirely if no description.
 - "about.lines" should have 2–3 items drawn from the description — specific details, not generic praise.
-- Never use the words: wonderful, amazing, truly, really, special (find fresher alternatives).
+- Never use the words: wonderful, amazing, truly, really, special, tapestry, symphony, mosaic, kaleidoscope, journey, testament, chapter, narrative (find fresher, more specific words).
 - Never reference other people sending messages or friends gathering — keep it between this page and the recipient.
 - Avoid heart emojis (❤️, 💕, 💖) and generic party emojis. Choose emojis that feel specific to this person.
 - Do not repeat the recipient's name more than once across all fields.
+- Use complete sentences with proper grammar and capitalisation.
+- Be specific and creative — avoid clichés. Draw from the description to say something only this person would recognise.
 - Keep everything tight — every word earns its place.`;
 
 function buildUserMessage(params: {

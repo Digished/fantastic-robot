@@ -21,10 +21,13 @@ type Msg = {
   created_at: string;
 };
 
+export type GalleryImage = { path: string; caption: string };
+
 type IntroSlide = {
   id: string;
-  kind: "intro-welcome" | "intro-occasion" | "intro-together" | "intro-about" | "intro-ready";
+  kind: "intro-welcome" | "intro-occasion" | "intro-together" | "intro-about" | "intro-ready" | "intro-gallery";
   duration: number;
+  gallery?: GalleryImage;
 };
 
 type AnySlide =
@@ -58,7 +61,39 @@ function formatDate(iso: string): string {
   });
 }
 
-function buildIntroSlides(
+// ─── Floating sparkle particles ───────────────────────────────────────────────
+
+const DRIFT_PARTICLES = [
+  { x: "12%", y: "22%", delay: "0s",   dur: "7s"  },
+  { x: "78%", y: "18%", delay: "2.5s", dur: "9s"  },
+  { x: "22%", y: "72%", delay: "5s",   dur: "8s"  },
+  { x: "72%", y: "68%", delay: "1.5s", dur: "11s" },
+  { x: "48%", y: "88%", delay: "3.5s", dur: "6.5s"},
+];
+
+function SparkleField() {
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+      {DRIFT_PARTICLES.map((p, i) => (
+        <span
+          key={i}
+          className="absolute text-ink/[0.12] text-[10px] select-none"
+          style={{
+            left: p.x, top: p.y,
+            animation: `floatDrift ${p.dur} ease-in-out infinite`,
+            animationDelay: p.delay,
+          }}
+        >
+          ✦
+        </span>
+      ))}
+    </div>
+  );
+}
+
+// ─── Slide builder ────────────────────────────────────────────────────────────
+
+function buildBaseSlides(
   introContent: IntroContent | null,
   celebrantDescription: string | null,
 ): IntroSlide[] {
@@ -67,27 +102,56 @@ function buildIntroSlides(
     : !!(celebrantDescription && celebrantDescription.trim().length > 20);
 
   const slides: IntroSlide[] = [
-    { id: "welcome",  kind: "intro-welcome",  duration: 4500 },
-    { id: "occasion", kind: "intro-occasion", duration: 4000 },
-    { id: "together", kind: "intro-together", duration: 4000 },
+    { id: "welcome",  kind: "intro-welcome",  duration: 7000 },
+    { id: "occasion", kind: "intro-occasion", duration: 6500 },
+    { id: "together", kind: "intro-together", duration: 6000 },
   ];
-  if (hasAbout) slides.push({ id: "about", kind: "intro-about", duration: 5500 });
-  slides.push({ id: "ready", kind: "intro-ready", duration: 3000 });
+  if (hasAbout) slides.push({ id: "about", kind: "intro-about", duration: 8500 });
+  slides.push({ id: "ready", kind: "intro-ready", duration: 5000 });
   return slides;
+}
+
+function buildIntroSequence(
+  introContent: IntroContent | null,
+  celebrantDescription: string | null,
+  galleryImages: GalleryImage[],
+): IntroSlide[] {
+  const base = buildBaseSlides(introContent, celebrantDescription);
+  if (galleryImages.length === 0) return base;
+
+  const result: IntroSlide[] = [];
+  let g = 0;
+  for (let i = 0; i < base.length; i++) {
+    result.push(base[i]);
+    if (i < base.length - 1 && g < galleryImages.length) {
+      result.push({
+        id: `gallery-${g}`,
+        kind: "intro-gallery",
+        duration: 7000,
+        gallery: galleryImages[g++],
+      });
+    }
+  }
+  while (g < galleryImages.length) {
+    result.push({ id: `gallery-extra-${g}`, kind: "intro-gallery", duration: 7000, gallery: galleryImages[g++] });
+  }
+  return result;
 }
 
 function durationFor(m: Msg): number {
   if (m.interactive_kind && m.interactive_kind !== "none") return Number.POSITIVE_INFINITY;
-  if (m.media_kind === "image") return 4500;
-  if (m.media_kind === "video" && m.media_duration_ms) return m.media_duration_ms + 600;
-  if (m.media_kind === "audio" && m.media_duration_ms) return m.media_duration_ms + 600;
-  if (m.body) return Math.min(8000, Math.max(3800, m.body.length * 90));
-  return 4000;
+  if (m.media_kind === "image") return 5000;
+  if (m.media_kind === "video" && m.media_duration_ms) return m.media_duration_ms + 800;
+  if (m.media_kind === "audio" && m.media_duration_ms) return m.media_duration_ms + 800;
+  if (m.body) return Math.min(9000, Math.max(5000, m.body.length * 100));
+  return 5000;
 }
+
+// ─── Player ───────────────────────────────────────────────────────────────────
 
 export function Player({
   slug, theme, recipientName, eventType, celebrationDate, celebrationTitle,
-  tagline, celebrantDescription, introContent, messages,
+  tagline, celebrantDescription, introContent, messages, galleryImages,
 }: {
   slug: string;
   theme: Theme;
@@ -99,10 +163,11 @@ export function Player({
   celebrantDescription: string | null;
   introContent: IntroContent | null;
   messages: Msg[];
+  galleryImages: GalleryImage[];
 }) {
   const introSlides = useMemo(
-    () => buildIntroSlides(introContent, celebrantDescription),
-    [introContent, celebrantDescription],
+    () => buildIntroSequence(introContent, celebrantDescription, galleryImages),
+    [introContent, celebrantDescription, galleryImages],
   );
 
   const allSlides: AnySlide[] = useMemo(() => [
@@ -129,9 +194,8 @@ export function Player({
     ? 0
     : current.kind === "intro"
       ? current.intro.duration
-      : isInteractive && interactiveReady
-        ? 4500
-        : durationFor(current.msg);
+      : isInteractive && interactiveReady ? 4500
+      : durationFor(current.msg);
 
   const scene = useMemo(() => sceneFor(i), [i]);
 
@@ -139,14 +203,10 @@ export function Player({
 
   useEffect(() => {
     if (done || !current) return;
-    if (paused) {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      return;
-    }
+    if (paused) { if (rafRef.current) cancelAnimationFrame(rafRef.current); return; }
     if (isInteractive && !interactiveReady) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      setProgress(0);
-      return;
+      setProgress(0); return;
     }
     startTsRef.current = performance.now() - elapsedRef.current;
     function tick(ts: number) {
@@ -155,8 +215,7 @@ export function Player({
       const p = Math.min(1, el / dur);
       setProgress(p);
       if (p >= 1) {
-        elapsedRef.current = 0;
-        setProgress(0);
+        elapsedRef.current = 0; setProgress(0);
         if (i + 1 >= total) setDone(true);
         else setI(i + 1);
         return;
@@ -167,20 +226,9 @@ export function Player({
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [i, paused, dur, total, current, done, isInteractive, interactiveReady]);
 
-  function next() {
-    elapsedRef.current = 0; setProgress(0);
-    if (i + 1 >= total) setDone(true);
-    else setI(i + 1);
-  }
-  function prev() {
-    elapsedRef.current = 0; setProgress(0);
-    setDone(false);
-    setI((x) => Math.max(0, x - 1));
-  }
-  function replay() {
-    elapsedRef.current = 0; setProgress(0);
-    setDone(false); setI(0); setPaused(false);
-  }
+  function next() { elapsedRef.current = 0; setProgress(0); if (i + 1 >= total) setDone(true); else setI(i + 1); }
+  function prev() { elapsedRef.current = 0; setProgress(0); setDone(false); setI((x) => Math.max(0, x - 1)); }
+  function replay() { elapsedRef.current = 0; setProgress(0); setDone(false); setI(0); setPaused(false); }
 
   const firstName = recipientName.split(" ")[0];
 
@@ -191,8 +239,7 @@ export function Player({
       style={{ background: scene.bg }}
       onClick={(e) => {
         if (isInteractive && !interactiveReady) return;
-        const x = e.clientX;
-        const w = window.innerWidth;
+        const x = e.clientX; const w = window.innerWidth;
         if (x < w / 3) prev(); else next();
       }}
     >
@@ -202,10 +249,7 @@ export function Player({
           {allSlides.map((_, idx) => {
             const isIntroSlide = allSlides[idx]?.kind === "intro";
             return (
-              <div
-                key={idx}
-                className={`flex-1 h-0.5 rounded-full overflow-hidden ${isIntroSlide ? "bg-white/20" : "bg-white/30"}`}
-              >
+              <div key={idx} className={`flex-1 h-0.5 rounded-full overflow-hidden ${isIntroSlide ? "bg-white/20" : "bg-white/30"}`}>
                 <div
                   className={`h-full transition-[width] duration-100 ${isIntroSlide ? "bg-white/55" : "bg-white"}`}
                   style={{ width: `${idx < i ? 100 : idx === i ? progress * 100 : 0}%` }}
@@ -214,19 +258,12 @@ export function Player({
             );
           })}
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); setPaused((p) => !p); }}
-          className="size-9 grid place-items-center rounded-full glass-dark text-white"
-          aria-label={paused ? "Play" : "Pause"}
-        >
+        <button onClick={(e) => { e.stopPropagation(); setPaused((p) => !p); }}
+          className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label={paused ? "Play" : "Pause"}>
           {paused ? <Play className="size-4 fill-current" /> : <Pause className="size-4 fill-current" />}
         </button>
-        <Link
-          href={`/c/${slug}/celebrate`}
-          onClick={(e) => e.stopPropagation()}
-          className="size-9 grid place-items-center rounded-full glass-dark text-white"
-          aria-label="Close"
-        >
+        <Link href={`/c/${slug}/celebrate`} onClick={(e) => e.stopPropagation()}
+          className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label="Close">
           <X className="size-4" />
         </Link>
       </div>
@@ -246,27 +283,21 @@ export function Player({
             introContent={introContent}
           />
         ) : currentMsg ? (
-          <MessageSlide
-            key={currentMsg.id}
-            m={currentMsg}
-            onInteractiveReady={() => setInteractiveReady(true)}
-          />
+          <MessageSlide key={currentMsg.id} m={currentMsg} onInteractiveReady={() => setInteractiveReady(true)} />
         ) : null
       ) : (
         <EndCard firstName={firstName} onReplay={replay} slug={slug} />
       )}
 
       {/* Desktop edge nav */}
-      <button
-        onClick={(e) => { e.stopPropagation(); prev(); }}
-        aria-label="Previous"
-        className="absolute left-2 top-1/2 -translate-y-1/2 z-20 size-10 rounded-full glass-dark text-white grid place-items-center md:flex hidden"
-      ><ChevronLeft className="size-5" /></button>
-      <button
-        onClick={(e) => { e.stopPropagation(); next(); }}
-        aria-label="Next"
-        className="absolute right-2 top-1/2 -translate-y-1/2 z-20 size-10 rounded-full glass-dark text-white grid place-items-center md:flex hidden"
-      ><ChevronRight className="size-5" /></button>
+      <button onClick={(e) => { e.stopPropagation(); prev(); }} aria-label="Previous"
+        className="absolute left-2 top-1/2 -translate-y-1/2 z-20 size-10 rounded-full glass-dark text-white grid place-items-center md:flex hidden">
+        <ChevronLeft className="size-5" />
+      </button>
+      <button onClick={(e) => { e.stopPropagation(); next(); }} aria-label="Next"
+        className="absolute right-2 top-1/2 -translate-y-1/2 z-20 size-10 rounded-full glass-dark text-white grid place-items-center md:flex hidden">
+        <ChevronRight className="size-5" />
+      </button>
     </main>
   );
 }
@@ -297,24 +328,35 @@ function IntroSlideView({
         {/* Ambient orbs */}
         <div className="absolute -top-24 -right-24 size-80 rounded-full bg-white/[0.08] blur-3xl pointer-events-none" aria-hidden />
         <div className="absolute -bottom-24 -left-24 size-64 rounded-full bg-white/[0.06] blur-3xl pointer-events-none" aria-hidden />
+        <SparkleField />
+
+        {/* Celebration title badge — always visible */}
+        <div className="absolute top-16 left-0 right-0 flex justify-center fade-up" style={{ animationDelay: "0ms" }}>
+          <span className="inline-block rounded-full bg-white/20 backdrop-blur-sm px-4 py-1.5 text-[11px] uppercase tracking-[0.22em] text-ink/65">
+            {celebrationTitle}
+          </span>
+        </div>
 
         <div className="relative z-10">
           <span
-            className="block mb-10 leading-none float-y"
-            style={{ fontSize: "clamp(4rem,18vw,7rem)", animationDuration: "5s" }}
+            className="block mb-10 leading-none"
+            style={{
+              fontSize: "clamp(4rem,18vw,7rem)",
+              animation: "floatY 5s ease-in-out infinite, glowBreath 4s ease-in-out infinite",
+            }}
           >
             {emoji}
           </span>
           <h1
             className="serif text-ink leading-[0.85] fade-up"
-            style={{ fontSize: "clamp(2.8rem,11vw,5.5rem)" }}
+            style={{ fontSize: "clamp(2.8rem,11vw,5.5rem)", animationDelay: "120ms" }}
           >
             Hi {firstName},
           </h1>
           {subtext && (
             <p
               className="mt-6 text-ink/75 text-xl leading-snug max-w-sm fade-up"
-              style={{ animationDelay: "180ms" }}
+              style={{ animationDelay: "280ms" }}
             >
               {subtext}
             </p>
@@ -324,10 +366,12 @@ function IntroSlideView({
         {/* Decorative rule */}
         <div
           className="absolute bottom-14 left-0 right-0 flex items-center justify-center gap-5 fade-up"
-          style={{ animationDelay: "350ms" }}
+          style={{ animationDelay: "450ms" }}
         >
           <span className="h-px w-14 bg-ink/20" />
-          <span className="text-[9px] uppercase tracking-[0.4em] text-ink/30">your moment</span>
+          <span className="text-[9px] uppercase tracking-[0.4em] text-ink/25">
+            {formatDate(celebrationDate)}
+          </span>
           <span className="h-px w-14 bg-ink/20" />
         </div>
       </section>
@@ -341,41 +385,50 @@ function IntroSlideView({
     const subtext = ai?.occasion.subtext ?? null;
     return (
       <section className="absolute inset-0 overflow-hidden">
-        {/* Giant ghost emoji — purely decorative background */}
-        <div
-          className="absolute inset-0 flex items-center justify-center pointer-events-none"
-          aria-hidden
-        >
+        {/* Slowly spinning ghost emoji */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
           <span
-            className="leading-none select-none float-y opacity-[0.06]"
-            style={{ fontSize: "clamp(12rem,55vw,28rem)", animationDuration: "9s" }}
+            className="leading-none select-none opacity-[0.07]"
+            style={{
+              fontSize: "clamp(14rem,60vw,30rem)",
+              animation: "slowSpin 35s linear infinite, floatY 10s ease-in-out infinite",
+            }}
           >
             {emoji}
           </span>
         </div>
 
+        {/* Ambient orb top-right */}
+        <div className="absolute -top-16 -right-16 size-72 rounded-full bg-white/[0.07] blur-3xl pointer-events-none" aria-hidden />
+
         {/* Bottom-anchored content */}
         <div className="absolute inset-x-0 bottom-0 pb-16 px-10 text-center">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-ink/45 mb-4 fade-up">
+          <p
+            className="text-[11px] uppercase tracking-[0.28em] text-ink/45 mb-5 fade-up"
+          >
             {formatDate(celebrationDate)}
           </p>
           <h2
             className="serif text-ink leading-[0.9] fade-up"
-            style={{ fontSize: "clamp(2.4rem,9vw,4.5rem)", animationDelay: "110ms" }}
+            style={{ fontSize: "clamp(2.4rem,9vw,4.5rem)", animationDelay: "130ms" }}
           >
             {title}
           </h2>
           {subtext && (
             <p
-              className="mt-4 text-ink/65 text-[1.1rem] leading-snug max-w-xs mx-auto fade-up"
-              style={{ animationDelay: "230ms" }}
+              className="mt-5 text-ink/65 text-[1.1rem] leading-snug max-w-xs mx-auto fade-up"
+              style={{ animationDelay: "260ms" }}
             >
               {subtext}
             </p>
           )}
           <span
-            className="block mt-7 float-y fade-up"
-            style={{ fontSize: "clamp(2rem,8vw,3.2rem)", animationDelay: "360ms", animationDuration: "4s" }}
+            className="block mt-7 leading-none fade-up"
+            style={{
+              fontSize: "clamp(2.2rem,8vw,3.5rem)",
+              animationDelay: "390ms",
+              animation: "floatY 4.5s ease-in-out infinite, glowBreath 5s ease-in-out infinite",
+            }}
           >
             {emoji}
           </span>
@@ -384,15 +437,33 @@ function IntroSlideView({
     );
   }
 
-  // ── Together (no message references) ─────────────────────────────────────────
+  // ── Together ─────────────────────────────────────────────────────────────────
   if (slide.kind === "intro-together") {
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
-        {/* Radiating rings */}
+        {/* Pulsing concentric rings */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
-          <div className="absolute size-[520px] rounded-full border border-white/[0.08]" />
-          <div className="absolute size-80 rounded-full border border-white/[0.07]" />
-          <div className="absolute size-44 rounded-full border border-white/[0.06]" />
+          <div
+            className="absolute rounded-full border border-white/[0.12]"
+            style={{
+              width: "min(520px, 110vw)", height: "min(520px, 110vw)",
+              animation: "ringPulse 5s ease-in-out infinite",
+            }}
+          />
+          <div
+            className="absolute rounded-full border border-white/[0.09]"
+            style={{
+              width: "min(360px, 80vw)", height: "min(360px, 80vw)",
+              animation: "ringPulse 5s ease-in-out infinite 1.7s",
+            }}
+          />
+          <div
+            className="absolute rounded-full border border-white/[0.06]"
+            style={{
+              width: "min(200px, 50vw)", height: "min(200px, 50vw)",
+              animation: "ringPulse 5s ease-in-out infinite 3.4s",
+            }}
+          />
         </div>
 
         <div className="relative z-10">
@@ -406,8 +477,8 @@ function IntroSlideView({
               </h2>
               {ai.together.subtext && (
                 <p
-                  className="mt-5 text-ink/70 text-xl leading-snug max-w-xs fade-up"
-                  style={{ animationDelay: "170ms" }}
+                  className="mt-6 text-ink/70 text-xl leading-snug max-w-xs fade-up"
+                  style={{ animationDelay: "200ms" }}
                 >
                   {ai.together.subtext}
                 </p>
@@ -430,14 +501,14 @@ function IntroSlideView({
   if (slide.kind === "intro-about") {
     const aiAbout = ai?.about;
     return (
-      <section className="absolute inset-0 flex flex-col justify-center px-10 overflow-hidden">
+      <section className="absolute inset-0 flex flex-col justify-center overflow-hidden">
         {/* Ambient orb */}
         <div
           className="absolute top-1/3 -right-28 size-80 rounded-full bg-white/[0.07] blur-3xl pointer-events-none"
           aria-hidden
         />
 
-        <div className="relative z-10">
+        <div className="relative z-10 px-10">
           {aiAbout ? (
             <>
               <p className="text-[11px] uppercase tracking-[0.28em] text-ink/40 mb-6 fade-up">
@@ -445,21 +516,34 @@ function IntroSlideView({
               </p>
               <h2
                 className="serif text-ink leading-[1.05] mb-9 fade-up"
-                style={{ fontSize: "clamp(1.9rem,7.5vw,3rem)", animationDelay: "90ms" }}
+                style={{ fontSize: "clamp(1.9rem,7.5vw,3rem)", animationDelay: "100ms" }}
               >
                 {aiAbout.headline}
               </h2>
-              <div className="space-y-5">
-                {aiAbout.lines.map((line, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-3 fade-up"
-                    style={{ animationDelay: `${180 + idx * 140}ms` }}
-                  >
-                    <span className="text-ink/30 shrink-0 mt-[5px]" style={{ fontSize: "0.45rem" }}>✦</span>
-                    <p className="text-ink/85 text-[1.1rem] leading-snug">{line}</p>
-                  </div>
-                ))}
+
+              {/* Lines with animated left accent */}
+              <div className="relative pl-5">
+                <div
+                  className="absolute left-0 top-0 w-0.5 bg-ink/20 rounded-full"
+                  style={{
+                    height: "100%",
+                    animation: "lineGrow 1.6s ease-out forwards",
+                    animationDelay: "300ms",
+                    transform: "scaleY(0)",
+                    transformOrigin: "top",
+                  }}
+                />
+                <div className="space-y-5">
+                  {aiAbout.lines.map((line, idx) => (
+                    <p
+                      key={idx}
+                      className="text-ink/85 text-[1.1rem] leading-snug fade-up"
+                      style={{ animationDelay: `${220 + idx * 160}ms` }}
+                    >
+                      {line}
+                    </p>
+                  ))}
+                </div>
               </div>
             </>
           ) : celebrantDescription ? (
@@ -472,23 +556,63 @@ function IntroSlideView({
     );
   }
 
+  // ── Gallery photo ─────────────────────────────────────────────────────────────
+  if (slide.kind === "intro-gallery" && slide.gallery) {
+    const { path, caption } = slide.gallery;
+    return (
+      <section className="absolute inset-0 overflow-hidden fade-in">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={publicUrl(path)}
+          alt={caption || ""}
+          className="absolute inset-0 size-full object-cover ken-burns"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/10 to-black/65" />
+        {caption && (
+          <div className="absolute inset-x-0 bottom-0 pb-14 px-10 text-center">
+            <p
+              className="serif text-white/95 text-xl leading-snug max-w-sm mx-auto italic fade-up"
+              style={{ animationDelay: "600ms" }}
+            >
+              &ldquo;{caption}&rdquo;
+            </p>
+          </div>
+        )}
+      </section>
+    );
+  }
+
   // ── Ready ─────────────────────────────────────────────────────────────────────
   const readyEmoji = ai?.welcome?.emoji ?? "✨";
   return (
     <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
-      {/* Decorative horizontal rules */}
+      {/* Top and bottom decorative rules */}
       <div
-        className="absolute inset-x-8 top-16 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none"
+        className="absolute inset-x-8 top-16 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"
         aria-hidden
       />
       <div
-        className="absolute inset-x-8 bottom-16 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none"
+        className="absolute inset-x-8 bottom-16 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"
         aria-hidden
       />
 
+      {/* Outer glow ring */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
+        <div
+          className="rounded-full border border-white/[0.10]"
+          style={{
+            width: "min(320px, 75vw)", height: "min(320px, 75vw)",
+            animation: "ringPulse 4s ease-in-out infinite",
+          }}
+        />
+      </div>
+
       <span
-        className="block mb-10 float-y leading-none"
-        style={{ fontSize: "clamp(3rem,14vw,5.5rem)", animationDuration: "4s" }}
+        className="block mb-10 leading-none relative z-10"
+        style={{
+          fontSize: "clamp(3.5rem,15vw,6rem)",
+          animation: "floatY 4s ease-in-out infinite, glowBreath 3.5s ease-in-out infinite",
+        }}
       >
         {readyEmoji}
       </span>
@@ -496,27 +620,27 @@ function IntroSlideView({
       {ai ? (
         <>
           <h2
-            className="serif text-ink leading-[0.9] fade-up"
+            className="serif text-ink leading-[0.9] fade-up relative z-10"
             style={{ fontSize: "clamp(2.4rem,9vw,4.2rem)" }}
           >
             {ai.ready.headline}
           </h2>
           {ai.ready.subtext && (
             <p
-              className="mt-5 text-ink/65 text-lg leading-snug max-w-xs fade-up"
-              style={{ animationDelay: "160ms" }}
+              className="mt-5 text-ink/65 text-lg leading-snug max-w-xs fade-up relative z-10"
+              style={{ animationDelay: "180ms" }}
             >
               {ai.ready.subtext}
             </p>
           )}
         </>
       ) : tagline ? (
-        <p className="serif text-2xl text-ink/80 fade-up">{tagline}</p>
+        <p className="serif text-2xl text-ink/80 fade-up relative z-10">{tagline}</p>
       ) : null}
 
       <p
-        className="mt-12 text-[10px] uppercase tracking-[0.4em] text-ink/30 fade-up"
-        style={{ animationDelay: "380ms" }}
+        className="mt-12 text-[10px] uppercase tracking-[0.4em] text-ink/30 fade-up relative z-10"
+        style={{ animationDelay: "400ms" }}
       >
         tap to open
       </p>
@@ -526,9 +650,7 @@ function IntroSlideView({
 
 // ─── Message slide ────────────────────────────────────────────────────────────
 
-function MessageSlide({
-  m, onInteractiveReady,
-}: { m: Msg; onInteractiveReady: () => void }) {
+function MessageSlide({ m, onInteractiveReady }: { m: Msg; onInteractiveReady: () => void }) {
   const name = m.is_anonymous ? "Someone special" : m.contributor_name;
 
   if (m.interactive_kind && m.interactive_kind !== "none") {
@@ -536,14 +658,9 @@ function MessageSlide({
       <section className="absolute inset-0 grid place-items-center px-4 fade-in">
         <div className="w-full max-w-phone">
           <Interactive
-            kind={m.interactive_kind}
-            body={m.body}
-            mediaKind={m.media_kind}
-            mediaPath={m.media_path}
-            payload={m.interactive_payload}
-            authorName={name}
-            surface="light"
-            onRevealed={onInteractiveReady}
+            kind={m.interactive_kind} body={m.body} mediaKind={m.media_kind}
+            mediaPath={m.media_path} payload={m.interactive_payload}
+            authorName={name} surface="light" onRevealed={onInteractiveReady}
           />
         </div>
       </section>
@@ -558,8 +675,7 @@ function MessageSlide({
           <img src={publicUrl(m.media_path)} alt="" className="w-full rounded-2xl shadow-card ken-burns" />
         )}
         {m.media_kind === "video" && m.media_path && (
-          <video src={publicUrl(m.media_path)} className="w-full rounded-2xl shadow-card"
-                 autoPlay playsInline controls={false} />
+          <video src={publicUrl(m.media_path)} className="w-full rounded-2xl shadow-card" autoPlay playsInline controls={false} />
         )}
         {m.media_kind === "audio" && m.media_path && (
           <div className="bg-white/80 backdrop-blur rounded-3xl2 p-8 shadow-card">
@@ -568,9 +684,7 @@ function MessageSlide({
           </div>
         )}
         {m.body && (
-          <p className={`mt-6 text-ink whitespace-pre-wrap serif ${
-            m.body.length < 80 ? "text-4xl leading-tight" : "text-2xl leading-snug"
-          }`}>
+          <p className={`mt-6 text-ink whitespace-pre-wrap serif ${m.body.length < 80 ? "text-4xl leading-tight" : "text-2xl leading-snug"}`}>
             {m.body}
           </p>
         )}
@@ -580,11 +694,9 @@ function MessageSlide({
   );
 }
 
-// ─── End card ────────────────────────────────────────────────────────────────
+// ─── End card ─────────────────────────────────────────────────────────────────
 
-function EndCard({
-  firstName, onReplay, slug,
-}: { firstName: string; onReplay: () => void; slug: string }) {
+function EndCard({ firstName, onReplay, slug }: { firstName: string; onReplay: () => void; slug: string }) {
   return (
     <section className="absolute inset-0 grid place-items-center px-6 fade-in">
       <div className="text-center">
