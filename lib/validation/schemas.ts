@@ -34,14 +34,8 @@ export const createCelebrationSchema = z.object({
   recipientBankCode: z.string().min(2).max(10),
   recipientAccountNumber: naijaAccountNumber,
   coverPhotoPath: z.string().optional(),
-  securityQuestion: z.string().min(3).max(140).optional(),
-  securityAnswer: z.string().min(1).max(140).optional(),
-}).refine(
-  (v) =>
-    (!v.securityQuestion && !v.securityAnswer) ||
-    (!!v.securityQuestion && !!v.securityAnswer),
-  { message: "Provide both a security question and an answer, or leave both blank." },
-);
+  galleryImages: z.string().optional(),
+});
 
 export const messageSchema = z.object({
   body: z.string().max(500).optional(),

@@ -62,6 +62,7 @@ Rules:
 - Do not repeat the recipient's name more than once across all fields.
 - Use complete sentences with proper grammar and capitalisation.
 - Be specific and creative — avoid clichés. Draw from the description to say something only this person would recognise.
+- NEVER use placeholder syntax like {name}, {firstName}, or any curly-brace template — write the recipient's actual name or "you" directly.
 - Keep everything tight — every word earns its place.`;
 
 function buildUserMessage(params: {

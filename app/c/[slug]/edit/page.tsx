@@ -15,7 +15,7 @@ export default async function EditPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, title, recipient_name, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, creator_id, theme, security_question, gallery_images")
+    .select("id, slug, title, recipient_name, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, creator_id, theme, gallery_images")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) notFound();
@@ -48,9 +48,8 @@ export default async function EditPage({
             celebrantDescription: page.celebrant_description ?? "",
             coverPhotoPath: page.cover_photo_path ?? null,
             theme,
-            securityQuestion: page.security_question ?? null,
             recipientName: page.recipient_name,
-            galleryImages: (page.gallery_images as { path: string; caption: string }[]) ?? [],
+            galleryImages: (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [],
           }}
         />
 

@@ -184,6 +184,10 @@
   20%  { opacity: 1; }
   100% { opacity: 0; transform: translateY(-60px) scale(1)   rotate(120deg); }
 }
+@keyframes slideFromLeft  { from { opacity: 0; transform: translateX(-32px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideFromRight { from { opacity: 0; transform: translateX(32px);  } to { opacity: 1; transform: translateX(0); } }
+@keyframes zoomIn         { from { opacity: 0; transform: scale(0.86);        } to { opacity: 1; transform: scale(1);     } }
+@keyframes fadeDown       { from { opacity: 0; transform: translateY(-18px);  } to { opacity: 1; transform: translateY(0);} }
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }

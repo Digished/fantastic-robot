@@ -72,7 +72,7 @@ export default async function WallPage({
 
             <div className="absolute inset-0 flex flex-col">
               <header className="relative z-10 px-5 pt-5 flex items-center justify-between">
-                <Link href="/" className="serif text-lg text-white drop-shadow">Spendbox</Link>
+                <Link href={isCreator ? "/dashboard" : "/"} className="serif text-lg text-white drop-shadow">Spendbox</Link>
                 {isCreator && (
                   <Link
                     href={`/c/${page.slug}/edit`}
@@ -136,8 +136,8 @@ export default async function WallPage({
 
         {!closed && (
           <div className="mt-6 flex gap-3 fade-up">
-            <Link href={`/c/${page.slug}/post`} className="btn-outline flex-1">Leave a message</Link>
-            <Link href={`/c/${page.slug}/contribute`} className="btn-accent flex-1 shadow-soft">Contribute</Link>
+            <Link href={`/c/${page.slug}/post`} className="btn-accent flex-1 shadow-soft">Leave a message</Link>
+            <Link href={`/c/${page.slug}/contribute`} className="btn-outline flex-1">Contribute</Link>
           </div>
         )}
         {closed && !claimable && (
@@ -152,10 +152,7 @@ export default async function WallPage({
 
         {/* WALL */}
         <section className="mt-12">
-          <div className="flex items-baseline justify-between">
-            <h2 className="serif text-3xl text-ink">The wall</h2>
-            <p className="text-[10px] uppercase tracking-widest text-ink/45">{messages?.length ?? 0} cards</p>
-          </div>
+          <h2 className="serif text-3xl text-ink">The wall</h2>
           <WallGrid
             messages={messages ?? []}
             celebrationId={page.id}

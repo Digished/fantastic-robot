@@ -6,8 +6,6 @@ import { formatDate } from "@/lib/time";
 import { ClaimButton } from "../claim-button";
 import { isTheme, type Theme } from "@/lib/themes";
 import { Sparkles } from "@/components/sparkles";
-import { CelebrantGate } from "./gate";
-import { isCelebrantUnlocked } from "@/lib/celebrant-unlock";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +23,7 @@ export default async function CelebrantPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, tagline, total_raised_kobo, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, security_question, security_answer_hash",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, tagline, total_raised_kobo, payout_status, recipient_account_name, cover_photo_path, creator_id, theme",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -35,29 +33,11 @@ export default async function CelebrantPage({
   const { data: { user } } = await supabase.auth.getUser();
   const isCreator = !!user && user.id === page.creator_id;
 
-  // Gate: if a security answer hash exists and the visitor hasn't unlocked yet.
-  // Creators are exempt. The gate shows even if the question text is somehow missing.
-  const needsGate = !!page.security_answer_hash && !isCreator && !(await isCelebrantUnlocked(slug));
-  if (needsGate) {
-    return (
-      <CelebrantGate
-        slug={slug}
-        question={page.security_question ?? ""}
-        recipientName={page.recipient_name}
-      />
-    );
-  }
-
   const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
   const now = Date.now();
   const claimable = new Date(page.claimable_at).getTime() <= now;
   const cover = coverUrl(page.cover_photo_path);
-
-  const { count: messageCount } = await supabase
-    .from("messages")
-    .select("id", { count: "exact", head: true })
-    .eq("celebration_id", page.id)
-    .is("deleted_at", null);
+  const firstName = page.recipient_name.split(" ")[0];
 
   return (
     <main className="min-h-[100dvh] bg-white pb-20" data-theme={theme}>
@@ -79,7 +59,12 @@ export default async function CelebrantPage({
 
             <div className="absolute inset-0 flex flex-col">
               <header className="relative z-10 px-5 pt-5 flex items-center justify-between">
-                <Link href={`/c/${slug}`} className="serif text-lg text-white drop-shadow">Spendbox</Link>
+                <Link
+                  href={isCreator ? "/dashboard" : `/c/${slug}`}
+                  className="serif text-lg text-white drop-shadow"
+                >
+                  Spendbox
+                </Link>
                 <span className="glass-dark rounded-full px-3 py-1 text-[10px] uppercase tracking-widest text-white">
                   For you
                 </span>
@@ -92,11 +77,14 @@ export default async function CelebrantPage({
                   )}
                   {formatDate(page.celebration_date)}
                 </p>
-                <h1 className="fade-up mt-3 serif text-5xl leading-[0.95] drop-shadow-sm">
-                  Hi {page.recipient_name.split(" ")[0]},
+                <p className="fade-up mt-2 text-white/70 text-base">
+                  Hi {firstName},
+                </p>
+                <h1 className="fade-up mt-1 serif text-5xl leading-[0.92] drop-shadow-sm" style={{ animationDelay: "80ms" }}>
+                  {page.title}
                 </h1>
                 {page.tagline && (
-                  <p className="fade-up mt-3 text-white/90 text-lg leading-snug">
+                  <p className="fade-up mt-3 text-white/90 text-lg leading-snug" style={{ animationDelay: "180ms" }}>
                     {page.tagline}
                   </p>
                 )}
@@ -112,7 +100,6 @@ export default async function CelebrantPage({
         >
           <Play className="size-5 fill-current" />
           Play
-          {messageCount ? <span className="opacity-70">· {messageCount} cards</span> : null}
         </Link>
 
         {/* Creator's note */}

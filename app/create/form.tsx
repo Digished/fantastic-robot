@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { createCelebration } from "./actions";
 import { ThemePicker } from "@/components/theme-picker";
 import type { Theme } from "@/lib/themes";
+import { X, ImagePlus, Loader2, Video } from "lucide-react";
 
 type Bank = { name: string; code: string };
 
@@ -24,43 +24,58 @@ function minDate() {
 const STEPS = ["Vibe", "Details", "About them", "Recipient", "Review"] as const;
 type Step = 0 | 1 | 2 | 3 | 4;
 
+type GalleryItem = { path: string; caption: string; preview: string; kind: "image" | "video" };
+
+const IMAGE_EXTS = ["jpg", "jpeg", "png", "webp"];
+const VIDEO_EXTS = ["mp4", "mov", "webm"];
+
+function galleryExt(file: File): { ext: string; kind: "image" | "video" } | null {
+  const ext = (file.name.split(".").pop() ?? "").toLowerCase();
+  if (file.type.startsWith("image/") && IMAGE_EXTS.includes(ext)) return { ext, kind: "image" };
+  if (file.type.startsWith("image/")) return { ext: "jpg", kind: "image" };
+  if (file.type.startsWith("video/") && VIDEO_EXTS.includes(ext)) return { ext, kind: "video" };
+  if (file.type.startsWith("video/")) return { ext: "mp4", kind: "video" };
+  return null;
+}
+
 export function CreateForm({ banks }: { banks: Bank[] }) {
-  const router = useRouter();
   const [step, setStep] = useState<Step>(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  // form state
+  // Step 0: Vibe
   const [theme, setTheme] = useState<Theme>("ivory");
   const [coverPath, setCoverPath] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
+  // Step 1: Details
   const [title, setTitle] = useState("");
   const [recipientName, setRecipientName] = useState("");
   const [eventType, setEventType] = useState("birthday");
   const [celebrationDate, setCelebrationDate] = useState("");
   const [messageFromCreator, setMessageFromCreator] = useState("");
 
+  // Step 2: About them
   const [tagline, setTagline] = useState("");
   const [celebrantDescription, setCelebrantDescription] = useState("");
-
-  // AI message suggestions state
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [loadingSuggestions, startSuggestions] = useTransition();
 
+  // Gallery (step 2)
+  const galleryFileRef = useRef<HTMLInputElement>(null);
+  const [galleryImages, setGalleryImages] = useState<GalleryItem[]>([]);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
+
+  // Step 3: Recipient
   const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [resolved, setResolved] = useState<string | null>(null);
   const [resolveError, setResolveError] = useState<string | null>(null);
   const [resolving, startResolve] = useTransition();
 
-  const [securityQuestion, setSecurityQuestion] = useState("");
-  const [securityAnswer, setSecurityAnswer] = useState("");
-
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // resolve bank account live
   useEffect(() => {
     setResolved(null); setResolveError(null);
     if (accountNumber.length !== 10 || !bankCode) return;
@@ -83,7 +98,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
     const res = await fetch("/api/media/sign-cover", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ext: ["jpg","jpeg","png","webp"].includes(ext) ? ext : "jpg" }),
+      body: JSON.stringify({ ext: IMAGE_EXTS.includes(ext) ? ext : "jpg" }),
     });
     const sign = await res.json();
     if (!res.ok) { setUploading(false); alert(sign.error ?? "Upload failed"); return; }
@@ -94,6 +109,38 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     if (!put.ok) { alert("Upload failed"); return; }
     setCoverPath(sign.path);
     setCoverPreview(URL.createObjectURL(file));
+  }
+
+  async function onGalleryFiles(files: FileList) {
+    const remaining = 8 - galleryImages.length;
+    const toUpload = Array.from(files).slice(0, remaining);
+    if (toUpload.length === 0) { alert("Maximum 8 gallery items reached."); return; }
+    setUploadingGallery(true);
+    for (const file of toUpload) {
+      if (file.size > 50 * 1024 * 1024) { alert(`${file.name} is too large (max 50 MB).`); continue; }
+      const meta = galleryExt(file);
+      if (!meta) { alert(`${file.name} is not a supported image or video.`); continue; }
+      const res = await fetch("/api/media/sign-gallery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ext: meta.ext }),
+      });
+      const sign = await res.json();
+      if (!res.ok) { alert(sign.error ?? "Upload failed"); continue; }
+      const put = await fetch(sign.signedUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+      if (!put.ok) { alert("Upload failed"); continue; }
+      const preview = URL.createObjectURL(file);
+      setGalleryImages((prev) => [...prev, { path: sign.path, caption: "", preview, kind: meta.kind }]);
+    }
+    setUploadingGallery(false);
+  }
+
+  function removeGalleryImage(idx: number) {
+    setGalleryImages((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function updateCaption(idx: number, caption: string) {
+    setGalleryImages((prev) => prev.map((img, i) => i === idx ? { ...img, caption } : img));
   }
 
   function step1Errors(): string[] {
@@ -109,13 +156,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     if (step === 0) return true;
     if (step === 1) return step1Errors().length === 0;
     if (step === 2) return celebrantDescription.trim().length >= 20;
-    if (step === 3) {
-      if (!resolved || !bankCode || accountNumber.length !== 10) return false;
-      const hasQ = securityQuestion.trim().length >= 3;
-      const hasA = securityAnswer.trim().length >= 1;
-      if ((hasQ && !hasA) || (!hasQ && hasA)) return false;
-      return true;
-    }
+    if (step === 3) return !!(resolved && bankCode && accountNumber.length === 10);
     return true;
   }
 
@@ -129,11 +170,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
         const res = await fetch("/api/ai/suggest-messages", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            description: celebrantDescription,
-            recipientName,
-            eventType,
-          }),
+          body: JSON.stringify({ description: celebrantDescription, recipientName, eventType }),
         });
         const json = await res.json();
         if (res.ok && Array.isArray(json.messages)) setSuggestions(json.messages);
@@ -158,8 +195,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     if (coverPath) fd.set("coverPhotoPath", coverPath);
     fd.set("recipientBankCode", bankCode);
     fd.set("recipientAccountNumber", accountNumber);
-    if (securityQuestion) fd.set("securityQuestion", securityQuestion);
-    if (securityAnswer) fd.set("securityAnswer", securityAnswer);
+    fd.set("galleryImages", JSON.stringify(galleryImages.map(({ path, caption, kind }) => ({ path, caption, kind }))));
 
     const result = await createCelebration({}, fd);
     if (result && "error" in result && result.error) {
@@ -175,9 +211,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
       {/* Progress — mobile: simple bar; desktop: labelled steps */}
       <div className="sm:hidden mb-2">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-xs text-ink/50">
-            Step {step + 1} of {STEPS.length}
-          </p>
+          <p className="text-xs text-ink/50">Step {step + 1} of {STEPS.length}</p>
           <p className="text-xs font-medium text-ink">{STEPS[step]}</p>
         </div>
         <div className="h-1.5 rounded-full bg-ink/10">
@@ -200,6 +234,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
       </div>
 
       <div className="mt-8 fade-up" key={step}>
+        {/* ── Step 0: Vibe ── */}
         {step === 0 && (
           <div className="space-y-6">
             <div>
@@ -207,9 +242,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
               <p className="text-ink/55 text-sm mt-1">You can change this any time.</p>
             </div>
             <div className="relative h-32 rounded-3xl2 overflow-hidden shadow-ring theme-mesh">
-              <p className="absolute bottom-3 left-4 text-[11px] uppercase tracking-widest text-ink/60">
-                Live preview
-              </p>
+              <p className="absolute bottom-3 left-4 text-[11px] uppercase tracking-widest text-ink/60">Live preview</p>
             </div>
             <ThemePicker value={theme} onChange={setTheme} />
 
@@ -234,6 +267,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
           </div>
         )}
 
+        {/* ── Step 1: Details ── */}
         {step === 1 && (
           <div className="space-y-5">
             <div>
@@ -282,6 +316,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
           </div>
         )}
 
+        {/* ── Step 2: About them + Gallery ── */}
         {step === 2 && (
           <div className="space-y-5">
             <div>
@@ -300,7 +335,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
                 className="field min-h-[160px] resize-none"
                 value={celebrantDescription}
                 onChange={(e) => { setCelebrantDescription(e.target.value); setSuggestions(null); }}
-                placeholder={`Their personality, what they love, what makes them who they are, why this celebration matters — the more you share, the richer the experience.`}
+                placeholder={`Their personality, what they love, what makes them who they are — the more you share, the richer the experience.`}
                 maxLength={1500}
               />
               <div className="flex items-center justify-between">
@@ -311,7 +346,6 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
               </div>
             </div>
 
-            {/* AI message inspiration */}
             {celebrantDescription.trim().length >= 20 && (
               <div className="pt-1">
                 <button
@@ -321,10 +355,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
                   className="text-sm text-[var(--accent)] font-medium flex items-center gap-1.5 hover:opacity-75 transition disabled:opacity-50"
                 >
                   {loadingSuggestions ? (
-                    <>
-                      <span className="size-3.5 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" />
-                      Generating examples…
-                    </>
+                    <><span className="size-3.5 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin" /> Generating…</>
                   ) : (
                     <>✦ See what contributors might write</>
                   )}
@@ -334,10 +365,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
                   <div className="mt-4 space-y-3">
                     <p className="text-xs uppercase tracking-widest text-ink/40">Message examples</p>
                     {suggestions.map((msg, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-2xl bg-[var(--accent-soft)] border border-[var(--accent)]/15 px-4 py-3"
-                      >
+                      <div key={idx} className="rounded-2xl bg-[var(--accent-soft)] border border-[var(--accent)]/15 px-4 py-3">
                         <p className="text-sm text-ink/80 leading-snug italic">&ldquo;{msg}&rdquo;</p>
                       </div>
                     ))}
@@ -353,23 +381,86 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
                 className="field"
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
-                placeholder={`e.g. "We got you, queen ✨" or "Happy birthday, big head 🎂"`}
+                placeholder={`e.g. "We got you, queen ✨"`}
                 maxLength={140}
               />
-              <p className="text-xs text-ink/45">
-                Shown on {firstName}&apos;s cover page. Leave blank to hide it.
-              </p>
+              <p className="text-xs text-ink/45">Shown on {firstName}&apos;s cover page. Leave blank to hide.</p>
+            </div>
+
+            {/* Gallery */}
+            <div className="pt-3 border-t border-ink/10 space-y-3">
+              <div>
+                <label className="label">Photo &amp; video gallery (optional)</label>
+                <p className="text-xs text-ink/45 mt-0.5">
+                  Full-screen slides during {firstName}&apos;s opening. Up to 8 items.
+                </p>
+              </div>
+
+              {galleryImages.length > 0 && (
+                <div className="grid grid-cols-2 gap-3">
+                  {galleryImages.map((img, idx) => (
+                    <div key={idx} className="relative rounded-2xl overflow-hidden shadow-ring bg-ink/5">
+                      {img.kind === "video" ? (
+                        <div className="w-full aspect-[4/3] bg-ink/80 grid place-items-center">
+                          <Video className="size-8 text-white/60" />
+                        </div>
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={img.preview} alt="" className="w-full aspect-[4/3] object-cover" />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeGalleryImage(idx)}
+                        className="absolute top-2 right-2 size-6 rounded-full glass-dark text-white grid place-items-center"
+                        aria-label="Remove"
+                      >
+                        <X className="size-3" />
+                      </button>
+                      <input
+                        type="text"
+                        placeholder="Add a caption…"
+                        maxLength={100}
+                        value={img.caption}
+                        onChange={(e) => updateCaption(idx, e.target.value)}
+                        className="w-full px-3 py-2 text-sm text-ink/80 bg-white/80 border-0 focus:outline-none focus:ring-0 placeholder:text-ink/35"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <input
+                ref={galleryFileRef}
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                className="hidden"
+                onChange={(e) => e.target.files && e.target.files.length > 0 && onGalleryFiles(e.target.files)}
+              />
+              {galleryImages.length < 8 && (
+                <button
+                  type="button"
+                  onClick={() => galleryFileRef.current?.click()}
+                  disabled={uploadingGallery}
+                  className="btn-outline inline-flex text-sm disabled:opacity-50"
+                >
+                  {uploadingGallery
+                    ? <><Loader2 className="size-4 animate-spin" /> Uploading…</>
+                    : <><ImagePlus className="size-4" /> Add photos / videos</>
+                  }
+                </button>
+              )}
             </div>
           </div>
         )}
 
+        {/* ── Step 3: Recipient ── */}
         {step === 3 && (
           <div className="space-y-5">
             <div>
               <h2 className="serif text-3xl text-ink">Where the gift goes</h2>
               <p className="text-ink/55 text-sm mt-1">
-                For monetary gifts friends may send to {firstName}.
-                Locked once the page is live.
+                For monetary gifts friends may send to {firstName}. Locked once the page is live.
               </p>
             </div>
 
@@ -398,32 +489,10 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
                 <p className="text-sm rounded-2xl bg-red-50 text-red-700 px-4 py-2">{resolveError}</p>
               )}
             </div>
-
-            <div className="pt-5 border-t border-ink/10">
-              <h3 className="serif text-2xl text-ink">A secret door <span className="text-ink/40 text-base font-sans not-italic ml-1">— optional</span></h3>
-              <p className="text-ink/55 text-sm mt-1">
-                Set a security question so only {firstName} can open their page.
-                Share the answer with them privately.
-                Leave both fields blank to skip.
-              </p>
-
-              <div className="space-y-1.5 mt-4">
-                <label className="label">Question only they can answer</label>
-                <input className="field" value={securityQuestion}
-                  onChange={(e) => setSecurityQuestion(e.target.value)}
-                  placeholder="What was your childhood nickname?" maxLength={140} />
-              </div>
-              <div className="space-y-1.5 mt-3">
-                <label className="label">The answer</label>
-                <input className="field" value={securityAnswer}
-                  onChange={(e) => setSecurityAnswer(e.target.value)}
-                  placeholder="lowercase, casing doesn't matter" maxLength={140} />
-                <p className="text-xs text-ink/45">We store a one-way hash — even we can't read it.</p>
-              </div>
-            </div>
           </div>
         )}
 
+        {/* ── Step 4: Review ── */}
         {step === 4 && (
           <div className="space-y-5">
             <div>
@@ -433,7 +502,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
 
             <div className="relative aspect-[4/5] rounded-3xl2 overflow-hidden shadow-card">
               {coverPreview ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={coverPreview} alt="" className="absolute inset-0 size-full object-cover" />
               ) : (
                 <div className="absolute inset-0 theme-mesh" />
@@ -452,7 +521,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
               <li className="py-2 flex justify-between"><span className="text-ink/55">Recipient</span><span className="text-ink">{resolved ?? "—"}</span></li>
               <li className="py-2 flex justify-between"><span className="text-ink/55">Account</span><span className="text-ink">****{accountNumber.slice(-4)}</span></li>
               <li className="py-2 flex justify-between"><span className="text-ink/55">Theme</span><span className="text-ink capitalize">{theme}</span></li>
-              <li className="py-2 flex justify-between"><span className="text-ink/55">Security gate</span><span className="text-ink">{securityQuestion ? "Yes ✓" : "None"}</span></li>
+              <li className="py-2 flex justify-between"><span className="text-ink/55">Gallery</span><span className="text-ink">{galleryImages.length > 0 ? `${galleryImages.length} item${galleryImages.length > 1 ? "s" : ""}` : "None"}</span></li>
             </ul>
 
             {submitError && <p className="text-sm text-red-600">{submitError}</p>}

@@ -6,7 +6,6 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paystack, PaystackError } from "@/lib/paystack/client";
 import { createCelebrationSchema } from "@/lib/validation/schemas";
-import { hashAnswer } from "@/lib/security";
 import { generateIntroContent } from "@/lib/openai/generate-intro";
 
 const slugId = customAlphabet("23456789abcdefghjkmnpqrstvwxyz", 10);
@@ -33,14 +32,12 @@ export async function createCelebration(
     recipientBankCode: formData.get("recipientBankCode"),
     recipientAccountNumber: formData.get("recipientAccountNumber"),
     coverPhotoPath: formData.get("coverPhotoPath") || undefined,
-    securityQuestion: (formData.get("securityQuestion") as string) || undefined,
-    securityAnswer:   (formData.get("securityAnswer")   as string) || undefined,
+    galleryImages: formData.get("galleryImages") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message };
   }
 
-  // Resolve the recipient bank account.
   let accountName: string;
   try {
     const { data } = await paystack.resolveAccount(
@@ -56,8 +53,6 @@ export async function createCelebration(
   const slug = slugId();
   const admin = supabaseAdmin();
 
-  // Generate AI intro slides in parallel with any remaining setup.
-  // If OpenAI is unavailable or fails, introContent is null and templates are used.
   const firstName = parsed.data.recipientName.split(" ")[0];
   const introContent = await generateIntroContent({
     firstName,
@@ -67,6 +62,9 @@ export async function createCelebration(
     celebrationTitle: parsed.data.title,
     celebrantDescription: parsed.data.celebrantDescription ?? null,
   });
+
+  let galleryImages: { path: string; caption: string; kind?: "image" | "video" }[] = [];
+  try { galleryImages = JSON.parse(parsed.data.galleryImages ?? "[]"); } catch { /* keep empty */ }
 
   const { error } = await admin.from("celebrations").insert({
     slug,
@@ -81,11 +79,10 @@ export async function createCelebration(
     celebrant_description: parsed.data.celebrantDescription ?? null,
     intro_content: introContent ?? null,
     cover_photo_path: parsed.data.coverPhotoPath ?? null,
+    gallery_images: galleryImages,
     recipient_bank_code: parsed.data.recipientBankCode,
     recipient_account_number: parsed.data.recipientAccountNumber,
     recipient_account_name: accountName,
-    security_question:    parsed.data.securityQuestion ?? null,
-    security_answer_hash: parsed.data.securityAnswer ? hashAnswer(parsed.data.securityAnswer) : null,
   });
 
   if (error) return { error: error.message };

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X, Video } from "lucide-react";
 import type { Theme } from "@/lib/themes";
 import type { IntroContent } from "@/lib/openai/generate-intro";
 import { Interactive, type InteractiveKind } from "@/components/interactives";
@@ -21,7 +21,7 @@ type Msg = {
   created_at: string;
 };
 
-export type GalleryImage = { path: string; caption: string };
+export type GalleryImage = { path: string; caption: string; kind?: "image" | "video" };
 
 type IntroSlide = {
   id: string;
@@ -32,7 +32,7 @@ type IntroSlide = {
 
 type AnySlide =
   | { kind: "intro"; intro: IntroSlide }
-  | { kind: "message"; msg: Msg };
+  | { kind: "message"; msg: Msg; msgIdx: number };
 
 function publicUrl(path: string) {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${path}`;
@@ -60,6 +60,15 @@ function formatDate(iso: string): string {
     day: "numeric", month: "long", year: "numeric",
   });
 }
+
+const MSG_ANIMS = [
+  "slideFromLeft 0.6s cubic-bezier(.2,.7,.2,1) both",
+  "slideFromRight 0.6s cubic-bezier(.2,.7,.2,1) both",
+  "zoomIn 0.5s cubic-bezier(.2,.7,.2,1) both",
+  "fadeUp 0.55s cubic-bezier(.2,.7,.2,1) both",
+  "fadeDown 0.55s cubic-bezier(.2,.7,.2,1) both",
+  "fadeIn 0.55s ease both",
+];
 
 // ─── Floating sparkle particles ───────────────────────────────────────────────
 
@@ -172,7 +181,7 @@ export function Player({
 
   const allSlides: AnySlide[] = useMemo(() => [
     ...introSlides.map((intro): AnySlide => ({ kind: "intro", intro })),
-    ...messages.map((msg): AnySlide => ({ kind: "message", msg })),
+    ...messages.map((msg, msgIdx): AnySlide => ({ kind: "message", msg, msgIdx })),
   ], [introSlides, messages]);
 
   const [i, setI] = useState(0);
@@ -229,6 +238,7 @@ export function Player({
   function next() { elapsedRef.current = 0; setProgress(0); if (i + 1 >= total) setDone(true); else setI(i + 1); }
   function prev() { elapsedRef.current = 0; setProgress(0); setDone(false); setI((x) => Math.max(0, x - 1)); }
   function replay() { elapsedRef.current = 0; setProgress(0); setDone(false); setI(0); setPaused(false); }
+  function selectSlide(idx: number) { elapsedRef.current = 0; setProgress(0); setDone(false); setI(idx); setPaused(false); }
 
   const firstName = recipientName.split(" ")[0];
 
@@ -236,37 +246,40 @@ export function Player({
     <main
       data-theme={theme}
       className="fixed inset-0 select-none overflow-hidden"
-      style={{ background: scene.bg }}
+      style={{ background: done ? "white" : scene.bg }}
       onClick={(e) => {
+        if (done) return;
         if (isInteractive && !interactiveReady) return;
         const x = e.clientX; const w = window.innerWidth;
         if (x < w / 3) prev(); else next();
       }}
     >
-      {/* Progress bar */}
-      <div className="absolute inset-x-0 top-0 px-3 pt-3 z-30 flex items-center gap-2">
-        <div className="flex-1 flex gap-0.5">
-          {allSlides.map((_, idx) => {
-            const isIntroSlide = allSlides[idx]?.kind === "intro";
-            return (
-              <div key={idx} className={`flex-1 h-0.5 rounded-full overflow-hidden ${isIntroSlide ? "bg-white/20" : "bg-white/30"}`}>
-                <div
-                  className={`h-full transition-[width] duration-100 ${isIntroSlide ? "bg-white/55" : "bg-white"}`}
-                  style={{ width: `${idx < i ? 100 : idx === i ? progress * 100 : 0}%` }}
-                />
-              </div>
-            );
-          })}
+      {/* Progress bar — hidden in gallery view */}
+      {!done && (
+        <div className="absolute inset-x-0 top-0 px-3 pt-3 z-30 flex items-center gap-2">
+          <div className="flex-1 flex gap-0.5">
+            {allSlides.map((_, idx) => {
+              const isIntroSlide = allSlides[idx]?.kind === "intro";
+              return (
+                <div key={idx} className={`flex-1 h-0.5 rounded-full overflow-hidden ${isIntroSlide ? "bg-white/20" : "bg-white/30"}`}>
+                  <div
+                    className={`h-full transition-[width] duration-100 ${isIntroSlide ? "bg-white/55" : "bg-white"}`}
+                    style={{ width: `${idx < i ? 100 : idx === i ? progress * 100 : 0}%` }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <button onClick={(e) => { e.stopPropagation(); setPaused((p) => !p); }}
+            className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label={paused ? "Play" : "Pause"}>
+            {paused ? <Play className="size-4 fill-current" /> : <Pause className="size-4 fill-current" />}
+          </button>
+          <Link href={`/c/${slug}/celebrate`} onClick={(e) => e.stopPropagation()}
+            className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label="Close">
+            <X className="size-4" />
+          </Link>
         </div>
-        <button onClick={(e) => { e.stopPropagation(); setPaused((p) => !p); }}
-          className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label={paused ? "Play" : "Pause"}>
-          {paused ? <Play className="size-4 fill-current" /> : <Pause className="size-4 fill-current" />}
-        </button>
-        <Link href={`/c/${slug}/celebrate`} onClick={(e) => e.stopPropagation()}
-          className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label="Close">
-          <X className="size-4" />
-        </Link>
-      </div>
+      )}
 
       {/* Slide content */}
       {!done ? (
@@ -282,22 +295,39 @@ export function Player({
             celebrantDescription={celebrantDescription}
             introContent={introContent}
           />
-        ) : currentMsg ? (
-          <MessageSlide key={currentMsg.id} m={currentMsg} onInteractiveReady={() => setInteractiveReady(true)} />
+        ) : currentMsg && current?.kind === "message" ? (
+          <MessageSlide
+            key={currentMsg.id}
+            m={currentMsg}
+            msgIdx={current.msgIdx}
+            onInteractiveReady={() => setInteractiveReady(true)}
+          />
         ) : null
       ) : (
-        <EndCard firstName={firstName} onReplay={replay} slug={slug} />
+        <PostPlayGallery
+          allSlides={allSlides}
+          firstName={firstName}
+          slug={slug}
+          introContent={introContent}
+          celebrationTitle={celebrationTitle}
+          onSelectSlide={selectSlide}
+          onReplay={replay}
+        />
       )}
 
       {/* Desktop edge nav */}
-      <button onClick={(e) => { e.stopPropagation(); prev(); }} aria-label="Previous"
-        className="absolute left-2 top-1/2 -translate-y-1/2 z-20 size-10 rounded-full glass-dark text-white grid place-items-center md:flex hidden">
-        <ChevronLeft className="size-5" />
-      </button>
-      <button onClick={(e) => { e.stopPropagation(); next(); }} aria-label="Next"
-        className="absolute right-2 top-1/2 -translate-y-1/2 z-20 size-10 rounded-full glass-dark text-white grid place-items-center md:flex hidden">
-        <ChevronRight className="size-5" />
-      </button>
+      {!done && (
+        <>
+          <button onClick={(e) => { e.stopPropagation(); prev(); }} aria-label="Previous"
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 size-10 rounded-full glass-dark text-white grid place-items-center md:flex hidden">
+            <ChevronLeft className="size-5" />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); next(); }} aria-label="Next"
+            className="absolute right-2 top-1/2 -translate-y-1/2 z-20 size-10 rounded-full glass-dark text-white grid place-items-center md:flex hidden">
+            <ChevronRight className="size-5" />
+          </button>
+        </>
+      )}
     </main>
   );
 }
@@ -325,12 +355,10 @@ function IntroSlideView({
     const subtext = ai?.welcome.subtext ?? tagline ?? null;
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
-        {/* Ambient orbs */}
         <div className="absolute -top-24 -right-24 size-80 rounded-full bg-white/[0.08] blur-3xl pointer-events-none" aria-hidden />
         <div className="absolute -bottom-24 -left-24 size-64 rounded-full bg-white/[0.06] blur-3xl pointer-events-none" aria-hidden />
         <SparkleField />
 
-        {/* Celebration title badge — always visible */}
         <div className="absolute top-16 left-0 right-0 flex justify-center fade-up" style={{ animationDelay: "0ms" }}>
           <span className="inline-block rounded-full bg-white/20 backdrop-blur-sm px-4 py-1.5 text-[11px] uppercase tracking-[0.22em] text-ink/65">
             {celebrationTitle}
@@ -363,7 +391,6 @@ function IntroSlideView({
           )}
         </div>
 
-        {/* Decorative rule */}
         <div
           className="absolute bottom-14 left-0 right-0 flex items-center justify-center gap-5 fade-up"
           style={{ animationDelay: "450ms" }}
@@ -385,7 +412,6 @@ function IntroSlideView({
     const subtext = ai?.occasion.subtext ?? null;
     return (
       <section className="absolute inset-0 overflow-hidden">
-        {/* Slowly spinning ghost emoji */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
           <span
             className="leading-none select-none opacity-[0.07]"
@@ -398,14 +424,10 @@ function IntroSlideView({
           </span>
         </div>
 
-        {/* Ambient orb top-right */}
         <div className="absolute -top-16 -right-16 size-72 rounded-full bg-white/[0.07] blur-3xl pointer-events-none" aria-hidden />
 
-        {/* Bottom-anchored content */}
         <div className="absolute inset-x-0 bottom-0 pb-16 px-10 text-center">
-          <p
-            className="text-[11px] uppercase tracking-[0.28em] text-ink/45 mb-5 fade-up"
-          >
+          <p className="text-[11px] uppercase tracking-[0.28em] text-ink/45 mb-5 fade-up">
             {formatDate(celebrationDate)}
           </p>
           <h2
@@ -441,43 +463,42 @@ function IntroSlideView({
   if (slide.kind === "intro-together") {
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
-        {/* Pulsing concentric rings */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
           <div
             className="absolute rounded-full border border-white/[0.12]"
             style={{
-              width: "min(520px, 110vw)", height: "min(520px, 110vw)",
+              width: "min(480px, 85vw)", height: "min(480px, 85vw)",
               animation: "ringPulse 5s ease-in-out infinite",
             }}
           />
           <div
             className="absolute rounded-full border border-white/[0.09]"
             style={{
-              width: "min(360px, 80vw)", height: "min(360px, 80vw)",
+              width: "min(320px, 72vw)", height: "min(320px, 72vw)",
               animation: "ringPulse 5s ease-in-out infinite 1.7s",
             }}
           />
           <div
             className="absolute rounded-full border border-white/[0.06]"
             style={{
-              width: "min(200px, 50vw)", height: "min(200px, 50vw)",
+              width: "min(180px, 48vw)", height: "min(180px, 48vw)",
               animation: "ringPulse 5s ease-in-out infinite 3.4s",
             }}
           />
         </div>
 
-        <div className="relative z-10">
+        <div className="relative z-10 max-w-sm mx-auto text-center">
           {ai ? (
             <>
               <h2
-                className="serif text-ink leading-[1.05] max-w-sm fade-up"
+                className="serif text-ink leading-[1.05] fade-up"
                 style={{ fontSize: "clamp(2rem,8vw,3.4rem)" }}
               >
                 {ai.together.headline}
               </h2>
               {ai.together.subtext && (
                 <p
-                  className="mt-6 text-ink/70 text-xl leading-snug max-w-xs fade-up"
+                  className="mt-6 text-ink/70 text-xl leading-snug fade-up"
                   style={{ animationDelay: "200ms" }}
                 >
                   {ai.together.subtext}
@@ -486,7 +507,7 @@ function IntroSlideView({
             </>
           ) : (
             <p
-              className="serif text-ink/75 leading-tight max-w-xs fade-up"
+              className="serif text-ink/75 leading-tight fade-up"
               style={{ fontSize: "clamp(1.8rem,7vw,2.8rem)" }}
             >
               {firstName}, today is yours.
@@ -502,7 +523,6 @@ function IntroSlideView({
     const aiAbout = ai?.about;
     return (
       <section className="absolute inset-0 flex flex-col justify-center overflow-hidden">
-        {/* Ambient orb */}
         <div
           className="absolute top-1/3 -right-28 size-80 rounded-full bg-white/[0.07] blur-3xl pointer-events-none"
           aria-hidden
@@ -521,7 +541,6 @@ function IntroSlideView({
                 {aiAbout.headline}
               </h2>
 
-              {/* Lines with animated left accent */}
               <div className="relative pl-5">
                 <div
                   className="absolute left-0 top-0 w-0.5 bg-ink/20 rounded-full"
@@ -556,17 +575,29 @@ function IntroSlideView({
     );
   }
 
-  // ── Gallery photo ─────────────────────────────────────────────────────────────
+  // ── Gallery photo / video ─────────────────────────────────────────────────────
   if (slide.kind === "intro-gallery" && slide.gallery) {
-    const { path, caption } = slide.gallery;
+    const { path, caption, kind } = slide.gallery;
+    const isVideo = kind === "video";
     return (
       <section className="absolute inset-0 overflow-hidden fade-in">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={publicUrl(path)}
-          alt={caption || ""}
-          className="absolute inset-0 size-full object-cover ken-burns"
-        />
+        {isVideo ? (
+          // eslint-disable-next-line jsx-a11y/media-has-caption
+          <video
+            src={publicUrl(path)}
+            className="absolute inset-0 size-full object-cover"
+            autoPlay
+            playsInline
+            loop
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={publicUrl(path)}
+            alt={caption || ""}
+            className="absolute inset-0 size-full object-cover ken-burns"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/10 to-black/65" />
         {caption && (
           <div className="absolute inset-x-0 bottom-0 pb-14 px-10 text-center">
@@ -586,7 +617,6 @@ function IntroSlideView({
   const readyEmoji = ai?.welcome?.emoji ?? "✨";
   return (
     <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
-      {/* Top and bottom decorative rules */}
       <div
         className="absolute inset-x-8 top-16 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"
         aria-hidden
@@ -596,7 +626,6 @@ function IntroSlideView({
         aria-hidden
       />
 
-      {/* Outer glow ring */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
         <div
           className="rounded-full border border-white/[0.10]"
@@ -650,12 +679,13 @@ function IntroSlideView({
 
 // ─── Message slide ────────────────────────────────────────────────────────────
 
-function MessageSlide({ m, onInteractiveReady }: { m: Msg; onInteractiveReady: () => void }) {
+function MessageSlide({ m, msgIdx, onInteractiveReady }: { m: Msg; msgIdx: number; onInteractiveReady: () => void }) {
   const name = m.is_anonymous ? "Someone special" : m.contributor_name;
+  const anim = MSG_ANIMS[msgIdx % MSG_ANIMS.length];
 
   if (m.interactive_kind && m.interactive_kind !== "none") {
     return (
-      <section className="absolute inset-0 grid place-items-center px-4 fade-in">
+      <section className="absolute inset-0 grid place-items-center px-4" style={{ animation: "fadeIn 0.45s ease both" }}>
         <div className="w-full max-w-phone">
           <Interactive
             kind={m.interactive_kind} body={m.body} mediaKind={m.media_kind}
@@ -668,13 +698,14 @@ function MessageSlide({ m, onInteractiveReady }: { m: Msg; onInteractiveReady: (
   }
 
   return (
-    <section className="absolute inset-0 grid place-items-center px-6 fade-in">
+    <section className="absolute inset-0 grid place-items-center px-6" style={{ animation: anim }}>
       <article className="w-full max-w-phone text-center">
         {m.media_kind === "image" && m.media_path && (
-          /* eslint-disable-next-line @next/next/no-img-element */
+          // eslint-disable-next-line @next/next/no-img-element
           <img src={publicUrl(m.media_path)} alt="" className="w-full rounded-2xl shadow-card ken-burns" />
         )}
         {m.media_kind === "video" && m.media_path && (
+          // eslint-disable-next-line jsx-a11y/media-has-caption
           <video src={publicUrl(m.media_path)} className="w-full rounded-2xl shadow-card" autoPlay playsInline controls={false} />
         )}
         {m.media_kind === "audio" && m.media_path && (
@@ -694,24 +725,163 @@ function MessageSlide({ m, onInteractiveReady }: { m: Msg; onInteractiveReady: (
   );
 }
 
-// ─── End card ─────────────────────────────────────────────────────────────────
+// ─── Post-play gallery ────────────────────────────────────────────────────────
 
-function EndCard({ firstName, onReplay, slug }: { firstName: string; onReplay: () => void; slug: string }) {
+const INTRO_LABELS: Partial<Record<IntroSlide["kind"], string>> = {
+  "intro-welcome": "Welcome",
+  "intro-occasion": "Occasion",
+  "intro-together": "Together",
+  "intro-about": "About you",
+  "intro-ready": "Ready",
+  "intro-gallery": "Memory",
+};
+
+function SlideThumbnail({
+  slide, idx, introContent, onClick,
+}: {
+  slide: AnySlide;
+  idx: number;
+  introContent: IntroContent | null;
+  onClick: () => void;
+}) {
+  const scene = sceneFor(idx);
+
+  if (slide.kind === "intro") {
+    const s = slide.intro;
+
+    if (s.kind === "intro-gallery" && s.gallery) {
+      const isVideo = s.gallery.kind === "video";
+      return (
+        <button onClick={onClick} className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-ink/10 w-full text-left">
+          {isVideo ? (
+            <div className="absolute inset-0 bg-ink/80 grid place-items-center">
+              <Video className="size-6 text-white" />
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={publicUrl(s.gallery.path)} alt="" className="absolute inset-0 size-full object-cover" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
+          {s.gallery.caption && (
+            <p className="absolute bottom-2 left-2 right-2 text-white text-[10px] line-clamp-2 italic leading-tight">
+              {s.gallery.caption}
+            </p>
+          )}
+        </button>
+      );
+    }
+
+    const label = INTRO_LABELS[s.kind] ?? s.kind;
+    const emoji =
+      s.kind === "intro-welcome" || s.kind === "intro-ready"
+        ? (introContent?.welcome?.emoji ?? "✨")
+        : s.kind === "intro-occasion"
+          ? (introContent?.occasion?.emoji ?? "🎂")
+          : null;
+
+    return (
+      <button
+        onClick={onClick}
+        className="relative aspect-[4/3] rounded-2xl overflow-hidden w-full"
+        style={{ background: scene.bg }}
+      >
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 p-3">
+          {emoji && <span className="text-2xl leading-none">{emoji}</span>}
+          <p className="text-[10px] uppercase tracking-widest text-ink/60 font-medium">{label}</p>
+        </div>
+      </button>
+    );
+  }
+
+  // Message slide
+  const m = slide.msg;
+  const name = m.is_anonymous ? "Someone special" : m.contributor_name;
+  const hasMedia = m.media_kind !== "none" && m.media_path;
+
   return (
-    <section className="absolute inset-0 grid place-items-center px-6 fade-in">
-      <div className="text-center">
-        <span className="text-5xl block mb-4">🫶</span>
-        <p className="text-[11px] uppercase tracking-[0.35em] text-ink/55">That&apos;s all of them</p>
-        <h2 className="serif text-5xl text-ink mt-4 leading-tight">You are loved, {firstName}.</h2>
-        <div className="mt-8 flex flex-col gap-3">
-          <button onClick={onReplay} className="btn-accent shadow-soft inline-flex">
-            <RotateCcw className="size-4" /> Replay
+    <button
+      onClick={onClick}
+      className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-white border border-ink/8 w-full text-left flex flex-col p-3"
+    >
+      {m.media_kind === "image" && m.media_path && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={publicUrl(m.media_path)} alt="" className="absolute inset-0 size-full object-cover" />
+      )}
+      {(m.media_kind === "video" || m.media_kind === "audio") && (
+        <div className="absolute inset-0 bg-ink/5 grid place-items-center">
+          <Play className="size-5 text-ink/30 fill-current" />
+        </div>
+      )}
+      <div className={`relative z-10 flex flex-col h-full ${hasMedia ? "justify-end" : "justify-between"}`}>
+        {m.body && (
+          <p className={`text-[11px] text-ink/80 serif leading-snug line-clamp-3 ${hasMedia ? "bg-white/90 rounded px-1.5 py-0.5" : ""}`}>
+            {m.body}
+          </p>
+        )}
+        <p className="text-[9px] text-ink/45 mt-1 uppercase tracking-widest">— {name}</p>
+      </div>
+    </button>
+  );
+}
+
+function PostPlayGallery({
+  allSlides, firstName, slug, introContent, celebrationTitle, onSelectSlide, onReplay,
+}: {
+  allSlides: AnySlide[];
+  firstName: string;
+  slug: string;
+  introContent: IntroContent | null;
+  celebrationTitle: string;
+  onSelectSlide: (idx: number) => void;
+  onReplay: () => void;
+}) {
+  return (
+    <div
+      className="absolute inset-0 bg-white overflow-y-auto fade-in"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Sticky header */}
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-ink/8 px-4 py-3 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-ink/40">All memories</p>
+          <h2 className="serif text-xl text-ink leading-tight mt-0.5">{celebrationTitle}</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onReplay}
+            className="btn-accent shadow-soft text-xs py-2 px-3 inline-flex gap-1.5"
+          >
+            <RotateCcw className="size-3.5" /> Replay all
           </button>
-          <Link href={`/c/${slug}/celebrate`} className="btn-outline inline-flex">
-            Back to your page
+          <Link
+            href={`/c/${slug}/celebrate`}
+            className="size-9 grid place-items-center rounded-full bg-ink/8 text-ink"
+          >
+            <X className="size-4" />
           </Link>
         </div>
       </div>
-    </section>
+
+      {/* Grid */}
+      <div className="grid grid-cols-2 gap-2.5 p-4">
+        {allSlides.map((slide, idx) => (
+          <SlideThumbnail
+            key={idx}
+            slide={slide}
+            idx={idx}
+            introContent={introContent}
+            onClick={() => onSelectSlide(idx)}
+          />
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="px-4 pb-10 pt-2 text-center">
+        <p className="serif text-2xl text-ink/80 mb-4">You are loved, {firstName}.</p>
+        <Link href={`/c/${slug}/celebrate`} className="btn-outline inline-flex">
+          Back to your page
+        </Link>
+      </div>
+    </div>
   );
 }

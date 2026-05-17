@@ -7,7 +7,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 const nid = customAlphabet("23456789abcdefghjkmnpqrstvwxyz", 16);
 
-const schema = z.object({ ext: z.enum(["jpg", "jpeg", "png", "webp"]) });
+const schema = z.object({ ext: z.enum(["jpg", "jpeg", "png", "webp", "mp4", "mov", "webm"]) });
 
 export async function POST(req: Request) {
   const supabase = await supabaseServer();

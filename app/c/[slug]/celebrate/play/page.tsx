@@ -1,7 +1,6 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isTheme, type Theme } from "@/lib/themes";
-import { isCelebrantUnlocked } from "@/lib/celebrant-unlock";
 import type { IntroContent } from "@/lib/openai/generate-intro";
 import type { GalleryImage } from "./player";
 import { Player } from "./player";
@@ -16,18 +15,11 @@ export default async function PlayPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, recipient_name, event_type, celebration_date, title, tagline, celebrant_description, intro_content, gallery_images, theme, creator_id, security_answer_hash")
+    .select("id, slug, recipient_name, event_type, celebration_date, title, tagline, celebrant_description, intro_content, gallery_images, theme, creator_id")
     .eq("slug", slug)
     .maybeSingle();
 
   if (!page) notFound();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  const isCreator = !!user && user.id === page.creator_id;
-
-  if (page.security_answer_hash && !isCreator && !(await isCelebrantUnlocked(slug))) {
-    redirect(`/c/${slug}/celebrate`);
-  }
 
   const { data: messages } = await supabase
     .from("messages")
