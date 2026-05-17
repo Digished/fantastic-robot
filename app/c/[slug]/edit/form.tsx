@@ -81,9 +81,9 @@ export function EditForm({
   }
 
   async function onGalleryFiles(files: FileList) {
-    const remaining = 8 - galleryImages.length;
+    const remaining = 20 - galleryImages.length;
     const toUpload = Array.from(files).slice(0, remaining);
-    if (toUpload.length === 0) { alert("Maximum 8 gallery items reached."); return; }
+    if (toUpload.length === 0) { alert("Maximum 20 gallery items reached."); return; }
     setUploadingGallery(true);
     for (const file of toUpload) {
       if (file.size > 50 * 1024 * 1024) { alert(`${file.name} is too large (max 50 MB).`); continue; }
@@ -149,7 +149,7 @@ export function EditForm({
         <div>
           <label className="label">Photo &amp; video gallery (optional)</label>
           <p className="text-xs text-ink/45 mt-0.5">
-            Full-screen slides during {firstName}&apos;s opening. Up to 8 items — photos or short videos.
+            Full-screen slides during {firstName}&apos;s opening. Add up to 20 photos or short videos ({galleryImages.length}/20).
           </p>
         </div>
 
@@ -194,7 +194,7 @@ export function EditForm({
           className="hidden"
           onChange={(e) => e.target.files && e.target.files.length > 0 && onGalleryFiles(e.target.files)}
         />
-        {galleryImages.length < 8 && (
+        {galleryImages.length < 20 && (
           <button
             type="button"
             onClick={() => galleryFileRef.current?.click()}

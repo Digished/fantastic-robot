@@ -15,10 +15,6 @@ export default async function PostPaymentPage({
   const sp = await searchParams;
   const reference = sp.reference ?? sp.trxref;
 
-  if (!reference) {
-    return <FailureView slug={slug} reason="No payment reference found." />;
-  }
-
   const admin = supabaseAdmin();
   const { data: page } = await admin
     .from("celebrations")
@@ -30,8 +26,14 @@ export default async function PostPaymentPage({
     return <FailureView slug={slug} reason="That page no longer exists." />;
   }
 
+  // Webhook may have flipped the flag before the user's browser got here.
+  // Treat that as success even if the callback dropped the reference.
   if (page.is_paid_for_creation) {
     redirect(`/c/${slug}?created=1`);
+  }
+
+  if (!reference) {
+    return <FailureView slug={slug} reason="No payment reference found in the callback URL." />;
   }
 
   if (page.creation_payment_reference && page.creation_payment_reference !== reference) {

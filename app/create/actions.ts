@@ -1,6 +1,7 @@
 "use server";
 
 import { customAlphabet } from "nanoid";
+import { headers } from "next/headers";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paystack, PaystackError } from "@/lib/paystack/client";
@@ -97,12 +98,23 @@ export async function createCelebration(
 
   if (error) return { error: error.message };
 
+  // Resolve the public origin from the actual request rather than env so
+  // Paystack always redirects back to the host the user came from. Falling
+  // back to env.appUrl() (which defaults to localhost) was sending people
+  // to a non-existent URL after payment.
+  const h = await headers();
+  const forwardedHost = h.get("x-forwarded-host") ?? h.get("host");
+  const forwardedProto = h.get("x-forwarded-proto") ?? "https";
+  const origin = forwardedHost
+    ? `${forwardedProto}://${forwardedHost}`
+    : env.appUrl();
+
   try {
     const { data } = await paystack.initTransaction({
       email: user.email,
       amount: Number(PAGE_CREATION_FEE_KOBO),
       reference,
-      callback_url: `${env.appUrl()}/c/${slug}/post-payment`,
+      callback_url: `${origin}/c/${slug}/post-payment`,
       metadata: {
         kind: "page_creation",
         slug,
