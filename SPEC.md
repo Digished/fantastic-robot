@@ -2,8 +2,7 @@
 
 Spendbox is a mobile-first web app for creating collaborative celebration pages.
 Friends drop messages (text, audio, video) on a digital wall and optionally
-contribute money as a group gift. Built for Nigeria, optimized for WhatsApp
-sharing.
+contribute money as a group gift. Optimized for WhatsApp sharing.
 
 ---
 
