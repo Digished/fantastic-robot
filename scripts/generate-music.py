@@ -307,6 +307,83 @@ def t_soft_strings():
     return space(buf, 0.24)
 
 
+def t_lofi_chill():
+    return comp(75, [("F", "maj7", 4), ("C", "maj7", 4), ("A", "min7", 4), ("E", "min", 4)],
+                cycles=2, melody_inst=pluck, mel_decay=2.8, mel_vol=0.38, mel_harm=PIANO,
+                pad_vol=0.14, bass_vol=0.28, arp_div=2)
+
+
+def t_afrobeats():
+    return comp(108, [("C", "maj", 2), ("F", "maj", 2), ("A", "min", 2), ("G", "maj", 2)],
+                cycles=4, melody_inst=pluck, mel_decay=7.5, mel_vol=0.36, mel_harm=BELL,
+                pad_vol=0.09, bass_vol=0.38, drums={"kick": 0.58, "hat": 0.30},
+                sparkle=True, arp_div=3)
+
+
+def t_disco_fever():
+    return comp(118, [("A", "min", 2), ("D", "min", 2), ("G", "maj", 2), ("C", "maj", 2)],
+                cycles=4, melody_inst=pluck, mel_decay=8.0, mel_vol=0.30, mel_harm=PLUCK,
+                pad_vol=0.10, bass_vol=0.38, drums={"kick": 0.52, "hat": 0.30},
+                sparkle=True, arp_div=2)
+
+
+def t_summer_vibes():
+    return comp(98, [("D", "maj", 4), ("A", "maj", 4), ("B", "min", 4), ("G", "maj", 4)],
+                cycles=2, melody_inst=pluck, mel_decay=5.5, mel_vol=0.36, mel_harm=PLUCK,
+                pad_vol=0.10, bass_vol=0.28, drums={"kick": 0.38, "hat": 0.20},
+                sparkle=True, arp_div=2)
+
+
+def t_jazz_club():
+    return comp(82, [("F", "maj7", 4), ("A", "min7", 4), ("D", "min7", 4), ("G", "maj7", 4)],
+                cycles=2, melody_inst=pluck, mel_decay=3.0, mel_vol=0.40, mel_harm=PIANO,
+                pad_vol=0.13, bass_vol=0.26, arp_div=2)
+
+
+def t_epic_moment():
+    spb = 60 / 64
+    prog = [("C", "maj", 4), ("A", "min", 4), ("F", "maj", 4), ("G", "maj", 4)]
+    total = sum(b for _, _, b in prog) * spb * 2
+    buf = np.zeros(int(total * SR))
+    t = 0.0
+    for _ in range(2):
+        for root, q, beats in prog:
+            dur = beats * spb
+            for octv in ["2", "3", "4"]:
+                vol = 0.14 if octv == "3" else 0.07
+                for f in chord_freqs(root + octv, q):
+                    place(buf, pad(f, dur + 1.0, STRING, attack=1.0, release=0.9,
+                                   trem=0.07, tremrate=0.25) * vol, t)
+            place(buf, pluck(n2f(root + "5"), 2.0, BELL, 1.8) * 0.16, t + 0.3)
+            t += dur
+    return space(buf, 0.22)
+
+
+def t_retro_arcade():
+    return comp(138, [("C", "maj", 2), ("G", "maj", 2), ("A", "min", 2), ("F", "maj", 2)],
+                cycles=4, melody_inst=pluck, mel_decay=12.0, mel_vol=0.28, mel_harm=PLUCK,
+                pad_vol=0.06, bass_vol=0.30, drums={"kick": 0.48, "hat": 0.28},
+                sparkle=True, arp_div=4)
+
+
+def t_reggae_chill():
+    return comp(88, [("C", "maj", 4), ("F", "maj", 4), ("G", "maj", 4), ("F", "maj", 4)],
+                cycles=2, melody_inst=pluck, mel_decay=4.5, mel_vol=0.38, mel_harm=PLUCK,
+                pad_vol=0.09, bass_vol=0.36, drums={"kick": 0.44, "hat": 0.22}, arp_div=2)
+
+
+def t_funky_groove():
+    return comp(112, [("A", "min7", 2), ("D", "min7", 2), ("G", "maj", 2), ("C", "maj7", 2)],
+                cycles=4, melody_inst=pluck, mel_decay=6.0, mel_vol=0.32, mel_harm=PLUCK,
+                pad_vol=0.10, bass_vol=0.44, drums={"kick": 0.56, "hat": 0.28}, arp_div=2)
+
+
+def t_midnight_rnb():
+    return comp(68, [("C", "maj7", 4), ("A", "min7", 4), ("F", "maj7", 4), ("G", "maj", 4)],
+                cycles=2, melody_inst=pluck, mel_decay=2.5, mel_vol=0.40, mel_harm=PIANO,
+                pad_vol=0.14, bass_vol=0.30, arp_div=2)
+
+
 TRACKS = {
     "happy-birthday": t_happy_birthday,
     "birthday-bounce": t_birthday_bounce,
@@ -316,6 +393,16 @@ TRACKS = {
     "dreamy": t_dreamy,
     "party-pop": t_party_pop,
     "soft-strings": t_soft_strings,
+    "lo-fi-chill": t_lofi_chill,
+    "afrobeats": t_afrobeats,
+    "disco-fever": t_disco_fever,
+    "summer-vibes": t_summer_vibes,
+    "jazz-club": t_jazz_club,
+    "epic-moment": t_epic_moment,
+    "retro-arcade": t_retro_arcade,
+    "reggae-chill": t_reggae_chill,
+    "funky-groove": t_funky_groove,
+    "midnight-rnb": t_midnight_rnb,
 }
 
 
