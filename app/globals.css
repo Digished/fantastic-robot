@@ -151,6 +151,16 @@
   .label { @apply text-[13px] font-medium text-ink/70; }
   .card  { @apply rounded-3xl2 bg-white shadow-ring p-5; }
 
+  /* Theme-aware on-mesh text. Each theme defines --hero-ink to contrast with
+     its mesh palette. color-mix gives us readable, palette-matched softer tones
+     instead of plain transparent black. */
+  .slide-ink        { color: var(--hero-ink); }
+  .slide-ink-soft   { color: color-mix(in srgb, var(--hero-ink) 78%, transparent); }
+  .slide-ink-muted  { color: color-mix(in srgb, var(--hero-ink) 55%, transparent); }
+  .slide-ink-faint  { color: color-mix(in srgb, var(--hero-ink) 38%, transparent); }
+  .slide-accent     { color: var(--accent); }
+  .slide-accent-soft{ color: color-mix(in srgb, var(--accent) 80%, transparent); }
+
   /* Polaroid wall cards */
   .polaroid {
     @apply relative bg-white rounded-[14px] p-3 pb-5 shadow-card;
@@ -241,6 +251,34 @@
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
+
+/* ─── Global click-loading affordance ──────────────────────────────────
+   Toggled by components/global-button-loading.tsx on every <button> and
+   <a href> click. Gives instant visual feedback so the user never wonders
+   whether the tap registered. */
+.btn-is-loading {
+  position: relative;
+  pointer-events: none;
+  cursor: wait;
+}
+.btn-is-loading > * {
+  opacity: 0.35;
+  transition: opacity .15s ease;
+}
+.btn-is-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 1.1em; height: 1.1em;
+  margin: -0.55em 0 0 -0.55em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 9999px;
+  animation: btnSpin .65s linear infinite;
+  pointer-events: none;
+  opacity: 0.9;
+}
+@keyframes btnSpin { to { transform: rotate(360deg); } }
 
 /* ─── Surprise-play subtle word entrance ───────────────────────────── */
 @keyframes wordIn {

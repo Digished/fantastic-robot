@@ -62,6 +62,27 @@ function formatDate(iso: string): string {
   });
 }
 
+// Strip the recipient's name out of AI copy at render time. Old intro_content
+// rows pre-date the no-name rule, so the welcome subtext can still echo the
+// name even though the slide already shows it prominently. Belt-and-braces.
+function stripName(text: string | null | undefined, recipientName: string): string {
+  if (!text) return "";
+  const names = [recipientName, ...recipientName.split(/\s+/)]
+    .map((n) => n.trim())
+    .filter((n) => n.length >= 2);
+  let out = text;
+  for (const n of names) {
+    const re = new RegExp(`(^|[\\s,!.?;:—–-])${n}(?:'s|s)?([\\s,!.?;:—–-]|$)`, "gi");
+    out = out.replace(re, (_, a, b) => a + b);
+  }
+  return out
+    .replace(/\s+([,.!?;:])/g, "$1")
+    .replace(/,\s*,/g, ",")
+    .replace(/\s{2,}/g, " ")
+    .replace(/^[\s,]+|[\s,]+$/g, "")
+    .trim();
+}
+
 const MSG_ANIMS = [
   "slideFromLeft 0.6s cubic-bezier(.2,.7,.2,1) both",
   "slideFromRight 0.6s cubic-bezier(.2,.7,.2,1) both",
@@ -358,7 +379,7 @@ export function Player({
               );
             })}
           </div>
-          <button onClick={(e) => { e.stopPropagation(); setPaused((p) => !p); }}
+          <button data-no-loading="true" onClick={(e) => { e.stopPropagation(); setPaused((p) => !p); }}
             className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label={paused ? "Play" : "Pause"}>
             {paused ? <Play className="size-4 fill-current" /> : <Pause className="size-4 fill-current" />}
           </button>
@@ -378,6 +399,7 @@ export function Player({
               key={current.intro.id}
               slide={current.intro}
               firstName={firstName}
+              recipientName={recipientName}
               eventType={eventType}
               celebrationDate={celebrationDate}
               celebrationTitle={celebrationTitle}
@@ -416,11 +438,11 @@ export function Player({
       {/* Desktop edge nav */}
       {!done && (
         <>
-          <button onClick={(e) => { e.stopPropagation(); prev(); }} aria-label="Previous"
+          <button data-no-loading="true" onClick={(e) => { e.stopPropagation(); prev(); }} aria-label="Previous"
             className="absolute left-2 top-1/2 -translate-y-1/2 z-20 size-10 rounded-full glass-dark text-white grid place-items-center md:flex hidden">
             <ChevronLeft className="size-5" />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); next(); }} aria-label="Next"
+          <button data-no-loading="true" onClick={(e) => { e.stopPropagation(); next(); }} aria-label="Next"
             className="absolute right-2 top-1/2 -translate-y-1/2 z-20 size-10 rounded-full glass-dark text-white grid place-items-center md:flex hidden">
             <ChevronRight className="size-5" />
           </button>
@@ -433,11 +455,12 @@ export function Player({
 // ─── Intro slide renderer ─────────────────────────────────────────────────────
 
 function IntroSlideView({
-  slide, firstName, eventType, celebrationDate, celebrationTitle,
+  slide, firstName, recipientName, eventType, celebrationDate, celebrationTitle,
   tagline, celebrantDescription, introContent,
 }: {
   slide: IntroSlide;
   firstName: string;
+  recipientName: string;
   eventType: string;
   celebrationDate: string;
   celebrationTitle: string;
@@ -450,7 +473,11 @@ function IntroSlideView({
   // ── Welcome ──────────────────────────────────────────────────────────────────
   if (slide.kind === "intro-welcome") {
     const emoji = ai?.welcome.emoji ?? "✨";
-    const subtext = ai?.welcome.subtext ?? tagline ?? null;
+    const rawSubtext = ai?.welcome.subtext ?? tagline ?? null;
+    // The slide already shows the name in the badge AND the headline.
+    // Strip any echo of it from the subtext so we never get
+    // "welcome to this joyous celebration, Tony" alongside "Tony".
+    const subtext = stripName(rawSubtext, recipientName) || null;
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
         <div className="absolute -top-24 -right-24 size-80 rounded-full bg-white/[0.08] blur-3xl pointer-events-none" aria-hidden />
@@ -458,7 +485,7 @@ function IntroSlideView({
         <SparkleField />
 
         <div className="absolute top-16 left-0 right-0 flex justify-center fade-up" style={{ animationDelay: "0ms" }}>
-          <span className="inline-block rounded-full bg-white/20 backdrop-blur-sm px-4 py-1.5 text-[11px] uppercase tracking-[0.22em] text-ink/65">
+          <span className="inline-block rounded-full bg-white/15 backdrop-blur-sm px-4 py-1.5 text-[11px] uppercase tracking-[0.22em] slide-ink-soft">
             For {firstName}
           </span>
         </div>
@@ -474,13 +501,13 @@ function IntroSlideView({
             {emoji}
           </span>
           <h1
-            className="serif text-ink leading-[0.85]"
+            className="serif slide-accent leading-[0.85]"
             style={{ fontSize: "clamp(2.8rem,11vw,5.5rem)" }}
           >
             <WordsIn text={firstName} baseDelay={120} />
           </h1>
           {subtext && (
-            <p className="mt-6 text-ink/75 text-xl leading-snug max-w-sm">
+            <p className="mt-6 slide-ink-soft text-xl leading-snug max-w-sm">
               <WordsIn text={subtext} baseDelay={400} />
             </p>
           )}
@@ -490,11 +517,11 @@ function IntroSlideView({
           className="absolute bottom-14 left-0 right-0 flex items-center justify-center gap-5 fade-up"
           style={{ animationDelay: "450ms" }}
         >
-          <span className="h-px w-14 bg-ink/20" />
-          <span className="text-[9px] uppercase tracking-[0.4em] text-ink/25">
+          <span className="h-px w-14 bg-[color:var(--hero-ink)] opacity-20" />
+          <span className="text-[9px] uppercase tracking-[0.4em] slide-ink-faint">
             {formatDate(celebrationDate)}
           </span>
-          <span className="h-px w-14 bg-ink/20" />
+          <span className="h-px w-14 bg-[color:var(--hero-ink)] opacity-20" />
         </div>
       </section>
     );
@@ -522,18 +549,18 @@ function IntroSlideView({
         <div className="absolute -top-16 -right-16 size-72 rounded-full bg-white/[0.07] blur-3xl pointer-events-none" aria-hidden />
 
         <div className="absolute inset-x-0 bottom-0 pb-16 px-10 text-center">
-          <p className="text-[11px] uppercase tracking-[0.28em] text-ink/45 mb-5 fade-up">
+          <p className="text-[11px] uppercase tracking-[0.28em] slide-ink-faint mb-5 fade-up">
             {formatDate(celebrationDate)}
           </p>
           <h2
-            className="serif text-ink leading-[0.9] fade-up"
+            className="serif slide-accent leading-[0.9] fade-up"
             style={{ fontSize: "clamp(2.4rem,9vw,4.5rem)", animationDelay: "130ms" }}
           >
             {title}
           </h2>
           {subtext && (
             <p
-              className="mt-5 text-ink/65 text-[1.1rem] leading-snug max-w-xs mx-auto fade-up"
+              className="mt-5 slide-ink-soft text-[1.1rem] leading-snug max-w-xs mx-auto fade-up"
               style={{ animationDelay: "260ms" }}
             >
               {subtext}
@@ -586,14 +613,14 @@ function IntroSlideView({
           {ai ? (
             <>
               <h2
-                className="serif text-ink leading-[1.05] fade-up"
+                className="serif slide-ink leading-[1.05] fade-up"
                 style={{ fontSize: "clamp(2rem,8vw,3.4rem)" }}
               >
                 {ai.together.headline}
               </h2>
               {ai.together.subtext && (
                 <p
-                  className="mt-6 text-ink/70 text-xl leading-snug fade-up"
+                  className="mt-6 slide-ink-soft text-xl leading-snug fade-up"
                   style={{ animationDelay: "200ms" }}
                 >
                   {ai.together.subtext}
@@ -602,7 +629,7 @@ function IntroSlideView({
             </>
           ) : (
             <p
-              className="serif text-ink/75 leading-tight fade-up"
+              className="serif slide-ink-soft leading-tight fade-up"
               style={{ fontSize: "clamp(1.8rem,7vw,2.8rem)" }}
             >
               {firstName}, today is yours.
@@ -626,11 +653,11 @@ function IntroSlideView({
         <div className="relative z-10 px-10">
           {aiAbout ? (
             <>
-              <p className="text-[11px] uppercase tracking-[0.28em] text-ink/40 mb-6 fade-up">
+              <p className="text-[11px] uppercase tracking-[0.28em] slide-ink-faint mb-6 fade-up">
                 About you
               </p>
               <h2
-                className="serif text-ink leading-[1.05] mb-9 fade-up"
+                className="serif slide-accent leading-[1.05] mb-9 fade-up"
                 style={{ fontSize: "clamp(1.9rem,7.5vw,3rem)", animationDelay: "100ms" }}
               >
                 {aiAbout.headline}
@@ -638,9 +665,10 @@ function IntroSlideView({
 
               <div className="relative pl-5">
                 <div
-                  className="absolute left-0 top-0 w-0.5 bg-ink/20 rounded-full"
+                  className="absolute left-0 top-0 w-0.5 rounded-full"
                   style={{
                     height: "100%",
+                    background: "color-mix(in srgb, var(--accent) 55%, transparent)",
                     animation: "lineGrow 1.6s ease-out forwards",
                     animationDelay: "300ms",
                     transform: "scaleY(0)",
@@ -651,7 +679,7 @@ function IntroSlideView({
                   {aiAbout.lines.map((line, idx) => (
                     <p
                       key={idx}
-                      className="text-ink/85 text-[1.1rem] leading-snug fade-up"
+                      className="slide-ink text-[1.1rem] leading-snug fade-up"
                       style={{ animationDelay: `${220 + idx * 160}ms` }}
                     >
                       {line}
@@ -661,7 +689,7 @@ function IntroSlideView({
               </div>
             </>
           ) : celebrantDescription ? (
-            <blockquote className="serif text-ink text-2xl leading-relaxed line-clamp-6 italic fade-up">
+            <blockquote className="serif slide-ink text-2xl leading-relaxed line-clamp-6 italic fade-up">
               &ldquo;{celebrantDescription}&rdquo;
             </blockquote>
           ) : null}
@@ -727,10 +755,10 @@ function IntroSlideView({
               {ch.emoji}
             </span>
           )}
-          <h2 className="serif text-ink leading-[0.95]" style={{ fontSize: "clamp(2rem,8vw,3.2rem)" }}>
+          <h2 className="serif slide-accent leading-[0.95]" style={{ fontSize: "clamp(2rem,8vw,3.2rem)" }}>
             <WordsIn text={ch.headline} baseDelay={120} />
           </h2>
-          <p className="mt-5 text-ink/75 text-lg leading-snug">
+          <p className="mt-5 slide-ink-soft text-lg leading-snug">
             <WordsIn text={ch.body} baseDelay={380} />
           </p>
         </div>
@@ -762,13 +790,13 @@ function IntroSlideView({
           {fin.emoji ?? "✨"}
         </span>
         <h2
-          className="serif text-ink leading-[0.95] relative z-10"
+          className="serif slide-accent leading-[0.95] relative z-10"
           style={{ fontSize: "clamp(2.2rem,9vw,3.8rem)" }}
         >
           <WordsIn text={fin.headline} baseDelay={150} />
         </h2>
         {fin.subtext && (
-          <p className="mt-6 text-ink/75 text-lg leading-snug max-w-sm relative z-10">
+          <p className="mt-6 slide-ink-soft text-lg leading-snug max-w-sm relative z-10">
             <WordsIn text={fin.subtext} baseDelay={440} />
           </p>
         )}
@@ -812,14 +840,14 @@ function IntroSlideView({
       {ai ? (
         <>
           <h2
-            className="serif text-ink leading-[0.9] fade-up relative z-10"
+            className="serif slide-ink leading-[0.9] fade-up relative z-10"
             style={{ fontSize: "clamp(2.4rem,9vw,4.2rem)" }}
           >
             {ai.ready.headline}
           </h2>
           {ai.ready.subtext && (
             <p
-              className="mt-5 text-ink/65 text-lg leading-snug max-w-xs fade-up relative z-10"
+              className="mt-5 slide-ink-soft text-lg leading-snug max-w-xs fade-up relative z-10"
               style={{ animationDelay: "180ms" }}
             >
               {ai.ready.subtext}
@@ -827,11 +855,11 @@ function IntroSlideView({
           )}
         </>
       ) : tagline ? (
-        <p className="serif text-2xl text-ink/80 fade-up relative z-10">{tagline}</p>
+        <p className="serif text-2xl slide-ink-soft fade-up relative z-10">{tagline}</p>
       ) : null}
 
       <p
-        className="mt-12 text-[10px] uppercase tracking-[0.4em] text-ink/30 fade-up relative z-10"
+        className="mt-12 text-[10px] uppercase tracking-[0.4em] slide-ink-faint fade-up relative z-10"
         style={{ animationDelay: "400ms" }}
       >
         tap to open
@@ -878,11 +906,11 @@ function MessageSlide({ m, msgIdx, onInteractiveReady }: { m: Msg; msgIdx: numbe
           </div>
         )}
         {m.body && (
-          <p className={`mt-6 text-ink whitespace-pre-wrap serif ${m.body.length < 80 ? "text-4xl leading-tight" : "text-2xl leading-snug"}`}>
+          <p className={`mt-6 slide-ink whitespace-pre-wrap serif ${m.body.length < 80 ? "text-4xl leading-tight" : "text-2xl leading-snug"}`}>
             <WordsIn text={m.body} baseDelay={120} />
           </p>
         )}
-        <p className="mt-7 text-[11px] uppercase tracking-[0.3em] text-ink/60 fade-up" style={{ animationDelay: "350ms" }}>— {name}</p>
+        <p className="mt-7 text-[11px] uppercase tracking-[0.3em] slide-accent-soft fade-up" style={{ animationDelay: "350ms" }}>— {name}</p>
       </article>
     </section>
   );
