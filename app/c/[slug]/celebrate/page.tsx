@@ -87,7 +87,10 @@ export default async function CelebrantPage({
 
               <div className="relative z-10 mt-auto px-5 pb-7 text-white">
                 <p className="fade-up text-[10px] uppercase tracking-[0.35em] text-white/85">
-                  {page.event_type.replace("_", " ")} · {formatDate(page.celebration_date)}
+                  {!["other", "surprise_gift"].includes(page.event_type) && (
+                    <span>{page.event_type.replace(/_/g, " ")} · </span>
+                  )}
+                  {formatDate(page.celebration_date)}
                 </p>
                 <h1 className="fade-up mt-3 serif text-5xl leading-[0.95] drop-shadow-sm">
                   Hi {page.recipient_name.split(" ")[0]},

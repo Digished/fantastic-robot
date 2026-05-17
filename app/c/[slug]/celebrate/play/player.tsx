@@ -56,10 +56,6 @@ const EVENT_EMOJI: Record<string, string> = {
   other: "🎉",
 };
 
-function eventLabel(type: string): string {
-  return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-NG", {
     day: "numeric", month: "long", year: "numeric",
@@ -291,10 +287,7 @@ function IntroSlideView({
   if (slide.kind === "intro-welcome") {
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
-        <span className="text-6xl mb-4 animate-bounce">🎉</span>
-        <p className="text-[11px] uppercase tracking-[0.4em] text-ink/50 mb-3">
-          {eventLabel(eventType)}
-        </p>
+        <span className="text-6xl mb-6 animate-bounce">🎉</span>
         <h1 className="serif text-6xl text-ink leading-[0.9] drop-shadow-sm">
           Hi {firstName},
         </h1>
@@ -318,10 +311,7 @@ function IntroSlideView({
     const emoji = EVENT_EMOJI[eventType] ?? "🎉";
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
-        <span className="text-7xl mb-6">{emoji}</span>
-        <p className="text-[10px] uppercase tracking-[0.45em] text-ink/45 mb-2">
-          We are celebrating
-        </p>
+        <span className="text-7xl mb-7">{emoji}</span>
         <h2 className="serif text-4xl text-ink leading-tight max-w-xs">
           {celebrationTitle}
         </h2>
@@ -336,18 +326,17 @@ function IntroSlideView({
   if (slide.kind === "intro-together") {
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
-        <div className="flex justify-center gap-1 mb-6 text-3xl">
+        <div className="flex justify-center gap-1 mb-8 text-3xl">
           {["❤️", "🧡", "💛", "💚", "💙"].map((e, i) => (
             <span key={i} style={{ animationDelay: `${i * 120}ms` }} className="animate-bounce">{e}</span>
           ))}
         </div>
-        <p className="text-[10px] uppercase tracking-[0.4em] text-ink/45 mb-3">Made with love</p>
         {messageCount > 0 ? (
           <>
-            <h2 className="serif text-5xl text-ink leading-tight">
+            <h2 className="serif text-6xl text-ink leading-tight">
               {messageCount}
             </h2>
-            <p className="mt-2 serif text-2xl text-ink/75">
+            <p className="mt-3 serif text-2xl text-ink/75">
               {messageCount === 1 ? "person wrote to you" : "people wrote to you"}
             </p>
           </>
@@ -356,9 +345,6 @@ function IntroSlideView({
             Your celebration is just getting started 🌱
           </h2>
         )}
-        <p className="mt-5 text-ink/55 text-sm">
-          Each one thought of you ✨
-        </p>
       </section>
     );
   }
@@ -366,8 +352,7 @@ function IntroSlideView({
   if (slide.kind === "intro-about") {
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
-        <span className="text-4xl mb-4">🌸</span>
-        <p className="text-[10px] uppercase tracking-[0.4em] text-ink/45 mb-4">About {firstName}</p>
+        <span className="text-4xl mb-6">🌸</span>
         <blockquote className="serif text-ink text-xl leading-relaxed max-w-sm line-clamp-6 italic">
           &ldquo;{celebrantDescription}&rdquo;
         </blockquote>
@@ -378,19 +363,10 @@ function IntroSlideView({
   // intro-ready
   return (
     <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
-      <span className="text-5xl mb-5">💌</span>
+      <span className="text-5xl mb-6">💌</span>
       <h2 className="serif text-4xl text-ink leading-tight">
         {messageCount > 0 ? "Your messages await" : "Your celebration awaits"}
       </h2>
-      <p className="mt-3 text-ink/60 text-base">
-        {messageCount > 0
-          ? "Tap → to open the first one"
-          : "Tap → to continue"}
-      </p>
-      <div className="mt-8 flex items-center gap-1.5 text-ink/40 text-sm">
-        <span>tap anywhere to go forward</span>
-        <span className="text-base">→</span>
-      </div>
     </section>
   );
 }
