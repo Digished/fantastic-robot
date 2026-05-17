@@ -3,23 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { Heart } from "lucide-react";
 import type { InteractiveProps } from "./types";
+import { Revealed } from "./revealed";
 
 type Burst = { id: number; x: number; y: number };
 
-export function HeartInteractive({ body, authorName, onRevealed, surface = "dark" }: InteractiveProps) {
+export function HeartInteractive({
+  body, mediaKind, mediaPath, authorName, onRevealed, surface = "dark",
+}: InteractiveProps) {
   const [bursts, setBursts] = useState<Burst[]>([]);
   const [count, setCount] = useState(0);
+  const [done, setDone] = useState(false);
   const idRef = useRef(0);
-  const inkClass = surface === "dark" ? "text-white" : "text-ink";
   const subClass = surface === "dark" ? "text-white/70" : "text-ink/60";
-  const calledRef = useRef(false);
 
   useEffect(() => {
-    if (count >= 3 && !calledRef.current) {
-      calledRef.current = true;
+    if (count >= 3 && !done) {
+      setDone(true);
       onRevealed?.();
     }
-  }, [count, onRevealed]);
+  }, [count, done, onRevealed]);
 
   function spawn(e: React.PointerEvent) {
     const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
@@ -36,26 +38,19 @@ export function HeartInteractive({ body, authorName, onRevealed, surface = "dark
       onPointerDown={spawn}
       className="relative w-full min-h-[60vh] flex flex-col items-center justify-center text-center px-4 select-none overflow-hidden"
     >
-      {body && (
-        <p className={`serif whitespace-pre-wrap ${inkClass} ${
-          body.length < 80 ? "text-4xl leading-tight" : "text-2xl leading-snug"
-        }`}>{body}</p>
-      )}
-      <p className={`mt-7 text-[11px] uppercase tracking-[0.3em] ${subClass}`}>— {authorName}</p>
+      <Revealed body={body} mediaKind={mediaKind} mediaPath={mediaPath} authorName={authorName} surface={surface} />
       <p className={`mt-6 text-sm uppercase tracking-[0.3em] ${subClass}`}>
         Tap anywhere — send love back ({count})
       </p>
 
       {bursts.map((b) => (
-        <Heart
-          key={b.id}
+        <Heart key={b.id}
           className="pointer-events-none absolute size-8 text-[var(--accent)] fill-current"
           style={{
             left: b.x - 16, top: b.y - 16,
             animation: "heartFloat 1.2s ease-out forwards",
             filter: "drop-shadow(0 0 12px rgba(190, 24, 93, 0.45))",
-          }}
-        />
+          }} />
       ))}
 
       <style>{`

@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { Gift } from "lucide-react";
 import type { InteractiveProps } from "./types";
+import { Revealed } from "./revealed";
 
-export function GiftInteractive({ body, authorName, onRevealed, surface = "dark" }: InteractiveProps) {
+export function GiftInteractive({
+  body, mediaKind, mediaPath, authorName, onRevealed, surface = "dark",
+}: InteractiveProps) {
   const [opened, setOpened] = useState(false);
-  const inkClass = surface === "dark" ? "text-white" : "text-ink";
   const subClass = surface === "dark" ? "text-white/70" : "text-ink/60";
 
   useEffect(() => { if (opened) onRevealed?.(); }, [opened, onRevealed]);
@@ -33,16 +35,9 @@ export function GiftInteractive({ body, authorName, onRevealed, surface = "dark"
           <p className={`mt-8 text-sm uppercase tracking-[0.3em] ${subClass}`}>Tap to unwrap</p>
         </>
       ) : (
-        <div className="w-full fade-up">
+        <div className="w-full fade-up relative">
           <Confetti />
-          {body && (
-            <p className={`serif whitespace-pre-wrap ${inkClass} ${
-              body.length < 80 ? "text-4xl leading-tight" : "text-2xl leading-snug"
-            }`}>{body}</p>
-          )}
-          <p className={`mt-8 text-[11px] uppercase tracking-[0.3em] ${subClass}`}>
-            — {authorName}
-          </p>
+          <Revealed body={body} mediaKind={mediaKind} mediaPath={mediaPath} authorName={authorName} surface={surface} />
         </div>
       )}
 
@@ -82,7 +77,7 @@ function Confetti() {
       <style>{`
         @keyframes confettiFall {
           0%   { opacity: 1; transform: translateY(-40px) rotate(0deg); }
-          100% { opacity: 0; transform: translateY(220px) rotate(360deg); }
+          100% { opacity: 0; transform: translateY(260px) rotate(360deg); }
         }
       `}</style>
     </div>

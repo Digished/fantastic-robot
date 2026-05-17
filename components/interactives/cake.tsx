@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import type { InteractiveProps } from "./types";
+import { Revealed } from "./revealed";
 
-export function CakeInteractive({ body, payload, authorName, onRevealed, surface = "dark" }: InteractiveProps) {
+export function CakeInteractive({
+  body, mediaKind, mediaPath, payload, authorName, onRevealed, surface = "dark",
+}: InteractiveProps) {
   const requested = Math.max(1, Math.min(12, Number(payload?.candles ?? 5)));
   const [lit, setLit] = useState<boolean[]>(() => Array.from({ length: requested }, () => true));
   const allOut = lit.every((x) => !x);
-  const inkClass = surface === "dark" ? "text-white" : "text-ink";
   const subClass = surface === "dark" ? "text-white/70" : "text-ink/60";
 
   useEffect(() => { if (allOut) onRevealed?.(); }, [allOut, onRevealed]);
@@ -20,7 +22,6 @@ export function CakeInteractive({ body, payload, authorName, onRevealed, surface
     <div className="w-full flex flex-col items-center text-center px-4 select-none">
       {!allOut && (
         <>
-          {/* Candles row */}
           <div className="relative w-72 flex justify-center items-end gap-2 mb-1 z-10">
             {lit.map((on, i) => (
               <button key={i} onClick={() => extinguish(i)} aria-label={`Blow out candle ${i + 1}`}
@@ -31,8 +32,7 @@ export function CakeInteractive({ body, payload, authorName, onRevealed, surface
                           background: "radial-gradient(circle at 50% 30%, #FFF0B3 0%, #FFB627 55%, #E25822 100%)",
                           boxShadow: "0 0 12px 2px rgba(255,170,40,0.7)",
                           animation: "flameFlicker 0.6s ease-in-out infinite alternate",
-                        }}
-                  />
+                        }} />
                 ) : (
                   <span className="block size-1.5 rounded-full mb-1 bg-white/40" />
                 )}
@@ -42,7 +42,6 @@ export function CakeInteractive({ body, payload, authorName, onRevealed, surface
             ))}
           </div>
 
-          {/* Cake body */}
           <div className="w-72 rounded-t-2xl shadow-card"
                style={{ background: "linear-gradient(180deg, #FFF7ED 0%, #FED7AA 100%)", height: 28 }} />
           <div className="w-72 shadow-card"
@@ -59,14 +58,7 @@ export function CakeInteractive({ body, payload, authorName, onRevealed, surface
       {allOut && (
         <div className="w-full fade-up">
           <p className={`text-[11px] uppercase tracking-[0.35em] mb-4 ${subClass}`}>Your wish</p>
-          {body && (
-            <p className={`serif whitespace-pre-wrap ${inkClass} ${
-              body.length < 80 ? "text-4xl leading-tight" : "text-2xl leading-snug"
-            }`}>{body}</p>
-          )}
-          <p className={`mt-8 text-[11px] uppercase tracking-[0.3em] ${subClass}`}>
-            — {authorName}
-          </p>
+          <Revealed body={body} mediaKind={mediaKind} mediaPath={mediaPath} authorName={authorName} surface={surface} />
         </div>
       )}
 

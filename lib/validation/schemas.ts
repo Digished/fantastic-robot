@@ -46,11 +46,15 @@ export const messageSchema = z.object({
   mediaKind: z.enum(["none", "audio", "video", "image"]).default("none"),
   mediaPath: z.string().optional(),
   mediaDurationMs: z.number().int().nonnegative().optional(),
-  interactiveKind: z.enum(["none", "gift", "letter", "cake", "heart"]).default("none"),
+  interactiveKind: z.enum([
+    "none","gift","letter","cake","heart",
+    "scratch","polaroid","balloons","jar","sparkler","toast",
+  ]).default("none"),
   interactivePayload: z.record(z.string(), z.unknown()).optional(),
   contributorName: z.string().min(1).max(60),
   contributorEmail: z.string().email().optional(),
   contributorPhone: z.string().max(24).optional(),
+  contributorSessionId: z.string().min(8).max(64).optional(),
   isAnonymous: z.boolean().default(false),
 }).refine(
   (m) =>
@@ -59,6 +63,11 @@ export const messageSchema = z.object({
     m.interactiveKind !== "none",
   { message: "message must have text, media, or an interactive surprise" },
 );
+
+export const editMessageSchema = z.object({
+  body: z.string().max(500).optional(),
+  contributorSessionId: z.string().min(8).max(64),
+});
 
 export const contributeSchema = z.object({
   amountKobo: z.coerce.bigint().refine((n) => n >= 50_000n, "₦500 minimum"),

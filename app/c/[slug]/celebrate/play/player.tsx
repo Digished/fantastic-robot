@@ -16,6 +16,7 @@ type Msg = {
   media_duration_ms: number | null;
   interactive_kind: InteractiveKind;
   interactive_payload: Record<string, unknown> | null;
+  contributor_session_id?: string | null;
   created_at: string;
 };
 
@@ -216,6 +217,8 @@ function Slide({
           <Interactive
             kind={m.interactive_kind}
             body={m.body}
+            mediaKind={m.media_kind}
+            mediaPath={m.media_path}
             payload={m.interactive_payload}
             authorName={name}
             surface="light"

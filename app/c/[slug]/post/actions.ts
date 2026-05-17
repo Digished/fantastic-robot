@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { messageSchema } from "@/lib/validation/schemas";
+import { editMessageSchema, messageSchema } from "@/lib/validation/schemas";
 
 export type PostState = { error?: string };
 
@@ -29,11 +29,11 @@ export async function postMessage(
     contributorName: formData.get("contributorName"),
     contributorEmail: (formData.get("contributorEmail") as string) || undefined,
     contributorPhone: (formData.get("contributorPhone") as string) || undefined,
+    contributorSessionId: (formData.get("contributorSessionId") as string) || undefined,
     isAnonymous: formData.get("isAnonymous") === "on",
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  // Enforce duration caps server-side as a safety net.
   if (parsed.data.mediaKind === "audio" && (parsed.data.mediaDurationMs ?? 0) > 20_000) {
     return { error: "Audio must be 20 seconds or less." };
   }
@@ -64,8 +64,70 @@ export async function postMessage(
     media_duration_ms: parsed.data.mediaDurationMs ?? null,
     interactive_kind: parsed.data.interactiveKind,
     interactive_payload: parsed.data.interactivePayload ?? null,
+    contributor_session_id: parsed.data.contributorSessionId ?? null,
   });
   if (error) return { error: error.message };
 
   redirect(`/c/${slug}?posted=1`);
+}
+
+export type EditState = { error?: string; ok?: boolean };
+
+export async function editOwnMessage(
+  slug: string,
+  messageId: string,
+  _prev: EditState,
+  formData: FormData,
+): Promise<EditState> {
+  const parsed = editMessageSchema.safeParse({
+    body: (formData.get("body") as string) || undefined,
+    contributorSessionId: formData.get("contributorSessionId"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const admin = supabaseAdmin();
+
+  // Verify the message belongs to this session id.
+  const { data: msg } = await admin
+    .from("messages")
+    .select("id, celebration_id, contributor_session_id, deleted_at")
+    .eq("id", messageId)
+    .maybeSingle();
+  if (!msg || msg.deleted_at) return { error: "Message not found." };
+  if (!msg.contributor_session_id || msg.contributor_session_id !== parsed.data.contributorSessionId) {
+    return { error: "You can only edit your own card." };
+  }
+
+  const { error } = await admin
+    .from("messages")
+    .update({ body: parsed.data.body ?? null })
+    .eq("id", messageId);
+  if (error) return { error: error.message };
+
+  return { ok: true };
+}
+
+export async function deleteOwnMessage(
+  messageId: string,
+  contributorSessionId: string,
+): Promise<{ error?: string; ok?: boolean }> {
+  if (!contributorSessionId) return { error: "Missing session." };
+
+  const admin = supabaseAdmin();
+  const { data: msg } = await admin
+    .from("messages")
+    .select("id, contributor_session_id, deleted_at")
+    .eq("id", messageId)
+    .maybeSingle();
+  if (!msg || msg.deleted_at) return { error: "Message not found." };
+  if (msg.contributor_session_id !== contributorSessionId) {
+    return { error: "Not your card." };
+  }
+
+  const { error } = await admin
+    .from("messages")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", messageId);
+  if (error) return { error: error.message };
+  return { ok: true };
 }

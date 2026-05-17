@@ -84,6 +84,8 @@ export function CardViewer({
               <Interactive
                 kind={m.interactive_kind}
                 body={m.body}
+                mediaKind={m.media_kind}
+                mediaPath={m.media_path}
                 payload={m.interactive_payload}
                 authorName={name}
                 surface="dark"
