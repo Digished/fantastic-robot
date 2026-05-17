@@ -29,6 +29,8 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   { id: "reggae-chill",     label: "Reggae Chill",       mood: "Easy-going island rhythm" },
   { id: "funky-groove",     label: "Funky Groove",       mood: "Deep bass, heavy pocket" },
   { id: "midnight-rnb",     label: "Midnight R&B",       mood: "Smooth and soulful late-night" },
+  { id: "bossa-nova",       label: "Bossa Nova",         mood: "Breezy Brazilian jazz swing" },
+  { id: "gospel-joy",       label: "Gospel Joy",         mood: "Uplifting, full-of-life gospel" },
 ];
 
 export const MUSIC_IDS = MUSIC_TRACKS.map((t) => t.id) as [string, ...string[]];

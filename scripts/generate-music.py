@@ -384,6 +384,19 @@ def t_midnight_rnb():
                 pad_vol=0.14, bass_vol=0.30, arp_div=2)
 
 
+def t_bossa_nova():
+    return comp(80, [("F", "maj7", 4), ("A", "min7", 4), ("D", "min7", 4), ("G", "maj7", 4)],
+                cycles=2, melody_inst=pluck, mel_decay=3.2, mel_vol=0.42, mel_harm=PIANO,
+                pad_vol=0.11, bass_vol=0.32, drums={"hat": 0.18}, arp_div=3)
+
+
+def t_gospel_joy():
+    return comp(96, [("C", "maj", 2), ("F", "maj", 2), ("G", "maj", 2), ("C", "maj", 2)],
+                cycles=4, melody_inst=pluck, mel_decay=6.0, mel_vol=0.38, mel_harm=BELL,
+                pad_vol=0.14, bass_vol=0.36, drums={"kick": 0.54, "hat": 0.26},
+                sparkle=True, arp_div=2)
+
+
 TRACKS = {
     "happy-birthday": t_happy_birthday,
     "birthday-bounce": t_birthday_bounce,
@@ -403,6 +416,8 @@ TRACKS = {
     "reggae-chill": t_reggae_chill,
     "funky-groove": t_funky_groove,
     "midnight-rnb": t_midnight_rnb,
+    "bossa-nova": t_bossa_nova,
+    "gospel-joy": t_gospel_joy,
 }
 
 
