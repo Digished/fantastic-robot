@@ -1,6 +1,6 @@
 # Spendbox
 
-Beautiful, mobile-first celebration pages with group gifting. Built for Nigeria.
+Beautiful, mobile-first celebration pages with group gifting.
 
 See [`SPEC.md`](./SPEC.md) for the full product and engineering spec.
 

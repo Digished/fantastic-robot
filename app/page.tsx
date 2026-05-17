@@ -251,7 +251,7 @@ export default async function Landing() {
             <span className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-[var(--accent)]" /> Powered by Paystack</span>
             <span className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-[var(--accent)]" /> Bank-verified payouts</span>
             <span className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-[var(--accent)]" /> No account needed to contribute</span>
-            <span className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-[var(--accent)]" /> Made for Nigeria</span>
+            <span className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-[var(--accent)]" /> Funds held safely in escrow</span>
           </div>
         </div>
       </section>
@@ -344,26 +344,32 @@ export default async function Landing() {
         </Reveal>
 
         <Reveal delay={120} className="mt-10 md:mt-0">
-          <div className="relative aspect-[4/5] rounded-3xl2 overflow-hidden shadow-card theme-mesh">
-            <Sparkles count={10} />
+          <div className="relative aspect-[4/5] rounded-3xl2 overflow-hidden shadow-card bg-ink/5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://hxhjbqmzhpmfmyrmtmhr.supabase.co/storage/v1/object/public/landingpage-assets/happy%20child.png"
+              alt="A child celebrating"
+              className="absolute inset-0 size-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/10 to-black/75" />
             <div className="absolute inset-0 grid place-items-center">
-              <div className="text-center px-8">
-                <span
-                  className="inline-grid place-items-center size-20 rounded-full mb-6 float-y"
-                  style={{ background: "var(--accent)", color: "white" }}
-                >
-                  <Play className="size-8 fill-current translate-x-0.5" />
-                </span>
-                <p className="serif text-3xl text-ink leading-tight">For Tunde</p>
-                <p className="text-ink/55 text-sm mt-2">23 messages · ₦47,500 raised</p>
-              </div>
+              <span
+                className="inline-grid place-items-center size-20 rounded-full float-y shadow-glow"
+                style={{ background: "var(--accent)", color: "white" }}
+              >
+                <Play className="size-8 fill-current translate-x-0.5" />
+              </span>
             </div>
-            <div className="absolute inset-x-0 bottom-0 p-5 flex gap-1.5">
-              {[100, 100, 64, 0, 0, 0].map((w, idx) => (
-                <span key={idx} className="flex-1 h-1 rounded-full bg-ink/15 overflow-hidden">
-                  <span className="block h-full rounded-full" style={{ width: `${w}%`, background: "var(--accent)" }} />
-                </span>
-              ))}
+            <div className="absolute inset-x-0 bottom-0 p-6">
+              <p className="serif text-3xl text-white leading-tight">For Tunde</p>
+              <p className="text-white/70 text-sm mt-1">23 messages · ₦47,500 raised</p>
+              <div className="mt-4 flex gap-1.5">
+                {[100, 100, 64, 0, 0, 0].map((w, idx) => (
+                  <span key={idx} className="flex-1 h-1 rounded-full bg-white/25 overflow-hidden">
+                    <span className="block h-full rounded-full bg-white" style={{ width: `${w}%` }} />
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
         </Reveal>
@@ -562,7 +568,7 @@ export default async function Landing() {
       <footer className="border-t border-ink/8">
         <div className="mx-auto max-w-6xl px-5 md:px-10 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="serif text-xl text-ink">Spendbox</span>
-          <p className="text-xs text-ink/45">Beautiful group celebrations, made for Nigeria.</p>
+          <p className="text-xs text-ink/45">Beautiful group celebrations for every milestone.</p>
           <div className="flex items-center gap-5 text-sm text-ink/60">
             <Link href="/login" className="hover:text-ink transition">Sign in</Link>
             <Link href="/create" className="hover:text-ink transition">Start a celebration</Link>
