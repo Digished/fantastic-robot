@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isTheme, type Theme } from "@/lib/themes";
+import { isMusicTrack } from "@/lib/music";
 import type { IntroContent } from "@/lib/openai/generate-intro";
 import type { GalleryImage } from "./player";
 import { Player } from "./player";
@@ -16,7 +17,7 @@ export default async function PlayPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, recipient_name, event_type, celebration_date, title, tagline, celebrant_description, intro_content, gallery_images, theme, creator_id, total_raised_kobo, claimable_at, payout_status")
+    .select("id, slug, recipient_name, event_type, celebration_date, title, tagline, celebrant_description, intro_content, gallery_images, theme, background_music, creator_id, total_raised_kobo, claimable_at, payout_status")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -38,6 +39,7 @@ export default async function PlayPage({
       createdBy={createdBy}
       slug={slug}
       theme={theme}
+      backgroundMusic={isMusicTrack(page.background_music) ? page.background_music : null}
       recipientName={page.recipient_name}
       eventType={page.event_type}
       celebrationDate={page.celebration_date}

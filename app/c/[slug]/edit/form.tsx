@@ -3,6 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import { editCelebration, type EditState } from "./actions";
 import { ThemePicker } from "@/components/theme-picker";
+import { MusicPicker } from "@/components/music-picker";
 import type { Theme } from "@/lib/themes";
 import { X, ImagePlus, Loader2, Video } from "lucide-react";
 
@@ -35,6 +36,7 @@ export function EditForm({
     celebrantDescription: string;
     coverPhotoPath: string | null;
     theme: Theme;
+    backgroundMusic: string | null;
     recipientName: string;
     galleryImages: { path: string; caption: string; kind?: "image" | "video" }[];
   };
@@ -42,6 +44,7 @@ export function EditForm({
   const action = editCelebration.bind(null, slug);
   const [state, dispatch] = useActionState<EditState, FormData>(action, {});
   const [theme, setTheme] = useState<Theme>(initial.theme);
+  const [backgroundMusic, setBackgroundMusic] = useState<string | null>(initial.backgroundMusic);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [coverPath, setCoverPath] = useState<string | null>(initial.coverPhotoPath);
@@ -121,6 +124,8 @@ export function EditForm({
       </div>
 
       <ThemePicker value={theme} onChange={setTheme} />
+
+      <MusicPicker value={backgroundMusic} onChange={setBackgroundMusic} />
 
       <div className="space-y-2">
         <label className="label">Cover photo</label>

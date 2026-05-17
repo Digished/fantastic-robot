@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { EditForm } from "./form";
 import { MessagesManager } from "./messages-manager";
 import { isTheme, type Theme } from "@/lib/themes";
+import { isMusicTrack } from "@/lib/music";
 
 export default async function EditPage({
   params,
@@ -15,7 +16,7 @@ export default async function EditPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, title, recipient_name, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, creator_id, theme, gallery_images")
+    .select("id, slug, title, recipient_name, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, creator_id, theme, background_music, gallery_images")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) notFound();
@@ -48,6 +49,7 @@ export default async function EditPage({
             celebrantDescription: page.celebrant_description ?? "",
             coverPhotoPath: page.cover_photo_path ?? null,
             theme,
+            backgroundMusic: isMusicTrack(page.background_music) ? page.background_music : null,
             recipientName: page.recipient_name,
             galleryImages: (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [],
           }}
