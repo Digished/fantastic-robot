@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       email: parsed.data.contributorEmail,
       amount: Number(grossCharge),
       reference,
-      callback_url: `${env.appUrl()}/c/${page.slug}?paid=1`,
+      callback_url: `${env.appUrl()}/c/${page.slug}/contribute/done?name=${encodeURIComponent(parsed.data.contributorName)}`,
       metadata: {
         celebration_id: page.id,
         slug: page.slug,

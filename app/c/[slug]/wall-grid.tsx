@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Play, Mic, Sparkles, Pencil, Trash2, X, Loader2 } from "lucide-react";
+import { Mic, Sparkles, Pencil, Trash2, X, Loader2, Image as ImageIcon, Video, Mail } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { CardViewer } from "./card-viewer";
 import { INTERACTIVE_OPTIONS, type InteractiveKind } from "@/components/interactives";
@@ -25,17 +25,14 @@ export type Message = {
 const TINTS = ["tint-1", "tint-2", "tint-3", "tint-4", "tint-5"];
 const ROTS  = ["polaroid--a", "polaroid--b", "polaroid--c", "polaroid--d", "polaroid--e"];
 
-function publicUrl(path: string) {
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${path}`;
-}
-
 export function WallGrid({
-  messages: initial, celebrationId, slug, isCreator,
+  messages: initial, celebrationId, slug, isCreator, allowOwnControls = true,
 }: {
   messages: Message[];
   celebrationId: string;
   slug: string;
   isCreator: boolean;
+  allowOwnControls?: boolean;
 }) {
   const [messages, setMessages] = useState(initial);
   const [openIdx, setOpenIdx] = useState<number | null>(null);
@@ -100,6 +97,7 @@ export function WallGrid({
             <CardButton key={m.id} m={m} index={i * 2}
               own={!!cid && m.contributor_session_id === cid}
               isCreator={isCreator}
+              allowOwnControls={allowOwnControls}
               onOpen={() => setOpenIdx(messages.indexOf(m))}
               onEdit={() => setEditing(m)}
               onDelete={() => onDelete(m)}
@@ -113,6 +111,7 @@ export function WallGrid({
             <CardButton key={m.id} m={m} index={i * 2 + 1}
               own={!!cid && m.contributor_session_id === cid}
               isCreator={isCreator}
+              allowOwnControls={allowOwnControls}
               onOpen={() => setOpenIdx(messages.indexOf(m))}
               onEdit={() => setEditing(m)}
               onDelete={() => onDelete(m)}
@@ -154,10 +153,10 @@ function Column({ children }: { children: React.ReactNode }) {
 }
 
 function CardButton({
-  m, index, rot, tint, own, isCreator, onOpen, onEdit, onDelete,
+  m, index, rot, tint, own, isCreator, allowOwnControls, onOpen, onEdit, onDelete,
 }: {
   m: Message; index: number; rot: string; tint: string;
-  own: boolean; isCreator: boolean;
+  own: boolean; isCreator: boolean; allowOwnControls: boolean;
   onOpen: () => void; onEdit: () => void; onDelete: () => void;
 }) {
   return (
@@ -170,7 +169,7 @@ function CardButton({
         <CardPreview m={m} />
       </button>
 
-      {own && !isCreator && (
+      {own && !isCreator && allowOwnControls && (
         <div className="absolute top-2 right-2 flex gap-1">
           {!(m.interactive_kind && m.interactive_kind !== "none") && (
             <button onClick={onEdit}
@@ -196,47 +195,41 @@ function CardPreview({ m }: { m: Message }) {
     ? INTERACTIVE_OPTIONS.find((o) => o.id === m.interactive_kind)
     : null;
 
+  // Wall cards stay sealed — the content is revealed only when opened.
+  let glyph: string | null = null;
+  let Icon: typeof Mail | null = null;
+  let label: string;
+
+  if (interactive) {
+    glyph = interactive.glyph;
+    label = interactive.caption;
+  } else if (m.media_kind === "image") {
+    Icon = ImageIcon; label = "A photo";
+  } else if (m.media_kind === "video") {
+    Icon = Video; label = "A video";
+  } else if (m.media_kind === "audio") {
+    Icon = Mic; label = "A voice note";
+  } else {
+    Icon = Mail; label = "A note";
+  }
+
   return (
     <>
-      {interactive ? (
-        <div className="w-full aspect-[3/2] rounded-md grid place-items-center text-center px-3"
-             style={{ background: "linear-gradient(160deg, var(--accent-soft) 0%, white 100%)" }}>
-          <div>
-            <span className="text-3xl block">{interactive.glyph}</span>
-            <span className="mt-1 text-[10px] uppercase tracking-widest text-[var(--accent)] inline-flex items-center gap-1">
-              <Sparkles className="size-3" /> {interactive.caption}
-            </span>
-          </div>
+      <div
+        className="w-full aspect-[3/2] rounded-md grid place-items-center text-center px-3"
+        style={{ background: "linear-gradient(160deg, var(--accent-soft) 0%, white 100%)" }}
+      >
+        <div>
+          {glyph
+            ? <span className="text-3xl block">{glyph}</span>
+            : Icon && <Icon className="size-7 mx-auto text-[var(--accent)]" />}
+          <span className="mt-1.5 text-[10px] uppercase tracking-widest text-[var(--accent)] inline-flex items-center gap-1">
+            <Sparkles className="size-3" /> {label}
+          </span>
         </div>
-      ) : (
-        <>
-          {m.media_kind === "image" && m.media_path && (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img src={publicUrl(m.media_path)} alt="" className="w-full rounded-md aspect-square object-cover" />
-          )}
-          {m.media_kind === "video" && m.media_path && (
-            <div className="relative w-full aspect-[3/4] rounded-md overflow-hidden bg-ink/10">
-              <video src={publicUrl(m.media_path)} muted playsInline className="size-full object-cover" />
-              <div className="absolute inset-0 grid place-items-center">
-                <span className="glass rounded-full size-10 grid place-items-center text-ink">
-                  <Play className="size-4 fill-current" />
-                </span>
-              </div>
-            </div>
-          )}
-          {m.media_kind === "audio" && (
-            <div className="w-full aspect-[3/2] rounded-md grid place-items-center bg-white/50 text-[var(--accent)]">
-              <Mic className="size-7" />
-            </div>
-          )}
-        </>
-      )}
-      {m.body && (
-        <p className={`mt-3 text-ink leading-snug whitespace-pre-wrap ${m.body.length < 60 ? "serif text-xl" : "text-sm"}`}>
-          {m.body}
-        </p>
-      )}
+      </div>
       <p className="mt-3 text-[10px] uppercase tracking-widest text-ink/55">— {name}</p>
+      <p className="mt-1 text-[10px] text-ink/35">Tap to open</p>
     </>
   );
 }

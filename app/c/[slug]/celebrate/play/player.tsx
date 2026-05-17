@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X, Video } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X, Video, Gift, Lock, Loader2 } from "lucide-react";
 import type { Theme } from "@/lib/themes";
 import type { IntroContent } from "@/lib/openai/generate-intro";
 import { Interactive, type InteractiveKind } from "@/components/interactives";
@@ -161,6 +161,7 @@ function durationFor(m: Msg): number {
 export function Player({
   slug, theme, recipientName, eventType, celebrationDate, celebrationTitle,
   tagline, celebrantDescription, introContent, messages, galleryImages,
+  totalRaisedKobo, claimableAt, payoutStatus,
 }: {
   slug: string;
   theme: Theme;
@@ -173,6 +174,9 @@ export function Player({
   introContent: IntroContent | null;
   messages: Msg[];
   galleryImages: GalleryImage[];
+  totalRaisedKobo: number;
+  claimableAt: string;
+  payoutStatus: string;
 }) {
   const introSlides = useMemo(
     () => buildIntroSequence(introContent, celebrantDescription, galleryImages),
@@ -310,6 +314,9 @@ export function Player({
           slug={slug}
           introContent={introContent}
           celebrationTitle={celebrationTitle}
+          totalRaisedKobo={totalRaisedKobo}
+          claimableAt={claimableAt}
+          payoutStatus={payoutStatus}
           onSelectSlide={selectSlide}
           onReplay={replay}
         />
@@ -580,12 +587,12 @@ function IntroSlideView({
     const { path, caption, kind } = slide.gallery;
     const isVideo = kind === "video";
     return (
-      <section className="absolute inset-0 overflow-hidden fade-in">
+      <section className="absolute inset-0 overflow-hidden fade-in bg-black">
         {isVideo ? (
           // eslint-disable-next-line jsx-a11y/media-has-caption
           <video
             src={publicUrl(path)}
-            className="absolute inset-0 size-full object-cover"
+            className="absolute inset-0 size-full object-contain"
             autoPlay
             playsInline
             loop
@@ -595,7 +602,7 @@ function IntroSlideView({
           <img
             src={publicUrl(path)}
             alt={caption || ""}
-            className="absolute inset-0 size-full object-cover ken-burns"
+            className="absolute inset-0 size-full object-contain"
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/10 to-black/65" />
@@ -824,14 +831,100 @@ function SlideThumbnail({
   );
 }
 
+function GiftReveal({
+  slug, claimableAt, payoutStatus,
+}: {
+  slug: string;
+  claimableAt: string;
+  payoutStatus: string;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(payoutStatus === "paid");
+
+  const unlocked = now >= new Date(claimableAt).getTime();
+
+  useEffect(() => {
+    if (unlocked) return;
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, [unlocked]);
+
+  async function reveal() {
+    setLoading(true); setError(null);
+    try {
+      const res = await fetch("/api/paystack/claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? "Could not send your gift");
+      }
+      setSent(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (sent) {
+    return (
+      <div className="rounded-3xl2 bg-[var(--accent-soft)] border border-[var(--accent)]/20 p-5 text-center">
+        <Gift className="size-6 mx-auto text-[var(--accent)]" />
+        <p className="serif text-xl text-ink mt-2">Your gift is on its way</p>
+        <p className="text-ink/60 text-sm mt-1">
+          The cash gift has been sent to your bank account.
+        </p>
+      </div>
+    );
+  }
+
+  if (!unlocked) {
+    return (
+      <div className="text-center">
+        <button disabled className="w-full btn-accent py-5 text-base inline-flex opacity-50 cursor-not-allowed">
+          <Lock className="size-5" /> Gift locked
+        </button>
+        <p className="text-ink/55 text-sm mt-2">
+          Your gift unlocks on {formatDate(claimableAt)}.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-center">
+      <button
+        onClick={reveal}
+        disabled={loading}
+        className="w-full btn-accent py-5 text-base shadow-glow inline-flex"
+      >
+        {loading
+          ? <><Loader2 className="size-5 animate-spin" /> Sending your gift…</>
+          : <><Gift className="size-5" /> Reveal &amp; receive your gift</>}
+      </button>
+      {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+      <p className="text-ink/45 text-xs mt-2">Sends straight to your saved bank account.</p>
+    </div>
+  );
+}
+
 function PostPlayGallery({
-  allSlides, firstName, slug, introContent, celebrationTitle, onSelectSlide, onReplay,
+  allSlides, firstName, slug, introContent, celebrationTitle,
+  totalRaisedKobo, claimableAt, payoutStatus, onSelectSlide, onReplay,
 }: {
   allSlides: AnySlide[];
   firstName: string;
   slug: string;
   introContent: IntroContent | null;
   celebrationTitle: string;
+  totalRaisedKobo: number;
+  claimableAt: string;
+  payoutStatus: string;
   onSelectSlide: (idx: number) => void;
   onReplay: () => void;
 }) {
@@ -841,46 +934,57 @@ function PostPlayGallery({
       onClick={(e) => e.stopPropagation()}
     >
       {/* Sticky header */}
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-ink/8 px-4 py-3 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-ink/40">All memories</p>
-          <h2 className="serif text-xl text-ink leading-tight mt-0.5">{celebrationTitle}</h2>
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-ink/8">
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-ink/40">All memories</p>
+            <h2 className="serif text-xl text-ink leading-tight mt-0.5">{celebrationTitle}</h2>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onReplay}
+              className="btn-accent shadow-soft text-xs py-2 px-3 inline-flex gap-1.5"
+            >
+              <RotateCcw className="size-3.5" /> Replay all
+            </button>
+            <Link
+              href={`/c/${slug}/celebrate`}
+              className="size-9 grid place-items-center rounded-full bg-ink/8 text-ink"
+            >
+              <X className="size-4" />
+            </Link>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onReplay}
-            className="btn-accent shadow-soft text-xs py-2 px-3 inline-flex gap-1.5"
-          >
-            <RotateCcw className="size-3.5" /> Replay all
-          </button>
-          <Link
-            href={`/c/${slug}/celebrate`}
-            className="size-9 grid place-items-center rounded-full bg-ink/8 text-ink"
-          >
-            <X className="size-4" />
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 md:px-8">
+        {/* Gift reveal — only when a monetary gift exists */}
+        {totalRaisedKobo > 0 && (
+          <div className="pt-6 max-w-md mx-auto">
+            <GiftReveal slug={slug} claimableAt={claimableAt} payoutStatus={payoutStatus} />
+          </div>
+        )}
+
+        {/* Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 md:gap-4 py-6">
+          {allSlides.map((slide, idx) => (
+            <SlideThumbnail
+              key={idx}
+              slide={slide}
+              idx={idx}
+              introContent={introContent}
+              onClick={() => onSelectSlide(idx)}
+            />
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="pb-12 pt-2 text-center">
+          <p className="serif text-2xl text-ink/80 mb-4">You are loved, {firstName}.</p>
+          <Link href={`/c/${slug}/celebrate`} className="btn-outline inline-flex">
+            Back to your page
           </Link>
         </div>
-      </div>
-
-      {/* Grid */}
-      <div className="grid grid-cols-2 gap-2.5 p-4">
-        {allSlides.map((slide, idx) => (
-          <SlideThumbnail
-            key={idx}
-            slide={slide}
-            idx={idx}
-            introContent={introContent}
-            onClick={() => onSelectSlide(idx)}
-          />
-        ))}
-      </div>
-
-      {/* Footer */}
-      <div className="px-4 pb-10 pt-2 text-center">
-        <p className="serif text-2xl text-ink/80 mb-4">You are loved, {firstName}.</p>
-        <Link href={`/c/${slug}/celebrate`} className="btn-outline inline-flex">
-          Back to your page
-        </Link>
       </div>
     </div>
   );

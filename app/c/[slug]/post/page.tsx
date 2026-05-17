@@ -19,7 +19,7 @@ export default async function PostPage({
 
   return (
     <main className="min-h-[100dvh] bg-white pb-16">
-      <div className="page-shell pt-6">
+      <div className="mx-auto w-full max-w-2xl px-5 pt-6">
         <Link href={`/c/${slug}`} className="text-ink/55 text-sm">← Back to wall</Link>
         <h1 className="serif text-5xl text-ink mt-6">
           A note for<br/><em className="not-italic text-[var(--accent)]">{page.recipient_name}</em>

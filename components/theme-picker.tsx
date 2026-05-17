@@ -11,32 +11,32 @@ export function ThemePicker({
   value: Theme;
   onChange: (v: Theme) => void;
 }) {
+  const selected = THEMES.find((t) => t.id === value);
   return (
     <div className="space-y-2">
-      <p className="label">Theme</p>
+      <div className="flex items-center justify-between">
+        <p className="label">Theme</p>
+        {selected && <p className="text-xs text-ink/50">{selected.label}</p>}
+      </div>
       <input type="hidden" name={name} value={value} />
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-8 gap-2">
         {THEMES.map((t) => {
-          const selected = t.id === value;
+          const isSel = t.id === value;
           return (
             <button
               key={t.id}
               type="button"
               onClick={() => onChange(t.id)}
-              className={`group relative overflow-hidden rounded-2xl p-3 text-left transition ${
-                selected ? "ring-2 ring-ink/80" : "ring-1 ring-ink/10"
+              title={t.label}
+              aria-label={t.label}
+              aria-pressed={isSel}
+              className={`aspect-square rounded-full transition ${
+                isSel
+                  ? "ring-2 ring-ink ring-offset-2 ring-offset-white scale-105"
+                  : "ring-1 ring-ink/10 hover:ring-ink/30"
               }`}
               style={{ background: t.swatch }}
-            >
-              <span className="block aspect-[5/4] w-full" />
-              <span
-                className={`absolute bottom-2 left-2 right-2 text-[11px] uppercase tracking-widest rounded-full px-2 py-1 backdrop-blur ${
-                  t.id === "midnight" ? "bg-white/15 text-white" : "bg-white/70 text-ink"
-                }`}
-              >
-                {t.label}
-              </span>
-            </button>
+            />
           );
         })}
       </div>

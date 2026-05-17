@@ -32,8 +32,8 @@ export default async function EditPage({
 
   return (
     <main className="min-h-[100dvh] bg-white pb-32">
-      <div className="page-shell pt-6">
-        <Link href={`/c/${slug}`} className="text-ink/55 text-sm">← Back to page</Link>
+      <div className="mx-auto w-full max-w-2xl px-5 pt-6">
+        <Link href={`/c/${slug}`} className="text-ink/55 text-sm hover:text-ink transition">← Back to page</Link>
         <h1 className="serif text-5xl text-ink mt-6">Edit page</h1>
         <p className="text-ink/60 mt-3 text-sm">
           For {page.recipient_name}. Recipient bank details are locked.
