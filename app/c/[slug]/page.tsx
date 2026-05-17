@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Gift } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { formatNaira } from "@/lib/utils";
 import { formatDate, timeUntil } from "@/lib/time";
@@ -11,6 +12,7 @@ import { AnimatedNaira } from "@/components/animated-counter";
 import { Sparkles } from "@/components/sparkles";
 import { CelebrantLinkButton } from "./celebrant-link-button";
 import { GalleryStrip } from "@/components/gallery-strip";
+import { GalleryUploadButton } from "@/components/gallery-upload-button";
 import { NavLoadingLink } from "@/components/nav-loading-link";
 
 export const dynamic = "force-dynamic";
@@ -123,11 +125,17 @@ export default async function WallPage({
               </div>
             </section>
 
-            {/* Gallery strip */}
-            {galleryImages.length > 0 && (
+            {/* Gallery */}
+            {(galleryImages.length > 0 || !closed) && (
               <div className="rounded-3xl2 bg-white shadow-ring p-3">
-                <p className="text-[10px] uppercase tracking-widest text-ink/40 px-1 mb-2">Gallery</p>
-                <GalleryStrip images={galleryImages} />
+                <div className="flex items-center justify-between px-1 mb-2">
+                  <p className="text-[10px] uppercase tracking-widest text-ink/40">Gallery</p>
+                  {!closed && <GalleryUploadButton slug={slug} />}
+                </div>
+                {galleryImages.length > 0
+                  ? <GalleryStrip images={galleryImages} />
+                  : <p className="text-xs text-ink/40 text-center py-2">Be the first to add a photo!</p>
+                }
               </div>
             )}
 
@@ -211,6 +219,14 @@ export default async function WallPage({
             {closed && !claimable && (
               <p className="text-center text-sm text-ink/60 fade-up">
                 Contributions closed. The gift unlocks on {formatDate(page.celebration_date)}.
+              </p>
+            )}
+
+            {/* Payout notice */}
+            {Number(page.total_raised_kobo) > 0 && !claimable && page.payout_status !== "paid" && (
+              <p className="text-xs text-ink/50 text-center fade-up flex items-center justify-center gap-1.5">
+                <Gift className="size-3.5 text-[var(--accent)]" />
+                Cash gift pays to {page.recipient_name}&apos;s bank on {formatDate(page.celebration_date)}.
               </p>
             )}
 
