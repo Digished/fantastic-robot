@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Play, Mic } from "lucide-react";
+import { Play, Mic, Sparkles } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { CardViewer } from "./card-viewer";
+import { INTERACTIVE_OPTIONS, type InteractiveKind } from "@/components/interactives";
 
 export type Message = {
   id: string;
@@ -13,6 +14,8 @@ export type Message = {
   media_kind: "none" | "audio" | "video" | "image";
   media_path: string | null;
   media_duration_ms: number | null;
+  interactive_kind: InteractiveKind;
+  interactive_payload: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -94,13 +97,28 @@ export function WallGrid({
 
 function CardPreview({ m }: { m: Message }) {
   const name = m.is_anonymous ? "Someone special" : m.contributor_name;
+  const interactive = m.interactive_kind && m.interactive_kind !== "none"
+    ? INTERACTIVE_OPTIONS.find((o) => o.id === m.interactive_kind)
+    : null;
+
   return (
     <>
-      {m.media_kind === "image" && m.media_path && (
+      {interactive && (
+        <div className="w-full aspect-[3/2] rounded-md grid place-items-center text-center px-3"
+             style={{ background: "linear-gradient(160deg, var(--accent-soft) 0%, white 100%)" }}>
+          <div>
+            <span className="text-3xl block">{interactive.glyph}</span>
+            <span className="mt-1 text-[10px] uppercase tracking-widest text-[var(--accent)] inline-flex items-center gap-1">
+              <Sparkles className="size-3" /> {interactive.caption}
+            </span>
+          </div>
+        </div>
+      )}
+      {!interactive && m.media_kind === "image" && m.media_path && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={publicUrl(m.media_path)} alt="" className="w-full rounded-md aspect-square object-cover" />
       )}
-      {m.media_kind === "video" && m.media_path && (
+      {!interactive && m.media_kind === "video" && m.media_path && (
         <div className="relative w-full aspect-[3/4] rounded-md overflow-hidden bg-ink/10">
           <video src={publicUrl(m.media_path)} muted playsInline className="size-full object-cover" />
           <div className="absolute inset-0 grid place-items-center">
@@ -110,12 +128,12 @@ function CardPreview({ m }: { m: Message }) {
           </div>
         </div>
       )}
-      {m.media_kind === "audio" && (
+      {!interactive && m.media_kind === "audio" && (
         <div className="w-full aspect-[3/2] rounded-md grid place-items-center bg-white/50 text-[var(--accent)]">
           <Mic className="size-7" />
         </div>
       )}
-      {m.body && (
+      {!interactive && m.body && (
         <p className={`mt-3 text-ink leading-snug whitespace-pre-wrap ${m.body.length < 60 ? "serif text-xl" : "text-sm"}`}>
           {m.body}
         </p>

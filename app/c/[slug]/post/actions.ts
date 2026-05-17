@@ -11,6 +11,12 @@ export async function postMessage(
   _prev: PostState,
   formData: FormData,
 ): Promise<PostState> {
+  const payloadRaw = formData.get("interactivePayload") as string | null;
+  let parsedPayload: Record<string, unknown> | undefined;
+  if (payloadRaw) {
+    try { parsedPayload = JSON.parse(payloadRaw); } catch { /* ignore */ }
+  }
+
   const parsed = messageSchema.safeParse({
     body: (formData.get("body") as string) || undefined,
     mediaKind: (formData.get("mediaKind") as string) || "none",
@@ -18,6 +24,8 @@ export async function postMessage(
     mediaDurationMs: formData.get("mediaDurationMs")
       ? Number(formData.get("mediaDurationMs"))
       : undefined,
+    interactiveKind: (formData.get("interactiveKind") as string) || "none",
+    interactivePayload: parsedPayload,
     contributorName: formData.get("contributorName"),
     contributorEmail: (formData.get("contributorEmail") as string) || undefined,
     contributorPhone: (formData.get("contributorPhone") as string) || undefined,
@@ -54,6 +62,8 @@ export async function postMessage(
     media_kind: parsed.data.mediaKind,
     media_path: parsed.data.mediaPath ?? null,
     media_duration_ms: parsed.data.mediaDurationMs ?? null,
+    interactive_kind: parsed.data.interactiveKind,
+    interactive_payload: parsed.data.interactivePayload ?? null,
   });
   if (error) return { error: error.message };
 

@@ -40,7 +40,7 @@ export default async function WallPage({
 
   const { data: messages } = await supabase
     .from("messages")
-    .select("id, contributor_name, is_anonymous, body, media_kind, media_path, media_duration_ms, created_at")
+    .select("id, contributor_name, is_anonymous, body, media_kind, media_path, media_duration_ms, interactive_kind, interactive_payload, created_at")
     .eq("celebration_id", page.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })

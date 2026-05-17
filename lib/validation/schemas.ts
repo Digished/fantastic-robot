@@ -46,13 +46,18 @@ export const messageSchema = z.object({
   mediaKind: z.enum(["none", "audio", "video", "image"]).default("none"),
   mediaPath: z.string().optional(),
   mediaDurationMs: z.number().int().nonnegative().optional(),
+  interactiveKind: z.enum(["none", "gift", "letter", "cake", "heart"]).default("none"),
+  interactivePayload: z.record(z.string(), z.unknown()).optional(),
   contributorName: z.string().min(1).max(60),
   contributorEmail: z.string().email().optional(),
   contributorPhone: z.string().max(24).optional(),
   isAnonymous: z.boolean().default(false),
 }).refine(
-  (m) => (m.body && m.body.length > 0) || m.mediaKind !== "none",
-  { message: "message must have text or media" },
+  (m) =>
+    (m.body && m.body.length > 0) ||
+    m.mediaKind !== "none" ||
+    m.interactiveKind !== "none",
+  { message: "message must have text, media, or an interactive surprise" },
 );
 
 export const contributeSchema = z.object({

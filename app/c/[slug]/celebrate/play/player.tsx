@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X } from "lucide-react";
 import type { Theme } from "@/lib/themes";
+import { Interactive, type InteractiveKind } from "@/components/interactives";
 
 type Msg = {
   id: string;
@@ -13,6 +14,8 @@ type Msg = {
   media_kind: "none" | "audio" | "video" | "image";
   media_path: string | null;
   media_duration_ms: number | null;
+  interactive_kind: InteractiveKind;
+  interactive_payload: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -33,6 +36,8 @@ const SCENES = [
 function sceneFor(i: number) { return SCENES[i % SCENES.length]; }
 
 function durationFor(m: Msg): number {
+  // Interactives are paused until the celebrant taps through them.
+  if (m.interactive_kind && m.interactive_kind !== "none") return Number.POSITIVE_INFINITY;
   if (m.media_kind === "image") return 4500;
   if (m.media_kind === "video" && m.media_duration_ms) return m.media_duration_ms + 600;
   if (m.media_kind === "audio" && m.media_duration_ms) return m.media_duration_ms + 600;
@@ -52,20 +57,36 @@ export function Player({
   const [paused, setPaused] = useState(false);
   const [done, setDone] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [interactiveReady, setInteractiveReady] = useState(false);
   const rafRef = useRef<number | null>(null);
   const startTsRef = useRef<number>(0);
   const elapsedRef = useRef<number>(0);
 
   const total = messages.length;
   const current = messages[i];
-  const dur = current ? durationFor(current) : 0;
+  const isInteractive = !!current && current.interactive_kind !== "none";
+  // Once an interactive has been revealed, give the celebrant ~4.5s to read.
+  const dur = !current
+    ? 0
+    : isInteractive && interactiveReady
+      ? 4500
+      : durationFor(current);
   const scene = useMemo(() => sceneFor(i), [i]);
+
+  // Reset the interactive lock whenever the slide changes.
+  useEffect(() => { setInteractiveReady(false); }, [i]);
 
   // Auto-advance
   useEffect(() => {
     if (done || !current) return;
     if (paused) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      return;
+    }
+    // Interactive slides wait until the celebrant has unlocked them.
+    if (isInteractive && !interactiveReady) {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      setProgress(0);
       return;
     }
     startTsRef.current = performance.now() - elapsedRef.current;
@@ -85,7 +106,7 @@ export function Player({
     }
     rafRef.current = requestAnimationFrame(tick);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-  }, [i, paused, dur, total, current, done]);
+  }, [i, paused, dur, total, current, done, isInteractive, interactiveReady]);
 
   function next() {
     elapsedRef.current = 0; setProgress(0);
@@ -119,7 +140,8 @@ export function Player({
       className="fixed inset-0 select-none overflow-hidden"
       style={{ background: scene.bg }}
       onClick={(e) => {
-        // tap zones: left third = prev, right two-thirds = next
+        // Interactive slides absorb the tap so the celebrant can interact.
+        if (isInteractive && !interactiveReady) return;
         const x = e.clientX;
         const w = window.innerWidth;
         if (x < w / 3) prev(); else next();
@@ -158,7 +180,11 @@ export function Player({
 
       {/* Slide */}
       {!done ? (
-        <Slide key={current.id} m={current} />
+        <Slide
+          key={current.id}
+          m={current}
+          onInteractiveReady={() => setInteractiveReady(true)}
+        />
       ) : (
         <EndCard recipientName={recipientName} onReplay={replay} slug={slug} />
       )}
@@ -178,8 +204,28 @@ export function Player({
   );
 }
 
-function Slide({ m }: { m: Msg }) {
+function Slide({
+  m, onInteractiveReady,
+}: { m: Msg; onInteractiveReady: () => void }) {
   const name = m.is_anonymous ? "Someone special" : m.contributor_name;
+
+  if (m.interactive_kind && m.interactive_kind !== "none") {
+    return (
+      <section className="absolute inset-0 grid place-items-center px-4 fade-in">
+        <div className="w-full max-w-phone">
+          <Interactive
+            kind={m.interactive_kind}
+            body={m.body}
+            payload={m.interactive_payload}
+            authorName={name}
+            surface="light"
+            onRevealed={onInteractiveReady}
+          />
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="absolute inset-0 grid place-items-center px-6 fade-in">
       <article className="w-full max-w-phone text-center">

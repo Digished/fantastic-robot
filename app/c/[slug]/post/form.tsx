@@ -1,17 +1,19 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Type, Mic, Video, Image as ImageIcon, Upload, Square, RotateCcw, Loader2 } from "lucide-react";
+import { Type, Mic, Video, Image as ImageIcon, Upload, Square, RotateCcw, Loader2, Sparkles } from "lucide-react";
 import { postMessage, type PostState } from "./actions";
 import { extFromMime, startRecording } from "@/lib/media/recorder";
+import { INTERACTIVE_OPTIONS, Interactive, type InteractiveKind } from "@/components/interactives";
 
-type Tab = "text" | "audio" | "video" | "image";
+type Tab = "text" | "audio" | "video" | "image" | "surprise";
 
 const TABS: { id: Tab; label: string; Icon: typeof Type }[] = [
-  { id: "text",  label: "Text",  Icon: Type },
-  { id: "audio", label: "Voice", Icon: Mic },
-  { id: "video", label: "Video", Icon: Video },
-  { id: "image", label: "Photo", Icon: ImageIcon },
+  { id: "text",     label: "Text",     Icon: Type },
+  { id: "audio",    label: "Voice",    Icon: Mic },
+  { id: "video",    label: "Video",    Icon: Video },
+  { id: "image",    label: "Photo",    Icon: ImageIcon },
+  { id: "surprise", label: "Surprise", Icon: Sparkles },
 ];
 
 export function PostForm({ slug }: { slug: string }) {
@@ -24,6 +26,11 @@ export function PostForm({ slug }: { slug: string }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
   const [uploading, setUploading] = useState(false);
+
+  const [interactiveKind, setInteractiveKind] = useState<InteractiveKind>("none");
+  const [candles, setCandles] = useState<number>(5);
+  const [surpriseBody, setSurpriseBody] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
 
   // Live recording state
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -41,6 +48,8 @@ export function PostForm({ slug }: { slug: string }) {
   function switchTab(t: Tab) {
     setTab(t);
     setMediaPath(null); setMediaDurationMs(null); setPreview(null);
+    setInteractiveKind(t === "surprise" ? "gift" : "none");
+    setShowPreview(false);
   }
 
   // Attach stream to <video> for live camera preview.
@@ -312,7 +321,80 @@ export function PostForm({ slug }: { slug: string }) {
         </div>
       )}
 
-      {tab !== "text" && (
+      {tab === "surprise" && (
+        <div className="space-y-4">
+          <div>
+            <p className="label mb-2">Pick a surprise</p>
+            <div className="grid grid-cols-2 gap-2">
+              {INTERACTIVE_OPTIONS.map((opt) => (
+                <button key={opt.id} type="button"
+                  onClick={() => setInteractiveKind(opt.id)}
+                  className={`rounded-2xl p-4 text-left transition border ${
+                    interactiveKind === opt.id
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                      : "border-ink/10 bg-white"
+                  }`}
+                >
+                  <span className="text-2xl block">{opt.glyph}</span>
+                  <span className="text-sm font-medium text-ink mt-2 block">{opt.label}</span>
+                  <span className="text-[11px] text-ink/55 mt-0.5 block">{opt.caption}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {interactiveKind === "cake" && (
+            <div className="space-y-1.5">
+              <label className="label">How many candles?</label>
+              <input type="number" className="field" min={1} max={12}
+                value={candles}
+                onChange={(e) => setCandles(Math.max(1, Math.min(12, Number(e.target.value) || 1)))} />
+              <p className="text-xs text-ink/45">Up to 12. The celebrant blows them out one by one.</p>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            <label className="label">The hidden message</label>
+            <textarea
+              maxLength={500}
+              className="field min-h-[120px] resize-none serif text-lg leading-snug"
+              placeholder={
+                interactiveKind === "cake" ? "May this year be your loudest yet…" :
+                interactiveKind === "letter" ? "Dear you,\n\nThe day we met I knew…" :
+                interactiveKind === "heart" ? "You are so very loved." :
+                "Surprise — happy birthday queen ❤️"
+              }
+              value={surpriseBody}
+              onChange={(e) => setSurpriseBody(e.target.value)}
+            />
+          </div>
+
+          {/* Preview toggle */}
+          {surpriseBody.trim().length > 0 && interactiveKind !== "none" && (
+            <button
+              type="button"
+              onClick={() => setShowPreview((p) => !p)}
+              className="btn-outline w-full inline-flex"
+            >
+              {showPreview ? "Hide preview" : "Preview surprise"}
+            </button>
+          )}
+
+          {showPreview && interactiveKind !== "none" && (
+            <div className="relative rounded-3xl2 bg-ink p-6 min-h-[420px] grid place-items-center overflow-hidden">
+              <Interactive
+                kind={interactiveKind}
+                body={surpriseBody}
+                payload={interactiveKind === "cake" ? { candles } : null}
+                authorName="You"
+                surface="dark"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab !== "text" && tab !== "surprise" && (
         <div className="space-y-1.5">
           <label className="label">Add a few words (optional)</label>
           <textarea name="body" maxLength={500} className="field min-h-[80px] resize-none"
@@ -320,9 +402,20 @@ export function PostForm({ slug }: { slug: string }) {
         </div>
       )}
 
-      <input type="hidden" name="mediaKind" value={tab === "text" ? "none" : tab} />
+      <input type="hidden" name="mediaKind"
+        value={tab === "text" || tab === "surprise" ? "none" : tab} />
       {mediaPath && <input type="hidden" name="mediaPath" value={mediaPath} />}
       {mediaDurationMs != null && <input type="hidden" name="mediaDurationMs" value={mediaDurationMs} />}
+
+      {tab === "surprise" && (
+        <>
+          <input type="hidden" name="interactiveKind" value={interactiveKind} />
+          {interactiveKind === "cake" && (
+            <input type="hidden" name="interactivePayload" value={JSON.stringify({ candles })} />
+          )}
+          <input type="hidden" name="body" value={surpriseBody} />
+        </>
+      )}
 
       <div className="pt-3 border-t border-ink/10 space-y-3">
         <div className="space-y-1.5">
@@ -343,7 +436,11 @@ export function PostForm({ slug }: { slug: string }) {
 
       <button
         className="btn-accent w-full py-4 shadow-soft"
-        disabled={recording || uploading || (tab !== "text" && !mediaPath)}
+        disabled={
+          recording || uploading ||
+          (tab !== "text" && tab !== "surprise" && !mediaPath) ||
+          (tab === "surprise" && (interactiveKind === "none" || surpriseBody.trim().length === 0))
+        }
       >
         Add to the wall
       </button>

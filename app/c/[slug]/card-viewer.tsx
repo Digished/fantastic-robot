@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Mic, Trash2, X } from "lucide-react";
 import type { Message } from "./wall-grid";
 import { deleteMessageAction } from "./actions";
+import { Interactive } from "@/components/interactives";
 
 function publicUrl(path: string) {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${path}`;
@@ -79,6 +80,16 @@ export function CardViewer({
 
         <div className="relative flex-1 grid place-items-center px-6 py-6 overflow-hidden">
           <article className="w-full max-w-phone fade-up">
+            {m.interactive_kind && m.interactive_kind !== "none" ? (
+              <Interactive
+                kind={m.interactive_kind}
+                body={m.body}
+                payload={m.interactive_payload}
+                authorName={name}
+                surface="dark"
+              />
+            ) : (
+              <>
             {m.media_kind === "image" && m.media_path && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={publicUrl(m.media_path)} alt="" className="w-full rounded-2xl shadow-card" />
@@ -106,6 +117,8 @@ export function CardViewer({
             <p className="mt-8 text-center text-[11px] uppercase tracking-[0.3em] text-white/70">
               — {name}
             </p>
+              </>
+            )}
           </article>
         </div>
 
