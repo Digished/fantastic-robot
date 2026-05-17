@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Image as ImageIcon, Mic, Play, Quote, Trash2 } from "lucide-react";
 import { deleteMessageFromEdit } from "./actions";
 
 type Row = {
@@ -40,14 +41,15 @@ export function MessagesManager({
     <ul className="mt-4 space-y-3">
       {rows.map((r) => (
         <li key={r.id} className="glass rounded-2xl p-4 flex gap-3 items-start">
-          <div className="size-14 shrink-0 rounded-xl bg-ink/5 grid place-items-center overflow-hidden">
+          <div className="size-14 shrink-0 rounded-xl bg-ink/5 grid place-items-center overflow-hidden text-ink/55">
             {r.media_kind === "image" && r.media_path && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={publicUrl(r.media_path)} alt="" className="size-full object-cover" />
             )}
-            {r.media_kind === "video" && <span>▶</span>}
-            {r.media_kind === "audio" && <span>🎙</span>}
-            {r.media_kind === "none" && <span className="serif text-ink">"</span>}
+            {r.media_kind === "video" && <Play className="size-5 fill-current" />}
+            {r.media_kind === "audio" && <Mic className="size-5" />}
+            {r.media_kind === "none" && !r.media_path && <Quote className="size-5" />}
+            {r.media_kind === "image" && !r.media_path && <ImageIcon className="size-5" />}
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs text-ink/55 uppercase tracking-wide">
@@ -58,9 +60,9 @@ export function MessagesManager({
           <button
             onClick={() => remove(r.id)}
             disabled={busy}
-            className="text-xs text-[var(--accent)] hover:underline shrink-0"
+            className="text-xs text-[var(--accent)] hover:underline shrink-0 inline-flex items-center gap-1"
           >
-            Remove
+            <Trash2 className="size-3.5" /> Remove
           </button>
         </li>
       ))}

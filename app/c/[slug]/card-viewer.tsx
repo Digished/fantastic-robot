@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, Loader2, Mic, Trash2, X } from "lucide-react";
 import type { Message } from "./wall-grid";
 import { deleteMessageAction } from "./actions";
 
@@ -63,16 +64,16 @@ export function CardViewer({
               <button
                 onClick={onDelete}
                 disabled={deleting}
-                className="glass-dark rounded-full px-3 py-1.5 text-xs"
+                className="glass-dark rounded-full px-3 py-1.5 text-xs text-white inline-flex items-center gap-1.5"
               >
-                {deleting ? "Removing…" : "Remove"}
+                {deleting ? <><Loader2 className="size-3.5 animate-spin" /> Removing</> : <><Trash2 className="size-3.5" /> Remove</>}
               </button>
             )}
             <button
               onClick={onClose}
-              className="glass-dark rounded-full size-9 grid place-items-center text-lg leading-none"
+              className="glass-dark rounded-full size-9 grid place-items-center text-white"
               aria-label="Close"
-            >×</button>
+            ><X className="size-4" /></button>
           </div>
         </header>
 
@@ -86,8 +87,8 @@ export function CardViewer({
               <video src={publicUrl(m.media_path)} controls playsInline autoPlay className="w-full rounded-2xl shadow-card" />
             )}
             {m.media_kind === "audio" && m.media_path && (
-              <div className="glass-dark rounded-3xl2 p-8 text-center">
-                <div className="text-5xl mb-4">🎙</div>
+              <div className="glass-dark rounded-3xl2 p-8 text-center text-white">
+                <Mic className="size-12 mx-auto mb-4 text-[var(--accent)]" />
                 <audio src={publicUrl(m.media_path)} controls autoPlay className="w-full" />
               </div>
             )}
@@ -114,13 +115,13 @@ export function CardViewer({
             disabled={idx === 0}
             className="glass-dark rounded-full size-12 grid place-items-center text-white disabled:opacity-30"
             aria-label="Previous"
-          >‹</button>
+          ><ChevronLeft className="size-5" /></button>
           <button
             onClick={() => setIdx((i) => Math.min(i + 1, messages.length - 1))}
             disabled={idx >= messages.length - 1}
             className="glass-dark rounded-full size-12 grid place-items-center text-white disabled:opacity-30"
             aria-label="Next"
-          >›</button>
+          ><ChevronRight className="size-5" /></button>
         </div>
       </div>
     </div>

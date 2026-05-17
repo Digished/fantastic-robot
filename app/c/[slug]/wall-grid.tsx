@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Play, Mic } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { CardViewer } from "./card-viewer";
 
@@ -103,13 +104,15 @@ function CardPreview({ m }: { m: Message }) {
         <div className="relative w-full aspect-[3/4] rounded-md overflow-hidden bg-ink/10">
           <video src={publicUrl(m.media_path)} muted playsInline className="size-full object-cover" />
           <div className="absolute inset-0 grid place-items-center">
-            <span className="glass rounded-full size-10 grid place-items-center text-ink">▶</span>
+            <span className="glass rounded-full size-10 grid place-items-center text-ink">
+              <Play className="size-4 fill-current" />
+            </span>
           </div>
         </div>
       )}
       {m.media_kind === "audio" && (
-        <div className="w-full aspect-[3/2] rounded-md grid place-items-center bg-white/50 text-ink">
-          <span className="text-3xl">🎙</span>
+        <div className="w-full aspect-[3/2] rounded-md grid place-items-center bg-white/50 text-[var(--accent)]">
+          <Mic className="size-7" />
         </div>
       )}
       {m.body && (
