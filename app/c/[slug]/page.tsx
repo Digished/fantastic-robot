@@ -31,7 +31,7 @@ export default async function WallPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -40,6 +40,9 @@ export default async function WallPage({
 
   const { data: { user } } = await supabase.auth.getUser();
   const isCreator = !!user && user.id === page.creator_id;
+
+  // Page-creation fee gate: unpaid pages are invisible to anyone but the creator.
+  if (page.is_paid_for_creation === false && !isCreator) notFound();
   const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
 
   const { data: messages } = await supabase

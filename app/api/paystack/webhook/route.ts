@@ -63,6 +63,18 @@ async function handleChargeSuccess(data: {
 }) {
   if (data.status !== "success" || !data.reference) return;
   const admin = supabaseAdmin();
+
+  // Page-creation charge — reference is prefixed SPBC-. Activate the page.
+  if (data.reference.startsWith("SPBC-")) {
+    const { error } = await admin
+      .from("celebrations")
+      .update({ is_paid_for_creation: true })
+      .eq("creation_payment_reference", data.reference)
+      .eq("is_paid_for_creation", false);
+    if (error) throw error;
+    return;
+  }
+
   // Flip pending → paid only if still pending. Trigger bumps totals.
   const { data: updated, error } = await admin
     .from("contributions")

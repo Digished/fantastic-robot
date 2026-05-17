@@ -57,6 +57,19 @@ export const paystack = {
     );
   },
 
+  async verifyTransaction(reference: string) {
+    return paystackFetch<{
+      reference: string;
+      status: string;
+      amount: number;
+      metadata?: Record<string, unknown> | null;
+      id?: number;
+    }>(
+      `/transaction/verify/${encodeURIComponent(reference)}`,
+      { method: "GET" },
+    );
+  },
+
   async createTransferRecipient(body: {
     name: string;
     account_number: string;

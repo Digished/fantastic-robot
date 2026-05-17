@@ -18,7 +18,7 @@ export default async function Dashboard() {
 
   const { data: pages } = await supabase
     .from("celebrations")
-    .select("id, slug, title, recipient_name, event_type, celebration_date, status, total_raised_kobo, contributor_count, theme, cover_photo_path")
+    .select("id, slug, title, recipient_name, event_type, celebration_date, status, total_raised_kobo, contributor_count, theme, cover_photo_path, is_paid_for_creation")
     .eq("creator_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -57,7 +57,7 @@ export default async function Dashboard() {
               return (
                 <Link
                   key={p.id}
-                  href={`/c/${p.slug}`}
+                  href={p.is_paid_for_creation === false ? `/c/${p.slug}/post-payment` : `/c/${p.slug}`}
                   data-theme={p.theme ?? "ivory"}
                   className="group rounded-3xl2 overflow-hidden bg-white shadow-ring hover:shadow-card transition fade-up"
                   style={{ animationDelay: `${i * 0.04}s` }}
@@ -71,7 +71,11 @@ export default async function Dashboard() {
                       <div className="absolute inset-0 theme-mesh" />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-                    {p.status !== "active" && (
+                    {p.is_paid_for_creation === false ? (
+                      <span className="absolute top-3 right-3 bg-amber-500 text-white rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest">
+                        Awaiting payment
+                      </span>
+                    ) : p.status !== "active" && (
                       <span className="absolute top-3 right-3 glass-dark text-white rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest">
                         {p.status}
                       </span>

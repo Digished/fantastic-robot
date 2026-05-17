@@ -25,9 +25,10 @@ export type GalleryImage = { path: string; caption: string; kind?: "image" | "vi
 
 type IntroSlide = {
   id: string;
-  kind: "intro-welcome" | "intro-occasion" | "intro-together" | "intro-about" | "intro-ready" | "intro-gallery";
+  kind: "intro-welcome" | "intro-occasion" | "intro-together" | "intro-about" | "intro-ready" | "intro-gallery" | "intro-chapter" | "intro-final";
   duration: number;
   gallery?: GalleryImage;
+  chapterIdx?: number;
 };
 
 type AnySlide =
@@ -80,6 +81,139 @@ const DRIFT_PARTICLES = [
   { x: "48%", y: "88%", delay: "3.5s", dur: "6.5s"},
 ];
 
+// Deterministic pseudo-random so slides feel varied but stable across re-renders.
+function hashSeed(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function mulberry32(seed: number) {
+  let a = seed;
+  return () => {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const SPRINKLE_KINDS = ["confetti", "sparkles", "glitter", "petals"] as const;
+type SprinkleKind = typeof SPRINKLE_KINDS[number];
+
+function pickSprinkle(slideId: string): SprinkleKind {
+  return SPRINKLE_KINDS[hashSeed(slideId) % SPRINKLE_KINDS.length];
+}
+
+function SprinkleOverlay({ slideId }: { slideId: string }) {
+  const kind = pickSprinkle(slideId);
+  const rand = useMemo(() => mulberry32(hashSeed(slideId)), [slideId]);
+  const accent = "var(--accent)";
+
+  if (kind === "confetti") {
+    const pieces = Array.from({ length: 22 }, (_, i) => ({
+      left: `${Math.floor(rand() * 100)}%`,
+      delay: `${(rand() * 1.6).toFixed(2)}s`,
+      dur:   `${(3.5 + rand() * 3).toFixed(2)}s`,
+      cx:    `${Math.floor(rand() * 120 - 60)}px`,
+      color: [accent, "var(--mesh-b)", "var(--mesh-c)", "#E8B84B", "#fff"][Math.floor(rand() * 5)],
+      w:     6 + Math.floor(rand() * 6),
+      h:     8 + Math.floor(rand() * 10),
+      key: i,
+    }));
+    return (
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+        {pieces.map((p) => (
+          <span
+            key={p.key}
+            className="absolute top-0 rounded-[2px]"
+            style={{
+              left: p.left,
+              width: p.w, height: p.h,
+              background: p.color,
+              animation: `confettiFall ${p.dur} linear ${p.delay} infinite`,
+              ["--cx" as string]: p.cx,
+            } as React.CSSProperties}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (kind === "petals") {
+    const pieces = Array.from({ length: 14 }, (_, i) => ({
+      left: `${Math.floor(rand() * 100)}%`,
+      delay: `${(rand() * 2).toFixed(2)}s`,
+      dur:   `${(6 + rand() * 5).toFixed(2)}s`,
+      cx:    `${Math.floor(rand() * 200 - 100)}px`,
+      key: i,
+    }));
+    return (
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+        {pieces.map((p) => (
+          <span
+            key={p.key}
+            className="absolute top-0 text-[18px] select-none opacity-80"
+            style={{
+              left: p.left,
+              animation: `confettiFall ${p.dur} linear ${p.delay} infinite`,
+              ["--cx" as string]: p.cx,
+            } as React.CSSProperties}
+          >
+            🌸
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  // sparkles / glitter
+  const count = kind === "glitter" ? 28 : 18;
+  const pieces = Array.from({ length: count }, (_, i) => ({
+    left: `${Math.floor(rand() * 100)}%`,
+    top:  `${Math.floor(rand() * 100)}%`,
+    delay: `${(rand() * 3).toFixed(2)}s`,
+    dur:   `${(2.4 + rand() * 2.4).toFixed(2)}s`,
+    size:  kind === "glitter" ? 6 + Math.floor(rand() * 6) : 10 + Math.floor(rand() * 10),
+    key: i,
+  }));
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+      {pieces.map((p) => (
+        <span
+          key={p.key}
+          className="absolute select-none text-white/90"
+          style={{
+            left: p.left, top: p.top,
+            fontSize: p.size,
+            animation: `sparklePop ${p.dur} ease-in-out ${p.delay} infinite`,
+            textShadow: "0 0 8px rgba(255,255,255,0.6)",
+          }}
+        >
+          ✦
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function WordsIn({ text, className, style, baseDelay = 0 }: {
+  text: string;
+  className?: string;
+  style?: React.CSSProperties;
+  baseDelay?: number;
+}) {
+  const words = text.split(/(\s+)/);
+  return (
+    <span className={`word-in ${className ?? ""}`} style={style}>
+      {words.map((w, i) =>
+        /^\s+$/.test(w) ? w : (
+          <span key={i} style={{ animationDelay: `${baseDelay + i * 60}ms` }}>{w}</span>
+        ),
+      )}
+    </span>
+  );
+}
+
 function SparkleField() {
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
@@ -116,7 +250,18 @@ function buildBaseSlides(
     { id: "together", kind: "intro-together", duration: 6000 },
   ];
   if (hasAbout) slides.push({ id: "about", kind: "intro-about", duration: 8500 });
+
+  const chapters = introContent?.chapters ?? [];
+  // Cap so total intro slides stay at or under 10 (5 fixed + final + chapters)
+  const room = Math.max(0, 10 - (slides.length + 2));
+  chapters.slice(0, room).forEach((_, idx) => {
+    slides.push({ id: `chapter-${idx}`, kind: "intro-chapter", duration: 7500, chapterIdx: idx });
+  });
+
   slides.push({ id: "ready", kind: "intro-ready", duration: 5000 });
+  if (introContent?.final) {
+    slides.push({ id: "final", kind: "intro-final", duration: 7500 });
+  }
   return slides;
 }
 
@@ -288,24 +433,30 @@ export function Player({
       {/* Slide content */}
       {!done ? (
         current?.kind === "intro" ? (
-          <IntroSlideView
-            key={current.intro.id}
-            slide={current.intro}
-            firstName={firstName}
-            eventType={eventType}
-            celebrationDate={celebrationDate}
-            celebrationTitle={celebrationTitle}
-            tagline={tagline}
-            celebrantDescription={celebrantDescription}
-            introContent={introContent}
-          />
+          <>
+            <SprinkleOverlay slideId={current.intro.id} />
+            <IntroSlideView
+              key={current.intro.id}
+              slide={current.intro}
+              firstName={firstName}
+              eventType={eventType}
+              celebrationDate={celebrationDate}
+              celebrationTitle={celebrationTitle}
+              tagline={tagline}
+              celebrantDescription={celebrantDescription}
+              introContent={introContent}
+            />
+          </>
         ) : currentMsg && current?.kind === "message" ? (
-          <MessageSlide
-            key={currentMsg.id}
-            m={currentMsg}
-            msgIdx={current.msgIdx}
-            onInteractiveReady={() => setInteractiveReady(true)}
-          />
+          <>
+            <SprinkleOverlay slideId={`msg-${currentMsg.id}`} />
+            <MessageSlide
+              key={currentMsg.id}
+              m={currentMsg}
+              msgIdx={current.msgIdx}
+              onInteractiveReady={() => setInteractiveReady(true)}
+            />
+          </>
         ) : null
       ) : (
         <PostPlayGallery
@@ -368,7 +519,7 @@ function IntroSlideView({
 
         <div className="absolute top-16 left-0 right-0 flex justify-center fade-up" style={{ animationDelay: "0ms" }}>
           <span className="inline-block rounded-full bg-white/20 backdrop-blur-sm px-4 py-1.5 text-[11px] uppercase tracking-[0.22em] text-ink/65">
-            {celebrationTitle}
+            For {firstName}
           </span>
         </div>
 
@@ -383,17 +534,14 @@ function IntroSlideView({
             {emoji}
           </span>
           <h1
-            className="serif text-ink leading-[0.85] fade-up"
-            style={{ fontSize: "clamp(2.8rem,11vw,5.5rem)", animationDelay: "120ms" }}
+            className="serif text-ink leading-[0.85]"
+            style={{ fontSize: "clamp(2.8rem,11vw,5.5rem)" }}
           >
-            Hi {firstName},
+            <WordsIn text={firstName} baseDelay={120} />
           </h1>
           {subtext && (
-            <p
-              className="mt-6 text-ink/75 text-xl leading-snug max-w-sm fade-up"
-              style={{ animationDelay: "280ms" }}
-            >
-              {subtext}
+            <p className="mt-6 text-ink/75 text-xl leading-snug max-w-sm">
+              <WordsIn text={subtext} baseDelay={400} />
             </p>
           )}
         </div>
@@ -620,6 +768,74 @@ function IntroSlideView({
     );
   }
 
+  // ── Chapter (AI extras) ───────────────────────────────────────────────────────
+  if (slide.kind === "intro-chapter" && typeof slide.chapterIdx === "number" && ai?.chapters?.[slide.chapterIdx]) {
+    const ch = ai.chapters[slide.chapterIdx];
+    return (
+      <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
+        <div className="absolute -top-20 -left-24 size-72 rounded-full bg-white/[0.06] blur-3xl pointer-events-none" aria-hidden />
+        <div className="absolute -bottom-24 -right-16 size-80 rounded-full bg-white/[0.05] blur-3xl pointer-events-none" aria-hidden />
+        <div className="relative z-10 max-w-sm">
+          {ch.emoji && (
+            <span
+              className="block mb-7 leading-none"
+              style={{
+                fontSize: "clamp(3rem,11vw,4.2rem)",
+                animation: "floatY 4.5s ease-in-out infinite, glowBreath 4s ease-in-out infinite",
+              }}
+            >
+              {ch.emoji}
+            </span>
+          )}
+          <h2 className="serif text-ink leading-[0.95]" style={{ fontSize: "clamp(2rem,8vw,3.2rem)" }}>
+            <WordsIn text={ch.headline} baseDelay={120} />
+          </h2>
+          <p className="mt-5 text-ink/75 text-lg leading-snug">
+            <WordsIn text={ch.body} baseDelay={380} />
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  // ── Final statement ───────────────────────────────────────────────────────────
+  if (slide.kind === "intro-final" && ai?.final) {
+    const fin = ai.final;
+    return (
+      <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
+          <div
+            className="rounded-full border border-white/[0.10]"
+            style={{
+              width: "min(360px, 80vw)", height: "min(360px, 80vw)",
+              animation: "ringPulse 5s ease-in-out infinite",
+            }}
+          />
+        </div>
+        <span
+          className="block mb-9 leading-none relative z-10"
+          style={{
+            fontSize: "clamp(3.4rem,14vw,5.5rem)",
+            animation: "floatY 4.5s ease-in-out infinite, glowBreath 4s ease-in-out infinite",
+          }}
+        >
+          {fin.emoji ?? "✨"}
+        </span>
+        <h2
+          className="serif text-ink leading-[0.95] relative z-10"
+          style={{ fontSize: "clamp(2.2rem,9vw,3.8rem)" }}
+        >
+          <WordsIn text={fin.headline} baseDelay={150} />
+        </h2>
+        {fin.subtext && (
+          <p className="mt-6 text-ink/75 text-lg leading-snug max-w-sm relative z-10">
+            <WordsIn text={fin.subtext} baseDelay={440} />
+          </p>
+        )}
+      </section>
+    );
+  }
+
   // ── Ready ─────────────────────────────────────────────────────────────────────
   const readyEmoji = ai?.welcome?.emoji ?? "✨";
   return (
@@ -723,10 +939,10 @@ function MessageSlide({ m, msgIdx, onInteractiveReady }: { m: Msg; msgIdx: numbe
         )}
         {m.body && (
           <p className={`mt-6 text-ink whitespace-pre-wrap serif ${m.body.length < 80 ? "text-4xl leading-tight" : "text-2xl leading-snug"}`}>
-            {m.body}
+            <WordsIn text={m.body} baseDelay={120} />
           </p>
         )}
-        <p className="mt-7 text-[11px] uppercase tracking-[0.3em] text-ink/60">— {name}</p>
+        <p className="mt-7 text-[11px] uppercase tracking-[0.3em] text-ink/60 fade-up" style={{ animationDelay: "350ms" }}>— {name}</p>
       </article>
     </section>
   );
@@ -739,7 +955,9 @@ const INTRO_LABELS: Partial<Record<IntroSlide["kind"], string>> = {
   "intro-occasion": "Occasion",
   "intro-together": "Together",
   "intro-about": "About you",
+  "intro-chapter": "Chapter",
   "intro-ready": "Ready",
+  "intro-final": "Final word",
   "intro-gallery": "Memory",
 };
 
