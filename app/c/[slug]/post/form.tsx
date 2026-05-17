@@ -4,11 +4,26 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import {
   Type, Mic, Video, Image as ImageIcon, Upload, Square, RotateCcw,
   Loader2, Sparkles, ArrowLeft,
+  Gift, Mail, Cake, Heart, Ticket, Camera, Stars, Archive, Zap, Wine,
 } from "lucide-react";
 import { postMessage, type PostState } from "./actions";
 import { extFromMime, startRecording } from "@/lib/media/recorder";
 import { INTERACTIVE_OPTIONS, Interactive, type InteractiveKind } from "@/components/interactives";
 import { getOrCreateContributorId } from "@/lib/contributor-id";
+import type { LucideIcon } from "lucide-react";
+
+const INTERACTIVE_ICONS: Record<string, LucideIcon> = {
+  gift:     Gift,
+  letter:   Mail,
+  cake:     Cake,
+  heart:    Heart,
+  scratch:  Ticket,
+  polaroid: Camera,
+  balloons: Stars,
+  jar:      Archive,
+  sparkler: Zap,
+  toast:    Wine,
+};
 
 type Mode = "plain" | "surprise";
 type MediaTab = "text" | "audio" | "video" | "image";
@@ -234,20 +249,27 @@ export function PostForm({ slug, recipientName }: { slug: string; recipientName?
         <div className="space-y-3">
           <p className="label">Pick a surprise</p>
           <div className="grid grid-cols-2 gap-2">
-            {INTERACTIVE_OPTIONS.map((opt) => (
-              <button key={opt.id} type="button"
-                onClick={() => setInteractiveKind(opt.id)}
-                className={`rounded-2xl p-3 text-left transition border ${
-                  interactiveKind === opt.id
-                    ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-                    : "border-ink/10 bg-white"
-                }`}
-              >
-                <span className="text-xl block">{opt.glyph}</span>
-                <span className="text-sm font-medium text-ink mt-1.5 block">{opt.label}</span>
-                <span className="text-[11px] text-ink/55 mt-0.5 block">{opt.caption}</span>
-              </button>
-            ))}
+            {INTERACTIVE_OPTIONS.map((opt) => {
+              const Icon = INTERACTIVE_ICONS[opt.id] ?? Gift;
+              const active = interactiveKind === opt.id;
+              return (
+                <button key={opt.id} type="button"
+                  onClick={() => setInteractiveKind(opt.id)}
+                  className={`rounded-2xl p-3.5 text-left transition border ${
+                    active
+                      ? "border-[var(--accent)] bg-[var(--accent-soft)]"
+                      : "border-ink/10 bg-white hover:bg-ink/[0.03]"
+                  }`}
+                >
+                  <Icon
+                    className="size-5 mb-2"
+                    style={{ color: active ? "var(--accent)" : "var(--ink, #0F0E0D)", opacity: active ? 1 : 0.6 }}
+                  />
+                  <span className="text-sm font-medium text-ink block">{opt.label}</span>
+                  <span className="text-[11px] text-ink/50 mt-0.5 block">{opt.caption}</span>
+                </button>
+              );
+            })}
           </div>
 
           {interactiveKind === "cake" && (
