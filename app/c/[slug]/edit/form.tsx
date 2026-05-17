@@ -16,9 +16,12 @@ export function EditForm({
   initial: {
     title: string;
     messageFromCreator: string;
+    tagline: string;
+    celebrantDescription: string;
     coverPhotoPath: string | null;
     theme: Theme;
     securityQuestion: string | null;
+    recipientName: string;
   };
 }) {
   const action = editCelebration.bind(null, slug);
@@ -50,6 +53,8 @@ export function EditForm({
     setCoverPath(sign.path);
     setCoverPreview(URL.createObjectURL(file));
   }
+
+  const firstName = initial.recipientName.split(" ")[0];
 
   return (
     <form action={dispatch} className="mt-8 space-y-6" data-theme={theme}>
@@ -87,6 +92,29 @@ export function EditForm({
       </div>
 
       <div className="space-y-1.5">
+        <label className="label">Custom tagline (optional)</label>
+        <input
+          className="field"
+          name="tagline"
+          defaultValue={initial.tagline}
+          maxLength={140}
+          placeholder={`e.g. "We got you, queen ✨" or leave blank to hide`}
+        />
+        <p className="text-xs text-ink/45">Shown on {firstName}'s cover page. Leave blank to hide.</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="label">About {firstName} (optional)</label>
+        <textarea
+          className="field min-h-[120px] resize-none"
+          name="celebrantDescription"
+          defaultValue={initial.celebrantDescription}
+          maxLength={1500}
+          placeholder={`Tell us about ${firstName} — their personality, what they love, what makes them special. This creates a personalised opening experience when they press Play.`}
+        />
+      </div>
+
+      <div className="space-y-1.5">
         <label className="label">A note from you</label>
         <textarea className="field min-h-[100px] resize-none" name="messageFromCreator"
           defaultValue={initial.messageFromCreator} maxLength={280}
@@ -95,16 +123,16 @@ export function EditForm({
 
       <div className="pt-4 border-t border-ink/10 space-y-3">
         <div>
-          <p className="serif text-xl text-ink">Security question</p>
+          <p className="serif text-xl text-ink">Security question <span className="text-ink/40 text-sm font-sans not-italic ml-1">— optional</span></p>
           <p className="text-ink/55 text-xs mt-1">
-            Asked before the celebrant can open their page. Leave answer blank to keep the existing one.
+            Asked before {firstName} can open their page. Leave both fields blank to remove the gate. Leave answer blank to keep the existing one.
           </p>
         </div>
         <div className="space-y-1.5">
           <label className="label">Question</label>
           <input className="field" name="securityQuestion"
             defaultValue={initial.securityQuestion ?? ""} maxLength={140}
-            placeholder="What was your childhood nickname?" />
+            placeholder="What was your childhood nickname? (blank to remove)" />
         </div>
         <div className="space-y-1.5">
           <label className="label">Answer (only if changing)</label>

@@ -20,11 +20,20 @@ type Msg = {
   created_at: string;
 };
 
+type IntroSlide = {
+  id: string;
+  kind: "intro-welcome" | "intro-occasion" | "intro-together" | "intro-about" | "intro-ready";
+  duration: number;
+};
+
+type AnySlide =
+  | { kind: "intro"; intro: IntroSlide }
+  | { kind: "message"; msg: Msg };
+
 function publicUrl(path: string) {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${path}`;
 }
 
-// Per-slide "scene" — gives every card a custom dynamic background.
 const SCENES = [
   { name: "aurora",   bg: "radial-gradient(at 20% 20%, var(--mesh-b), transparent 55%), radial-gradient(at 80% 80%, var(--mesh-c), transparent 55%), var(--mesh-a)" },
   { name: "sunrise",  bg: "linear-gradient(180deg, var(--mesh-d) 0%, var(--mesh-b) 100%)" },
@@ -36,8 +45,41 @@ const SCENES = [
 
 function sceneFor(i: number) { return SCENES[i % SCENES.length]; }
 
+const EVENT_EMOJI: Record<string, string> = {
+  birthday: "🎂",
+  graduation: "🎓",
+  wedding: "💍",
+  appreciation: "🙏",
+  farewell: "👋",
+  baby_shower: "🍼",
+  surprise_gift: "🎁",
+  other: "🎉",
+};
+
+function eventLabel(type: string): string {
+  return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-NG", {
+    day: "numeric", month: "long", year: "numeric",
+  });
+}
+
+function buildIntroSlides(celebrantDescription: string | null): IntroSlide[] {
+  const slides: IntroSlide[] = [
+    { id: "welcome", kind: "intro-welcome", duration: 4000 },
+    { id: "occasion", kind: "intro-occasion", duration: 3500 },
+    { id: "together", kind: "intro-together", duration: 3500 },
+  ];
+  if (celebrantDescription && celebrantDescription.trim().length > 20) {
+    slides.push({ id: "about", kind: "intro-about", duration: 5000 });
+  }
+  slides.push({ id: "ready", kind: "intro-ready", duration: 2500 });
+  return slides;
+}
+
 function durationFor(m: Msg): number {
-  // Interactives are paused until the celebrant taps through them.
   if (m.interactive_kind && m.interactive_kind !== "none") return Number.POSITIVE_INFINITY;
   if (m.media_kind === "image") return 4500;
   if (m.media_kind === "video" && m.media_duration_ms) return m.media_duration_ms + 600;
@@ -47,13 +89,29 @@ function durationFor(m: Msg): number {
 }
 
 export function Player({
-  slug, theme, recipientName, messages,
+  slug, theme, recipientName, eventType, celebrationDate, celebrationTitle,
+  tagline, celebrantDescription, messages,
 }: {
   slug: string;
   theme: Theme;
   recipientName: string;
+  eventType: string;
+  celebrationDate: string;
+  celebrationTitle: string;
+  tagline: string | null;
+  celebrantDescription: string | null;
   messages: Msg[];
 }) {
+  const introSlides = useMemo(
+    () => buildIntroSlides(celebrantDescription),
+    [celebrantDescription],
+  );
+
+  const allSlides: AnySlide[] = useMemo(() => [
+    ...introSlides.map((intro): AnySlide => ({ kind: "intro", intro })),
+    ...messages.map((msg): AnySlide => ({ kind: "message", msg })),
+  ], [introSlides, messages]);
+
   const [i, setI] = useState(0);
   const [paused, setPaused] = useState(false);
   const [done, setDone] = useState(false);
@@ -63,28 +121,30 @@ export function Player({
   const startTsRef = useRef<number>(0);
   const elapsedRef = useRef<number>(0);
 
-  const total = messages.length;
-  const current = messages[i];
-  const isInteractive = !!current && current.interactive_kind !== "none";
-  // Once an interactive has been revealed, give the celebrant ~4.5s to read.
+  const total = allSlides.length;
+  const current = allSlides[i];
+  const isMsg = current?.kind === "message";
+  const currentMsg = isMsg ? current.msg : null;
+  const isInteractive = !!currentMsg && currentMsg.interactive_kind !== "none";
+
   const dur = !current
     ? 0
-    : isInteractive && interactiveReady
-      ? 4500
-      : durationFor(current);
+    : current.kind === "intro"
+      ? current.intro.duration
+      : isInteractive && interactiveReady
+        ? 4500
+        : durationFor(current.msg);
+
   const scene = useMemo(() => sceneFor(i), [i]);
 
-  // Reset the interactive lock whenever the slide changes.
   useEffect(() => { setInteractiveReady(false); }, [i]);
 
-  // Auto-advance
   useEffect(() => {
     if (done || !current) return;
     if (paused) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       return;
     }
-    // Interactive slides wait until the celebrant has unlocked them.
     if (isInteractive && !interactiveReady) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       setProgress(0);
@@ -124,16 +184,7 @@ export function Player({
     setDone(false); setI(0); setPaused(false);
   }
 
-  if (total === 0) {
-    return (
-      <main data-theme={theme} className="min-h-[100dvh] grid place-items-center theme-mesh">
-        <div className="text-center px-6">
-          <p className="serif text-3xl text-ink">No messages yet.</p>
-          <Link href={`/c/${slug}/celebrate`} className="btn-outline mt-6 inline-flex">Back</Link>
-        </div>
-      </main>
-    );
-  }
+  const firstName = recipientName.split(" ")[0];
 
   return (
     <main
@@ -141,26 +192,29 @@ export function Player({
       className="fixed inset-0 select-none overflow-hidden"
       style={{ background: scene.bg }}
       onClick={(e) => {
-        // Interactive slides absorb the tap so the celebrant can interact.
         if (isInteractive && !interactiveReady) return;
         const x = e.clientX;
         const w = window.innerWidth;
         if (x < w / 3) prev(); else next();
       }}
     >
-      {/* Top bar: progress + close */}
+      {/* Progress bar */}
       <div className="absolute inset-x-0 top-0 px-3 pt-3 z-30 flex items-center gap-2">
-        <div className="flex-1 flex gap-1">
-          {messages.map((_, idx) => (
-            <div key={idx} className="flex-1 h-0.5 rounded-full bg-white/30 overflow-hidden">
+        <div className="flex-1 flex gap-0.5">
+          {allSlides.map((_, idx) => {
+            const isIntroSlide = allSlides[idx]?.kind === "intro";
+            return (
               <div
-                className="h-full bg-white transition-[width] duration-100"
-                style={{
-                  width: `${idx < i ? 100 : idx === i ? progress * 100 : 0}%`,
-                }}
-              />
-            </div>
-          ))}
+                key={idx}
+                className={`flex-1 h-0.5 rounded-full overflow-hidden ${isIntroSlide ? "bg-white/20" : "bg-white/30"}`}
+              >
+                <div
+                  className={`h-full transition-[width] duration-100 ${isIntroSlide ? "bg-white/60" : "bg-white"}`}
+                  style={{ width: `${idx < i ? 100 : idx === i ? progress * 100 : 0}%` }}
+                />
+              </div>
+            );
+          })}
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); setPaused((p) => !p); }}
@@ -179,18 +233,32 @@ export function Player({
         </Link>
       </div>
 
-      {/* Slide */}
+      {/* Slide content */}
       {!done ? (
-        <Slide
-          key={current.id}
-          m={current}
-          onInteractiveReady={() => setInteractiveReady(true)}
-        />
+        current?.kind === "intro" ? (
+          <IntroSlideView
+            key={current.intro.id}
+            slide={current.intro}
+            firstName={firstName}
+            eventType={eventType}
+            celebrationDate={celebrationDate}
+            celebrationTitle={celebrationTitle}
+            tagline={tagline}
+            celebrantDescription={celebrantDescription}
+            messageCount={messages.length}
+          />
+        ) : currentMsg ? (
+          <MessageSlide
+            key={currentMsg.id}
+            m={currentMsg}
+            onInteractiveReady={() => setInteractiveReady(true)}
+          />
+        ) : null
       ) : (
-        <EndCard recipientName={recipientName} onReplay={replay} slug={slug} />
+        <EndCard firstName={firstName} onReplay={replay} slug={slug} />
       )}
 
-      {/* Edge tap hints */}
+      {/* Desktop edge nav */}
       <button
         onClick={(e) => { e.stopPropagation(); prev(); }}
         aria-label="Previous"
@@ -205,7 +273,131 @@ export function Player({
   );
 }
 
-function Slide({
+// ─── Intro slide renderer ─────────────────────────────────────────────────────
+
+function IntroSlideView({
+  slide, firstName, eventType, celebrationDate, celebrationTitle,
+  tagline, celebrantDescription, messageCount,
+}: {
+  slide: IntroSlide;
+  firstName: string;
+  eventType: string;
+  celebrationDate: string;
+  celebrationTitle: string;
+  tagline: string | null;
+  celebrantDescription: string | null;
+  messageCount: number;
+}) {
+  if (slide.kind === "intro-welcome") {
+    return (
+      <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
+        <span className="text-6xl mb-4 animate-bounce">🎉</span>
+        <p className="text-[11px] uppercase tracking-[0.4em] text-ink/50 mb-3">
+          {eventLabel(eventType)}
+        </p>
+        <h1 className="serif text-6xl text-ink leading-[0.9] drop-shadow-sm">
+          Hi {firstName},
+        </h1>
+        {tagline ? (
+          <p className="mt-5 text-ink/80 text-xl leading-snug max-w-xs">{tagline}</p>
+        ) : (
+          <p className="mt-5 text-ink/70 text-lg leading-snug max-w-xs">
+            Something special was made just for you ✨
+          </p>
+        )}
+        <div className="mt-8 flex gap-2 justify-center">
+          <span className="text-2xl">💛</span>
+          <span className="text-2xl">🌟</span>
+          <span className="text-2xl">💛</span>
+        </div>
+      </section>
+    );
+  }
+
+  if (slide.kind === "intro-occasion") {
+    const emoji = EVENT_EMOJI[eventType] ?? "🎉";
+    return (
+      <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
+        <span className="text-7xl mb-6">{emoji}</span>
+        <p className="text-[10px] uppercase tracking-[0.45em] text-ink/45 mb-2">
+          We are celebrating
+        </p>
+        <h2 className="serif text-4xl text-ink leading-tight max-w-xs">
+          {celebrationTitle}
+        </h2>
+        <div className="mt-6 inline-flex items-center gap-2 bg-white/40 backdrop-blur rounded-full px-5 py-2">
+          <span className="text-base">📅</span>
+          <span className="text-ink/75 text-sm font-medium">{formatDate(celebrationDate)}</span>
+        </div>
+      </section>
+    );
+  }
+
+  if (slide.kind === "intro-together") {
+    return (
+      <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
+        <div className="flex justify-center gap-1 mb-6 text-3xl">
+          {["❤️", "🧡", "💛", "💚", "💙"].map((e, i) => (
+            <span key={i} style={{ animationDelay: `${i * 120}ms` }} className="animate-bounce">{e}</span>
+          ))}
+        </div>
+        <p className="text-[10px] uppercase tracking-[0.4em] text-ink/45 mb-3">Made with love</p>
+        {messageCount > 0 ? (
+          <>
+            <h2 className="serif text-5xl text-ink leading-tight">
+              {messageCount}
+            </h2>
+            <p className="mt-2 serif text-2xl text-ink/75">
+              {messageCount === 1 ? "person wrote to you" : "people wrote to you"}
+            </p>
+          </>
+        ) : (
+          <h2 className="serif text-3xl text-ink leading-snug max-w-xs">
+            Your celebration is just getting started 🌱
+          </h2>
+        )}
+        <p className="mt-5 text-ink/55 text-sm">
+          Each one thought of you ✨
+        </p>
+      </section>
+    );
+  }
+
+  if (slide.kind === "intro-about") {
+    return (
+      <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
+        <span className="text-4xl mb-4">🌸</span>
+        <p className="text-[10px] uppercase tracking-[0.4em] text-ink/45 mb-4">About {firstName}</p>
+        <blockquote className="serif text-ink text-xl leading-relaxed max-w-sm line-clamp-6 italic">
+          &ldquo;{celebrantDescription}&rdquo;
+        </blockquote>
+      </section>
+    );
+  }
+
+  // intro-ready
+  return (
+    <section className="absolute inset-0 flex flex-col items-center justify-center px-8 fade-in text-center">
+      <span className="text-5xl mb-5">💌</span>
+      <h2 className="serif text-4xl text-ink leading-tight">
+        {messageCount > 0 ? "Your messages await" : "Your celebration awaits"}
+      </h2>
+      <p className="mt-3 text-ink/60 text-base">
+        {messageCount > 0
+          ? "Tap → to open the first one"
+          : "Tap → to continue"}
+      </p>
+      <div className="mt-8 flex items-center gap-1.5 text-ink/40 text-sm">
+        <span>tap anywhere to go forward</span>
+        <span className="text-base">→</span>
+      </div>
+    </section>
+  );
+}
+
+// ─── Message slide ────────────────────────────────────────────────────────────
+
+function MessageSlide({
   m, onInteractiveReady,
 }: { m: Msg; onInteractiveReady: () => void }) {
   const name = m.is_anonymous ? "Someone special" : m.contributor_name;
@@ -259,14 +451,17 @@ function Slide({
   );
 }
 
+// ─── End card ────────────────────────────────────────────────────────────────
+
 function EndCard({
-  recipientName, onReplay, slug,
-}: { recipientName: string; onReplay: () => void; slug: string }) {
+  firstName, onReplay, slug,
+}: { firstName: string; onReplay: () => void; slug: string }) {
   return (
     <section className="absolute inset-0 grid place-items-center px-6 fade-in">
       <div className="text-center">
-        <p className="text-[11px] uppercase tracking-[0.35em] text-ink/55">That's all of them</p>
-        <h2 className="serif text-5xl text-ink mt-4 leading-tight">You are loved, {recipientName.split(" ")[0]}.</h2>
+        <span className="text-5xl block mb-4">🫶</span>
+        <p className="text-[11px] uppercase tracking-[0.35em] text-ink/55">That&apos;s all of them</p>
+        <h2 className="serif text-5xl text-ink mt-4 leading-tight">You are loved, {firstName}.</h2>
         <div className="mt-8 flex flex-col gap-3">
           <button onClick={onReplay} className="btn-accent shadow-soft inline-flex">
             <RotateCcw className="size-4" /> Replay

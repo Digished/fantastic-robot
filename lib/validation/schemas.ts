@@ -29,6 +29,8 @@ export const createCelebrationSchema = z.object({
     { message: "date must be at least 96 hours from now" },
   ),
   messageFromCreator: z.string().max(280).optional(),
+  tagline: z.string().max(140).optional(),
+  celebrantDescription: z.string().max(1500).optional(),
   recipientBankCode: z.string().min(2).max(10),
   recipientAccountNumber: naijaAccountNumber,
   coverPhotoPath: z.string().optional(),
@@ -38,7 +40,7 @@ export const createCelebrationSchema = z.object({
   (v) =>
     (!v.securityQuestion && !v.securityAnswer) ||
     (!!v.securityQuestion && !!v.securityAnswer),
-  { message: "Provide both a security question and an answer." },
+  { message: "Provide both a security question and an answer, or leave both blank." },
 );
 
 export const messageSchema = z.object({

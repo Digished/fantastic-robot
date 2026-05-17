@@ -25,7 +25,7 @@ export default async function CelebrantPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, security_question, security_answer_hash",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, tagline, total_raised_kobo, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, security_question, security_answer_hash",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -35,14 +35,14 @@ export default async function CelebrantPage({
   const { data: { user } } = await supabase.auth.getUser();
   const isCreator = !!user && user.id === page.creator_id;
 
-  // Gate: if a security question is set and the visitor isn't unlocked
-  // (and isn't the creator), show the gate.
+  // Gate: if a security answer hash exists and the visitor hasn't unlocked yet.
+  // Creators are exempt. The gate shows even if the question text is somehow missing.
   const needsGate = !!page.security_answer_hash && !isCreator && !(await isCelebrantUnlocked(slug));
-  if (needsGate && page.security_question) {
+  if (needsGate) {
     return (
       <CelebrantGate
         slug={slug}
-        question={page.security_question}
+        question={page.security_question ?? ""}
         recipientName={page.recipient_name}
       />
     );
@@ -92,9 +92,11 @@ export default async function CelebrantPage({
                 <h1 className="fade-up mt-3 serif text-5xl leading-[0.95] drop-shadow-sm">
                   Hi {page.recipient_name.split(" ")[0]},
                 </h1>
-                <p className="fade-up mt-3 text-white/90 text-lg leading-snug">
-                  Your friends made you something.
-                </p>
+                {page.tagline && (
+                  <p className="fade-up mt-3 text-white/90 text-lg leading-snug">
+                    {page.tagline}
+                  </p>
+                )}
               </div>
             </div>
           </div>

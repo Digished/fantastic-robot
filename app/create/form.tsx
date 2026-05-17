@@ -21,8 +21,8 @@ function minDate() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-const STEPS = ["Vibe", "Details", "Recipient", "Review"] as const;
-type Step = 0 | 1 | 2 | 3;
+const STEPS = ["Vibe", "Details", "About them", "Recipient", "Review"] as const;
+type Step = 0 | 1 | 2 | 3 | 4;
 
 export function CreateForm({ banks }: { banks: Bank[] }) {
   const router = useRouter();
@@ -41,6 +41,9 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
   const [eventType, setEventType] = useState("birthday");
   const [celebrationDate, setCelebrationDate] = useState("");
   const [messageFromCreator, setMessageFromCreator] = useState("");
+
+  const [tagline, setTagline] = useState("");
+  const [celebrantDescription, setCelebrantDescription] = useState("");
 
   const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
@@ -90,15 +93,22 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
   }
 
   function canAdvance(): boolean {
-    if (step === 0) return true; // theme + cover both optional
+    if (step === 0) return true;
     if (step === 1) return title.trim().length >= 2 && recipientName.trim().length >= 1 &&
                            !!celebrationDate && new Date(celebrationDate).getTime() > Date.now() + 96*3600*1000;
-    if (step === 2) return !!resolved && !!bankCode && accountNumber.length === 10
-      && securityQuestion.trim().length >= 3 && securityAnswer.trim().length >= 1;
+    if (step === 2) return true; // about-them is fully optional
+    if (step === 3) {
+      if (!resolved || !bankCode || accountNumber.length !== 10) return false;
+      // security is optional — if either field has content, both must be filled
+      const hasQ = securityQuestion.trim().length >= 3;
+      const hasA = securityAnswer.trim().length >= 1;
+      if ((hasQ && !hasA) || (!hasQ && hasA)) return false;
+      return true;
+    }
     return true;
   }
 
-  function next() { if (canAdvance() && step < 3) setStep((s) => (s + 1) as Step); }
+  function next() { if (canAdvance() && step < 4) setStep((s) => (s + 1) as Step); }
   function back() { if (step > 0) setStep((s) => (s - 1) as Step); }
 
   async function submit() {
@@ -110,18 +120,19 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
     fd.set("theme", theme);
     fd.set("celebrationDate", celebrationDate);
     if (messageFromCreator) fd.set("messageFromCreator", messageFromCreator);
+    if (tagline) fd.set("tagline", tagline);
+    if (celebrantDescription) fd.set("celebrantDescription", celebrantDescription);
     if (coverPath) fd.set("coverPhotoPath", coverPath);
     fd.set("recipientBankCode", bankCode);
     fd.set("recipientAccountNumber", accountNumber);
-    fd.set("securityQuestion", securityQuestion);
-    fd.set("securityAnswer",   securityAnswer);
+    if (securityQuestion) fd.set("securityQuestion", securityQuestion);
+    if (securityAnswer) fd.set("securityAnswer", securityAnswer);
 
     const result = await createCelebration({}, fd);
     if (result && "error" in result && result.error) {
       setSubmitError(result.error);
       setSubmitting(false);
     }
-    // On success, the server action redirects so we never reach here.
   }
 
   return (
@@ -218,8 +229,49 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
         {step === 2 && (
           <div className="space-y-5">
             <div>
+              <h2 className="serif text-3xl text-ink">About {recipientName.split(" ")[0] || "them"}</h2>
+              <p className="text-ink/55 text-sm mt-1">
+                This helps create a beautiful, personalised opening when {recipientName.split(" ")[0] || "the celebrant"} presses Play.
+                The more you share, the richer the experience. ✨
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="label">Who is this person to you? (optional)</label>
+              <textarea
+                className="field min-h-[140px] resize-none"
+                value={celebrantDescription}
+                onChange={(e) => setCelebrantDescription(e.target.value)}
+                placeholder={`Tell us about ${recipientName.split(" ")[0] || "them"} — their personality, what they love, what makes them special, and why you're celebrating them. This appears as a beautiful story before their messages.`}
+                maxLength={1500}
+              />
+              <p className="text-xs text-ink/45">{celebrantDescription.length}/1500 characters</p>
+            </div>
+
+            <div className="space-y-1.5 pt-2 border-t border-ink/10">
+              <label className="label">Custom tagline (optional)</label>
+              <input
+                className="field"
+                value={tagline}
+                onChange={(e) => setTagline(e.target.value)}
+                placeholder={`e.g. "We got you, queen ✨" or "Happy birthday, big head 🎂"`}
+                maxLength={140}
+              />
+              <p className="text-xs text-ink/45">
+                This appears on {recipientName.split(" ")[0] || "the celebrant"}'s cover page. Leave blank to hide it.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="space-y-5">
+            <div>
               <h2 className="serif text-3xl text-ink">Where the gift goes</h2>
-              <p className="text-ink/55 text-sm mt-1">Locked once the page is live. Contributors see this for transparency.</p>
+              <p className="text-ink/55 text-sm mt-1">
+                For monetary gifts friends may send to {recipientName.split(" ")[0] || "the celebrant"}.
+                Locked once the page is live.
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -249,10 +301,11 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
             </div>
 
             <div className="pt-5 border-t border-ink/10">
-              <h3 className="serif text-2xl text-ink">A secret door</h3>
+              <h3 className="serif text-2xl text-ink">A secret door <span className="text-ink/40 text-base font-sans not-italic ml-1">— optional</span></h3>
               <p className="text-ink/55 text-sm mt-1">
-                Before {recipientName || "the celebrant"} can open their page, they'll
-                answer this question. Share it with them privately — not in the group chat.
+                Set a security question so only {recipientName.split(" ")[0] || "the celebrant"} can open their page.
+                Share the answer with them privately — not in the group chat.
+                Leave both fields blank to skip.
               </p>
 
               <div className="space-y-1.5 mt-4">
@@ -272,7 +325,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="space-y-5">
             <div>
               <h2 className="serif text-3xl text-ink">Looks good?</h2>
@@ -291,6 +344,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
                 <p className="text-[10px] uppercase tracking-[0.3em] text-white/80">{eventType.replace("_", " ")}</p>
                 <h3 className="serif text-3xl mt-2">{title || "Your celebration"}</h3>
                 <p className="text-white/85 text-sm mt-1">For {recipientName || "—"}</p>
+                {tagline && <p className="text-white/70 text-xs mt-1 italic">{tagline}</p>}
               </div>
             </div>
 
@@ -299,6 +353,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
               <li className="py-2 flex justify-between"><span className="text-ink/55">Recipient</span><span className="text-ink">{resolved ?? "—"}</span></li>
               <li className="py-2 flex justify-between"><span className="text-ink/55">Account</span><span className="text-ink">****{accountNumber.slice(-4)}</span></li>
               <li className="py-2 flex justify-between"><span className="text-ink/55">Theme</span><span className="text-ink capitalize">{theme}</span></li>
+              <li className="py-2 flex justify-between"><span className="text-ink/55">Security gate</span><span className="text-ink">{securityQuestion ? "Yes ✓" : "None"}</span></li>
             </ul>
 
             {submitError && <p className="text-sm text-red-600">{submitError}</p>}
@@ -313,12 +368,12 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
             Back
           </button>
         )}
-        {step < 3 && (
+        {step < 4 && (
           <button type="button" onClick={next} disabled={!canAdvance()} className="btn-accent flex-1 shadow-soft">
             Continue
           </button>
         )}
-        {step === 3 && (
+        {step === 4 && (
           <button type="button" onClick={submit} disabled={submitting} className="btn-accent flex-1 shadow-glow">
             {submitting ? "Publishing…" : "Publish page"}
           </button>
