@@ -5,14 +5,17 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
-// Paystack signs the raw body with HMAC-SHA512 using the webhook secret.
+// Paystack signs webhooks with HMAC-SHA512 using your SECRET KEY (not a
+// separate webhook secret). https://paystack.com/docs/payments/webhooks/
 function verify(rawBody: string, signature: string | null): boolean {
   if (!signature) return false;
   const expected = crypto
-    .createHmac("sha512", env.paystackWebhookSecret())
+    .createHmac("sha512", env.paystackSecret())
     .update(rawBody)
     .digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 export async function POST(req: Request) {

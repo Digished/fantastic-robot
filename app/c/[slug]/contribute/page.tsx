@@ -18,19 +18,22 @@ export default async function ContributePage({
   const closed = page.status !== "active" || new Date(page.deadline_at).getTime() < Date.now();
 
   return (
-    <main className="min-h-[100dvh] px-5 pt-6 pb-16 max-w-md mx-auto">
-      <Link href={`/c/${slug}`} className="text-plum/60 text-sm">← Back to wall</Link>
-      <h1 className="font-serif text-3xl text-plum mt-6">
-        Send a gift to {page.recipient_name}
-      </h1>
-      <p className="text-plum/70 mt-2 text-sm">
-        Going to <span className="font-medium text-plum">{page.recipient_account_name}</span>
-      </p>
-      {closed ? (
-        <p className="text-plum/70 mt-6">Contributions are closed.</p>
-      ) : (
-        <ContributeForm slug={slug} />
-      )}
+    <main className="min-h-[100dvh] bg-white pb-16">
+      <div className="page-shell pt-6">
+        <Link href={`/c/${slug}`} className="text-ink/55 text-sm">← Back to wall</Link>
+        <h1 className="serif text-5xl text-ink mt-6">
+          Send a gift<br/>
+          <em className="not-italic text-[var(--accent)]">to {page.recipient_name}</em>
+        </h1>
+        <p className="text-ink/60 mt-3 text-sm">
+          Going to <span className="font-medium text-ink">{page.recipient_account_name}</span>
+        </p>
+        {closed ? (
+          <p className="text-ink/65 mt-8">Contributions are closed.</p>
+        ) : (
+          <ContributeForm slug={slug} />
+        )}
+      </div>
     </main>
   );
 }
