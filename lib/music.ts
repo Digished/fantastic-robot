@@ -10,27 +10,29 @@ export type MusicTrack = {
   mood: string;
 };
 
+// `id` values are stable (they are also the WAV filenames and are stored on
+// saved celebrations); labels/moods reflect each track's current style.
 export const MUSIC_TRACKS: MusicTrack[] = [
   { id: "happy-birthday",   label: "Happy Birthday",     mood: "The classic birthday tune" },
-  { id: "birthday-bounce",  label: "Birthday Bounce",    mood: "Playful and upbeat" },
+  { id: "birthday-bounce",  label: "Birthday Bounce",    mood: "Upbeat pop birthday party" },
   { id: "celebration",      label: "Celebration",        mood: "Bright, festive party energy" },
   { id: "warm-piano",       label: "Warm Piano",         mood: "Gentle and heartfelt" },
-  { id: "acoustic-sunshine",label: "Acoustic Sunshine",  mood: "Easy-going acoustic guitar" },
+  { id: "acoustic-sunshine",label: "House Party",        mood: "Feel-good piano-house groove" },
   { id: "dreamy",           label: "Dreamy",             mood: "Soft, reflective ambience" },
-  { id: "party-pop",        label: "Party Pop",          mood: "Energetic feel-good pop" },
-  { id: "soft-strings",     label: "Soft Strings",       mood: "Tender, cinematic strings" },
+  { id: "party-pop",        label: "Party Pop",          mood: "Energetic feel-good dance-pop" },
+  { id: "soft-strings",     label: "EDM Anthem",         mood: "Big-room festival energy" },
   { id: "lo-fi-chill",      label: "Lo-Fi Chill",        mood: "Mellow, laid-back lo-fi beats" },
   { id: "afrobeats",        label: "Afrobeats",          mood: "Uplifting West African groove" },
   { id: "disco-fever",      label: "Disco Fever",        mood: "Groovy 70s dancefloor energy" },
-  { id: "summer-vibes",     label: "Summer Vibes",       mood: "Bright and breezy feel-good" },
-  { id: "jazz-club",        label: "Jazz Club",          mood: "Smooth late-night jazz" },
-  { id: "epic-moment",      label: "Epic Moment",        mood: "Soaring cinematic build" },
-  { id: "retro-arcade",     label: "Retro Arcade",       mood: "Punchy 8-bit chiptune fun" },
-  { id: "reggae-chill",     label: "Reggae Chill",       mood: "Easy-going island rhythm" },
-  { id: "funky-groove",     label: "Funky Groove",       mood: "Deep bass, heavy pocket" },
-  { id: "midnight-rnb",     label: "Midnight R&B",       mood: "Smooth and soulful late-night" },
-  { id: "bossa-nova",       label: "Bossa Nova",         mood: "Breezy Brazilian jazz swing" },
-  { id: "gospel-joy",       label: "Gospel Joy",         mood: "Uplifting, full-of-life gospel" },
+  { id: "summer-vibes",     label: "Summer Vibes",       mood: "Bright tropical-house feel-good" },
+  { id: "jazz-club",        label: "Latin Heat",         mood: "Spicy reggaeton party groove" },
+  { id: "epic-moment",      label: "Pop Anthem",         mood: "Soaring stadium-pop singalong" },
+  { id: "retro-arcade",     label: "Retro Dance",        mood: "Neon 80s synth-pop dancefloor" },
+  { id: "reggae-chill",     label: "Dancehall",          mood: "Sunny dancehall party bounce" },
+  { id: "funky-groove",     label: "Funky Groove",       mood: "Deep bass, heavy party pocket" },
+  { id: "midnight-rnb",     label: "R&B Groove",         mood: "Smooth feel-good R&B bop" },
+  { id: "bossa-nova",       label: "Carnival",           mood: "Percussion-packed samba party" },
+  { id: "gospel-joy",       label: "Gospel Joy",         mood: "Hand-clapping gospel celebration" },
 ];
 
 export const MUSIC_IDS = MUSIC_TRACKS.map((t) => t.id) as [string, ...string[]];
