@@ -627,24 +627,17 @@ def t_birthday_bounce():
             for sub in range(4):
                 bnote = root + ("2" if sub == 0 else "2")
                 place(buf, pluck(n2f(bnote), spb * 0.95, BASS, 4.0) * 0.34, t0 + sub * spb)
-            if name == "intro":
-                # building: just bass + pad + handclaps from bar 2
-                if bar >= 2:
-                    place(buf, clap() * 0.30, t0 + 1 * spb)
-                    place(buf, clap() * 0.30, t0 + 3 * spb)
-            else:
-                # full drums
-                place(buf, kick() * 0.58, t0 + 0 * spb)
-                place(buf, kick() * 0.45, t0 + 2 * spb)
-                place(buf, snare(vol=1.0) * 0.42, t0 + 1 * spb)
-                place(buf, snare(vol=1.0) * 0.42, t0 + 3 * spb)
-                # hi-hat 8ths
-                for s in range(8):
-                    place(buf, hat() * 0.18, t0 + s * spb / 2)
-                # claps on 2,4 in chorus
-                if name in ("A", "A2"):
-                    place(buf, clap() * 0.28, t0 + 1 * spb)
-                    place(buf, clap() * 0.28, t0 + 3 * spb)
+            # full drums — playing from the very first bar
+            place(buf, kick() * 0.58, t0 + 0 * spb)
+            place(buf, kick() * 0.45, t0 + 2 * spb)
+            place(buf, snare(vol=1.0) * 0.42, t0 + 1 * spb)
+            place(buf, snare(vol=1.0) * 0.42, t0 + 3 * spb)
+            for s in range(8):
+                place(buf, hat() * 0.18, t0 + s * spb / 2)
+            place(buf, clap() * 0.28, t0 + 1 * spb)
+            place(buf, clap() * 0.28, t0 + 3 * spb)
+            if cursor == 0 and bar == 0:
+                place(buf, cymbal_crash(1.2) * 0.22, t0)
             # tom fill on last bar of each section
             if bar == bars - 1 and name != "outro":
                 for i, p in enumerate([180, 160, 140, 110]):
@@ -706,42 +699,37 @@ def t_celebration():
         for bar in range(bars):
             root, q = prog[bar % len(prog)]
             t0 = cursor + bar * 4 * spb
-            full = name in ("A", "A2", "coda")
-            # bass on every beat
-            for sub in range(4):
-                v = 0.32 if sub % 2 == 0 else 0.22
-                place(buf, pluck(n2f(root + "2"), spb * 0.9, BASS, 3.0) * v, t0 + sub * spb)
+            beat = name != "B"   # B is the softer bridge
+            # bass on beats 1 & 3
+            place(buf, pluck(n2f(root + "2"), spb * 1.4, BASS, 2.2) * 0.34, t0)
+            place(buf, pluck(n2f(root + "2"), spb * 1.4, BASS, 2.2) * 0.30, t0 + 2 * spb)
             # string pad chord
             for f in chord_freqs(root + "3", q):
                 place(buf, pad(f, 4 * spb + 0.3, STRING, attack=0.3, release=0.4) * 0.11, t0)
-            # brass stabs on beats 1 & 3
-            if full:
+            if beat:
+                # brass stabs on beats 1 & 3
                 for f in chord_freqs(root + "4", q):
-                    place(buf, brass(f, spb * 0.7) * 0.11, t0)
-                    place(buf, brass(f, spb * 0.7) * 0.09, t0 + 2 * spb)
-            # drums
-            if full:
+                    place(buf, brass(f, spb * 0.7) * 0.10, t0)
+                    place(buf, brass(f, spb * 0.7) * 0.08, t0 + 2 * spb)
+                # four-on-the-floor + backbeat
                 for sub in range(4):
-                    place(buf, kick(punch=1.1) * 0.55, t0 + sub * spb)
-                place(buf, snare() * 0.42, t0 + 1 * spb)
-                place(buf, snare() * 0.42, t0 + 3 * spb)
-                place(buf, clap() * 0.26, t0 + 1 * spb)
-                place(buf, clap() * 0.26, t0 + 3 * spb)
+                    place(buf, kick(punch=1.05) * 0.52, t0 + sub * spb)
+                place(buf, snare() * 0.40, t0 + 1 * spb)
+                place(buf, snare() * 0.40, t0 + 3 * spb)
+                place(buf, clap() * 0.24, t0 + 1 * spb)
+                place(buf, clap() * 0.24, t0 + 3 * spb)
                 for s in range(8):
-                    place(buf, tambourine() * 0.15, t0 + s * spb / 2)
-            elif name == "intro":
-                place(buf, tom(80, 0.45) * 0.50, t0)
-                place(buf, tom(80, 0.45) * 0.45, t0 + 2 * spb)
-            else:  # B
-                for sub in range(4):
-                    place(buf, kick(punch=0.9) * 0.40, t0 + sub * spb)
-                place(buf, snare() * 0.36, t0 + 1 * spb)
-                place(buf, snare() * 0.36, t0 + 3 * spb)
-            # crash at section starts
-            if bar == 0 and name in ("A", "B", "A2", "coda"):
+                    place(buf, tambourine() * 0.14, t0 + s * spb / 2)
+            else:  # B — softer bridge
+                place(buf, kick(punch=0.9) * 0.40, t0)
+                place(buf, kick(punch=0.9) * 0.36, t0 + 2 * spb)
+                place(buf, snare() * 0.34, t0 + 1 * spb)
+                place(buf, snare() * 0.34, t0 + 3 * spb)
+            # crash on the first bar of every section (incl. the opening)
+            if bar == 0:
                 place(buf, cymbal_crash(1.2) * 0.25, t0)
-            # tom fill at end of A/B
-            if bar == bars - 1 and name in ("A", "B", "A2"):
+            # tom fill at end of each section
+            if bar == bars - 1 and name != "coda":
                 for i, p in enumerate([200, 170, 140, 110, 90]):
                     place(buf, tom(p, 0.16) * 0.55, t0 + (2.5 + i * 0.3) * spb)
         # brass melody — hook played twice per section
@@ -749,8 +737,9 @@ def t_celebration():
             play_melody(buf, fanfare, cursor, spb, brass, vol=0.30)
             play_melody(buf, fanfare, cursor + 8 * 4 * spb, spb, brass, vol=0.30)
             if name == "A2":
-                fan_up = [(transpose(n, 4) if n else n, b) for n, b, *_ in fanfare]
-                play_melody(buf, fan_up, cursor, spb, brass, vol=0.15)
+                # octave-down doubling — adds body without clashing
+                fan_oct = [(transpose(n, -12) if n else n, b) for n, b, *_ in fanfare]
+                play_melody(buf, fan_oct, cursor, spb, brass, vol=0.16)
         elif name == "B":
             bridge_mel = [
                 ("E5", 2), ("G5", 2), ("D5", 2), ("G5", 2),          # C  G
@@ -866,7 +855,7 @@ def t_house_party():
         for bar in range(bars):
             root, q = prog[bar % len(prog)]
             t0 = cursor + bar * 4 * spb
-            full = name in ("A", "B", "A2")
+            full = name in ("intro", "A", "B", "A2")
             # deep bass on root, octave bounce
             place(buf, pluck(n2f(root + "1"), spb * 0.9, BASS, 3.0) * 0.34, t0)
             for sub in (1, 2, 3):
@@ -893,16 +882,13 @@ def t_house_party():
                 place(buf, clap() * 0.32, t0 + 3 * spb)
                 for s in range(8):
                     place(buf, hat() * 0.10, t0 + s * spb / 2)
-            elif name == "intro":
-                place(buf, hat_open(0.22) * 0.16, t0 + 2 * spb)
-                if bar >= 2:
-                    place(buf, clap() * 0.26, t0 + 1 * spb)
-                    place(buf, clap() * 0.26, t0 + 3 * spb)
+                if cursor == 0 and bar == 0:
+                    place(buf, cymbal_crash(1.4) * 0.22, t0)
             else:  # outro
                 for sub in range(4):
                     place(buf, kick(punch=0.9) * 0.42, t0 + sub * spb)
             # fill into next section
-            if bar == bars - 1 and name in ("A", "B", "A2"):
+            if bar == bars - 1 and name in ("intro", "A", "B", "A2"):
                 for i, p in enumerate([190, 160, 130, 105]):
                     place(buf, tom(p, 0.16) * 0.5, t0 + (3 + i * 0.25) * spb)
         # lead hook
@@ -911,8 +897,8 @@ def t_house_party():
             play_melody(buf, hook, cursor + 8 * 4 * spb, spb, pluck,
                         vol=0.30, harm=PIANO, decay=3.2, octave_shift=1)
         elif name == "B":
-            br = [(transpose(n, 5) if n and n != "_" else n, b) for n, b, *_ in hook]
-            play_melody(buf, br, cursor, spb, pluck, vol=0.30, harm=BELL, decay=3.5)
+            br = [(transpose(n, -12) if n and n != "_" else n, b) for n, b, *_ in hook]
+            play_melody(buf, br, cursor, spb, pluck, vol=0.32, harm=BELL, decay=3.5)
         cursor += bars * 4 * spb
 
     buf = sidechain_duck(buf, kicks_for_duck, depth=0.30, hold=0.03, release=0.18)
@@ -1032,7 +1018,15 @@ def t_party_pop():
                     rise = np.random.uniform(-1, 1, ns) * np.linspace(0, 0.25, ns)
                     place(buf, rise, t0)
             elif name == "intro":
-                place(buf, hat_open(0.3) * 0.18, t0 + 2 * spb)
+                # rhythmic intro — kick pulse so the track opens with a groove
+                for sub in range(4):
+                    ts = t0 + sub * spb
+                    place(buf, kick(punch=0.95) * 0.50, ts)
+                    kicks_for_duck.append(ts)
+                place(buf, hat_open(0.22) * 0.18, t0 + spb / 2)
+                place(buf, hat_open(0.22) * 0.18, t0 + 2 * spb + spb / 2)
+                if cursor == 0 and bar == 0:
+                    place(buf, cymbal_crash(1.6) * 0.24, t0)
             else:  # outro
                 if bar == 0:
                     place(buf, cymbal_crash(2.0) * 0.30, t0)
@@ -1122,7 +1116,15 @@ def t_edm_anthem():
                 if bar == bars - 1:
                     place(buf, snare(vol=0.6) * 0.3, t0 + 2 * spb)
             elif name == "intro":
-                place(buf, hat_open(0.3) * 0.16, t0 + 2 * spb)
+                # rhythmic intro — kick pulse so the track opens with a groove
+                for sub in range(4):
+                    ts = t0 + sub * spb
+                    place(buf, kick(punch=0.95) * 0.52, ts)
+                    kicks_for_duck.append(ts)
+                place(buf, hat_open(0.22) * 0.18, t0 + spb / 2)
+                place(buf, hat_open(0.22) * 0.18, t0 + 2 * spb + spb / 2)
+                if cursor == 0 and bar == 0:
+                    place(buf, cymbal_crash(1.7) * 0.24, t0)
             else:  # outro
                 if bar == 0:
                     place(buf, cymbal_crash(2.0) * 0.30, t0)
@@ -1239,30 +1241,28 @@ def t_afrobeats():
             # pad subtle
             for f in chord_freqs(root + "3", q):
                 place(buf, pad(f, 4 * spb + 0.3, STRING, attack=0.4, release=0.4) * 0.07, t0)
-            if name != "intro":
-                # afro kit: kick on 1, syncopated 2.5; clap on 2 & 4
-                place(buf, kick(punch=1.05) * 0.55, t0)
-                place(buf, kick(punch=0.85) * 0.42, t0 + 2.5 * spb)
-                place(buf, clap() * 0.32, t0 + 1 * spb)
-                place(buf, clap() * 0.32, t0 + 3 * spb)
-                # shaker on every 8th
-                for s in range(8):
-                    place(buf, shaker(vol=0.7) * 0.18, t0 + s * spb / 2)
-                # clave 3-2 pattern on every other bar
-                if bar % 2 == 0:
-                    for ts in [0, 0.75, 1.5, 2.5, 3]:
-                        place(buf, rim_click() * 0.30, t0 + ts * spb)
-                # bell pattern (high cowbell-like)
-                if name in ("A", "A2") and bar % 4 in (1, 3):
-                    for s in [0, 1.5, 3, 3.5]:
-                        place(buf, pluck(n2f("G5"), spb * 0.3, BELL, 5.0) * 0.14, t0 + s * spb)
+            # afro kit — drums play from the very first bar
+            place(buf, kick(punch=1.05) * 0.55, t0)
+            place(buf, kick(punch=0.85) * 0.42, t0 + 2.5 * spb)
+            place(buf, clap() * 0.32, t0 + 1 * spb)
+            place(buf, clap() * 0.32, t0 + 3 * spb)
+            for s in range(8):
+                place(buf, shaker(vol=0.7) * 0.18, t0 + s * spb / 2)
+            # clave 3-2 pattern on every other bar
+            if bar % 2 == 0:
+                for ts in [0, 0.75, 1.5, 2.5, 3]:
+                    place(buf, rim_click() * 0.30, t0 + ts * spb)
+            # bell pattern (high cowbell-like)
+            if name in ("A", "A2") and bar % 4 in (1, 3):
+                for s in [0, 1.5, 3, 3.5]:
+                    place(buf, pluck(n2f("G5"), spb * 0.3, BELL, 5.0) * 0.14, t0 + s * spb)
         # marimba melody — hook played twice per chorus
         if name in ("A", "A2"):
             play_melody(buf, mel, cursor, spb, pluck, vol=0.30, harm=MARIMBA, decay=4.5)
             play_melody(buf, mel, cursor + 8 * 4 * spb, spb, pluck,
                         vol=0.30, harm=MARIMBA, decay=4.5)
         elif name == "B":
-            br = [(transpose(n, -5) if n and n != "_" else n, b) for n, b, *_ in mel]
+            br = [(transpose(n, -12) if n and n != "_" else n, b) for n, b, *_ in mel]
             play_melody(buf, br, cursor, spb, pluck, vol=0.30, harm=MARIMBA, decay=4.0)
         cursor += bars * 4 * spb
 
@@ -1308,23 +1308,18 @@ def t_disco_fever():
                 place(buf, pluck(f, spb * 0.8, STRING, 4.0, attack=0.02) * 0.13, t0)
                 place(buf, pluck(f, spb * 0.6, STRING, 5.0, attack=0.02) * 0.10, t0 + 2 * spb)
             # guitar chips on offbeats (16ths between 2 and 4)
-            if name != "intro":
-                for s in [1.5, 2.5, 3.5]:
-                    for f in chord_freqs(root + "5", q)[:2]:
-                        place(buf, pluck(f, spb * 0.18, PLUCK, 12.0) * 0.10, t0 + s * spb)
-            # disco drums: 4-on-floor kick, open hat on offbeats, snare on 2 & 4
-            if name != "intro":
-                for sub in range(4):
-                    place(buf, kick(punch=1.0) * 0.55, t0 + sub * spb)
-                place(buf, snare(vol=0.9) * 0.40, t0 + 1 * spb)
-                place(buf, snare(vol=0.9) * 0.40, t0 + 3 * spb)
-                for sub in range(4):
-                    place(buf, hat_open(0.18) * 0.22, t0 + sub * spb + spb / 2)
-                # tambourine
-                for s in range(8):
-                    place(buf, tambourine() * 0.14, t0 + s * spb / 2)
-            else:
-                place(buf, hat_open(0.3) * 0.18, t0 + 2 * spb)
+            for s in [1.5, 2.5, 3.5]:
+                for f in chord_freqs(root + "5", q)[:2]:
+                    place(buf, pluck(f, spb * 0.18, PLUCK, 12.0) * 0.10, t0 + s * spb)
+            # disco drums — four-on-the-floor from the very first bar
+            for sub in range(4):
+                place(buf, kick(punch=1.0) * 0.55, t0 + sub * spb)
+            place(buf, snare(vol=0.9) * 0.40, t0 + 1 * spb)
+            place(buf, snare(vol=0.9) * 0.40, t0 + 3 * spb)
+            for sub in range(4):
+                place(buf, hat_open(0.18) * 0.22, t0 + sub * spb + spb / 2)
+            for s in range(8):
+                place(buf, tambourine() * 0.14, t0 + s * spb / 2)
             # tom fills end of A
             if bar == bars - 1 and name in ("A", "B"):
                 for i, p in enumerate([200, 160, 130, 100]):
@@ -1379,19 +1374,17 @@ def t_summer_vibes():
                 place(buf, pad(f, 4 * spb + 0.3, STRING, attack=0.25, release=0.3) * 0.10, t0)
             # marimba arpeggio
             cf = chord_freqs(root + "5", q)
-            if name != "intro":
-                arp = [0, 1, 2, 1, 0, 2, 1, 2]
-                for s in range(8):
-                    f = cf[arp[s] % len(cf)]
-                    place(buf, pluck(f, spb * 0.40, MARIMBA, 7.0) * 0.20, t0 + s * spb / 2)
-            # drums
-            if name != "intro":
-                for sub in range(4):
-                    place(buf, kick() * 0.42, t0 + sub * spb)
-                place(buf, clap() * 0.28, t0 + 1 * spb)
-                place(buf, clap() * 0.28, t0 + 3 * spb)
-                for s in range(16):
-                    place(buf, shaker(vol=0.6) * 0.14, t0 + s * spb / 4)
+            arp = [0, 1, 2, 1, 0, 2, 1, 2]
+            for s in range(8):
+                place(buf, pluck(cf[arp[s] % len(cf)], spb * 0.40, MARIMBA, 7.0) * 0.20,
+                      t0 + s * spb / 2)
+            # drums — playing from the very first bar
+            for sub in range(4):
+                place(buf, kick() * 0.42, t0 + sub * spb)
+            place(buf, clap() * 0.28, t0 + 1 * spb)
+            place(buf, clap() * 0.28, t0 + 3 * spb)
+            for s in range(16):
+                place(buf, shaker(vol=0.6) * 0.14, t0 + s * spb / 4)
         if name in ("A", "A2"):
             play_melody(buf, mel, cursor, spb, pluck, vol=0.32, harm=PLUCK,
                         decay=4.0, vib=0.015)
@@ -1432,7 +1425,7 @@ def t_latin_heat():
         for bar in range(bars):
             root, q = prog[bar % len(prog)]
             t0 = cursor + bar * 4 * spb
-            full = name in ("A", "B", "A2")
+            full = name in ("intro", "A", "B", "A2")
             # deep bass — root on beats 1 and 3
             place(buf, pluck(n2f(root + "1"), spb * 1.4, BASS, 1.8) * 0.38, t0)
             place(buf, pluck(n2f(root + "2"), spb * 1.2, BASS, 2.2) * 0.26, t0 + 2 * spb)
@@ -1455,9 +1448,8 @@ def t_latin_heat():
                 place(buf, clap() * 0.30, t0 + 3.5 * spb)
                 for s in range(8):
                     place(buf, hat() * 0.13, t0 + s * spb / 2)
-            elif name == "intro" and bar >= 2:
-                for off in (0.75, 1.5, 2.75, 3.5):
-                    place(buf, snare(vol=0.6) * 0.24, t0 + off * spb)
+                if cursor == 0 and bar == 0:
+                    place(buf, cymbal_crash(1.3) * 0.20, t0)
         # melody
         if name in ("A", "A2"):
             play_melody(buf, hook, cursor, spb, pluck, vol=0.32, harm=PLUCK, decay=4.5)
@@ -1467,8 +1459,8 @@ def t_latin_heat():
                 hi = [(transpose(n, 12) if n and n != "_" else n, b) for n, b, *_ in hook]
                 play_melody(buf, hi, cursor, spb, pluck, vol=0.16, harm=BELL, decay=4.0)
         elif name == "B":
-            br = [(transpose(n, 5) if n and n != "_" else n, b) for n, b, *_ in hook]
-            play_melody(buf, br, cursor, spb, pluck, vol=0.30, harm=MARIMBA, decay=4.0)
+            br = [(transpose(n, -12) if n and n != "_" else n, b) for n, b, *_ in hook]
+            play_melody(buf, br, cursor, spb, pluck, vol=0.32, harm=MARIMBA, decay=4.0)
         cursor += bars * 4 * spb
 
     out = space(buf, 0.14)
@@ -1547,8 +1539,17 @@ def t_pop_anthem():
                 place(buf, snare() * 0.34, t0 + 2 * spb)
                 for s in range(8):
                     place(buf, hat() * 0.10, t0 + s * spb / 2)
-            else:  # intro
-                place(buf, hat_open(0.3) * 0.14, t0 + 2 * spb)
+            else:  # intro — open with the chorus groove
+                for sub in range(4):
+                    place(buf, kick(punch=1.1) * 0.58, t0 + sub * spb)
+                place(buf, snare() * 0.40, t0 + 1 * spb)
+                place(buf, snare() * 0.40, t0 + 3 * spb)
+                place(buf, clap() * 0.30, t0 + 1 * spb)
+                place(buf, clap() * 0.30, t0 + 3 * spb)
+                for s in range(8):
+                    place(buf, hat() * 0.13, t0 + s * spb / 2)
+                if bar == 0:
+                    place(buf, cymbal_crash(1.6) * 0.26, t0)
             # fill into chorus
             if verse_sec and bar == bars - 1:
                 for i, p in enumerate([190, 160, 130, 100]):
@@ -1558,8 +1559,8 @@ def t_pop_anthem():
             play_melody(buf, chorus_hook, cursor, spb, pluck, vol=0.36, harm=PLUCK, decay=3.5)
             play_melody(buf, chorus_hook, cursor + 8 * 4 * spb, spb, pluck,
                         vol=0.36, harm=PLUCK, decay=3.5)
-            har = [(transpose(n, 4) if n and n != "_" else n, b) for n, b, *_ in chorus_hook]
-            play_melody(buf, har, cursor, spb, pluck, vol=0.16, harm=BELL, decay=3.0)
+            har = [(transpose(n, -12) if n and n != "_" else n, b) for n, b, *_ in chorus_hook]
+            play_melody(buf, har, cursor, spb, pluck, vol=0.18, harm=BELL, decay=3.0)
         elif verse_sec:
             play_melody(buf, verse_mel, cursor, spb, pluck, vol=0.30, harm=PIANO, decay=3.0)
             play_melody(buf, verse_mel, cursor + 8 * 4 * spb, spb, pluck,
@@ -1596,7 +1597,7 @@ def t_retro_dance():
         for bar in range(bars):
             root, q = prog[bar % len(prog)]
             t0 = cursor + bar * 4 * spb
-            full = name in ("A", "B", "A2")
+            full = name in ("intro", "A", "B", "A2")
             # triangle bass — root + fifth on 8ths
             for s in range(8):
                 f = n2f(root + "2") if s % 2 == 0 else n2f(root + "2") * 1.498
@@ -1620,12 +1621,12 @@ def t_retro_dance():
                     place(buf, clap() * 0.26, t0 + beat * spb)
                 for s in range(8):
                     place(buf, hat() * 0.11, t0 + s * spb / 2)
-            elif name == "intro":
-                place(buf, hat_open(0.26) * 0.15, t0 + 2 * spb)
+                if cursor == 0 and bar == 0:
+                    place(buf, cymbal_crash(1.4) * 0.20, t0)
             else:  # outro
                 for sub in range(4):
                     place(buf, kick(punch=0.85) * 0.40, t0 + sub * spb)
-            if bar == bars - 1 and name in ("A", "B", "A2"):
+            if bar == bars - 1 and name in ("intro", "A", "B", "A2"):
                 place(buf, cymbal_crash(1.4) * 0.22, t0 + 3 * spb)
         if name in ("A", "A2"):
             play_melody(buf, hook, cursor, spb, square_wave, vol=0.17, duty=0.25)
@@ -1666,7 +1667,7 @@ def t_dancehall():
         for bar in range(bars):
             root, q = prog[bar % len(prog)]
             t0 = cursor + bar * 4 * spb
-            full = name in ("A", "B", "A2")
+            full = name in ("intro", "A", "B", "A2")
             # deep bass — root on 1, syncopated push before beat 3
             place(buf, pluck(n2f(root + "1"), spb * 1.4, BASS, 1.6) * 0.40, t0)
             place(buf, pluck(n2f(root + "2"), spb * 0.9, BASS, 2.4) * 0.26, t0 + 2.5 * spb)
@@ -1688,9 +1689,8 @@ def t_dancehall():
                     vol = 0.18 if s % 2 == 0 else 0.12
                     place(buf, hat() * vol, t0 + s * spb / 2)
                 place(buf, rim_click() * 0.22, t0 + 3.5 * spb)
-            elif name == "intro" and bar >= 2:
-                place(buf, kick(punch=0.9) * 0.40, t0)
-                place(buf, kick(punch=0.9) * 0.40, t0 + 2 * spb)
+                if cursor == 0 and bar == 0:
+                    place(buf, cymbal_crash(1.3) * 0.20, t0)
         if name in ("A", "A2"):
             play_melody(buf, hook, cursor, spb, pluck, vol=0.32, harm=PLUCK,
                         decay=3.5, vib=0.02)
@@ -1753,21 +1753,17 @@ def t_funky_groove():
             if bar % 2 == 0 and name in ("A", "A2"):
                 for f in chord_freqs(root + "4", q):
                     place(buf, brass(f, spb * 0.4) * 0.10, t0)
-            # tight funk drums
-            if name != "intro":
-                place(buf, kick(punch=1.05) * 0.52, t0)
-                place(buf, kick(punch=0.85) * 0.42, t0 + 1.75 * spb)
-                place(buf, kick(punch=0.85) * 0.38, t0 + 2.5 * spb)
-                place(buf, snare(vol=0.95) * 0.40, t0 + 1 * spb)
-                place(buf, snare(vol=0.95) * 0.40, t0 + 3 * spb)
-                # ghost notes
-                place(buf, snare(dur=0.08, vol=0.3) * 0.18, t0 + 1.75 * spb)
-                # 16th hats
-                for s in range(16):
-                    vol = 0.18 if s % 4 == 0 else 0.11
-                    place(buf, hat() * vol, t0 + s * spb / 4)
-                # open hat
-                place(buf, hat_open(0.16) * 0.20, t0 + 3.5 * spb)
+            # tight funk drums — playing from the very first bar
+            place(buf, kick(punch=1.05) * 0.52, t0)
+            place(buf, kick(punch=0.85) * 0.42, t0 + 1.75 * spb)
+            place(buf, kick(punch=0.85) * 0.38, t0 + 2.5 * spb)
+            place(buf, snare(vol=0.95) * 0.40, t0 + 1 * spb)
+            place(buf, snare(vol=0.95) * 0.40, t0 + 3 * spb)
+            place(buf, snare(dur=0.08, vol=0.3) * 0.18, t0 + 1.75 * spb)
+            for s in range(16):
+                vol = 0.18 if s % 4 == 0 else 0.11
+                place(buf, hat() * vol, t0 + s * spb / 4)
+            place(buf, hat_open(0.16) * 0.20, t0 + 3.5 * spb)
         if name in ("A", "A2"):
             play_melody(buf, mel, cursor, spb, pluck, vol=0.28, harm=PLUCK, decay=5.0)
             play_melody(buf, mel, cursor + 8 * 4 * spb, spb, pluck,
@@ -1808,7 +1804,7 @@ def t_rnb_groove():
         for bar in range(bars):
             root, q = prog[bar % len(prog)]
             t0 = cursor + bar * 4 * spb
-            full = name in ("A", "B", "A2")
+            full = name in ("intro", "A", "B", "A2")
             # Rhodes chord
             for f in chord_freqs(root + "3", q):
                 place(buf, pluck(f, spb * 3.6, RHODES, 1.2, attack=0.015) * 0.15, t0)
@@ -1826,9 +1822,6 @@ def t_rnb_groove():
                     place(buf, clap() * 0.24, t0 + beat * spb)
                 for s in range(8):
                     place(buf, hat() * 0.12, t0 + s * spb / 2)
-            elif name == "intro" and bar >= 2:
-                for beat in (1, 3):
-                    place(buf, clap() * 0.22, t0 + beat * spb)
         if name in ("A", "A2"):
             play_melody(buf, hook, cursor, spb, pluck, vol=0.32, harm=RHODES, decay=2.2)
             play_melody(buf, hook, cursor + 8 * 4 * spb, spb, pluck, vol=0.32,
@@ -1837,8 +1830,8 @@ def t_rnb_groove():
                 hi = [(transpose(n, 12) if n and n != "_" else n, b) for n, b, *_ in hook]
                 play_melody(buf, hi, cursor, spb, pluck, vol=0.15, harm=BELL, decay=1.8)
         elif name == "B":
-            br = [(transpose(n, 5) if n and n != "_" else n, b) for n, b, *_ in hook]
-            play_melody(buf, br, cursor, spb, pluck, vol=0.28, harm=RHODES, decay=2.2)
+            br = [(transpose(n, -12) if n and n != "_" else n, b) for n, b, *_ in hook]
+            play_melody(buf, br, cursor, spb, pluck, vol=0.30, harm=RHODES, decay=2.2)
         cursor += bars * 4 * spb
 
     out = space(buf, 0.18)
@@ -1872,7 +1865,7 @@ def t_carnival():
         for bar in range(bars):
             root, q = prog[bar % len(prog)]
             t0 = cursor + bar * 4 * spb
-            full = name in ("A", "B", "A2")
+            full = name in ("intro", "A", "B", "A2")
             # surdo bass — accent on beats 2 & 4 (the samba heartbeat)
             place(buf, pluck(n2f(root + "1"), spb * 0.9, BASS, 2.0) * 0.26, t0)
             place(buf, pluck(n2f(root + "1"), spb * 1.0, BASS, 1.6) * 0.40, t0 + spb)
@@ -1895,12 +1888,8 @@ def t_carnival():
                           BELL, 6.0) * 0.10, t0 + off * spb)
                 place(buf, clap() * 0.26, t0 + spb)
                 place(buf, clap() * 0.26, t0 + 3 * spb)
-            elif name == "intro":
-                for s in range(16):
-                    place(buf, shaker(vol=0.6) * 0.11, t0 + s * spb / 4)
-                if bar >= 2:
-                    place(buf, tom(70, 0.34) * 0.45, t0 + spb)
-                    place(buf, tom(70, 0.34) * 0.45, t0 + 3 * spb)
+                if cursor == 0 and bar == 0:
+                    place(buf, cymbal_crash(1.3) * 0.20, t0)
         if name in ("A", "A2"):
             play_melody(buf, hook, cursor, spb, pluck, vol=0.30, harm=MARIMBA, decay=4.5)
             play_melody(buf, hook, cursor + 8 * 4 * spb, spb, pluck, vol=0.30,
@@ -1959,19 +1948,16 @@ def t_gospel_joy():
             if name in ("A", "B", "A2", "outro"):
                 for f in chord_freqs(root + "4", q):
                     place(buf, pad(f, 4 * spb + 0.4, CHOIR, attack=0.5, release=0.5, vib=0.005) * 0.08, t0)
-            # claps & tambourine — building
-            density = {"intro": 0, "A": 1, "B": 1, "A2": 2, "outro": 2}[name]
-            if density >= 1:
-                place(buf, clap() * 0.30, t0 + 1 * spb)
-                place(buf, clap() * 0.30, t0 + 3 * spb)
-                for s in range(8):
-                    place(buf, tambourine() * 0.16, t0 + s * spb / 2)
-            # drums
-            if name != "intro":
-                place(buf, kick() * 0.52, t0)
-                place(buf, kick(punch=0.85) * 0.40, t0 + 2 * spb)
-                place(buf, snare(vol=0.85) * 0.38, t0 + 1 * spb)
-                place(buf, snare(vol=0.85) * 0.38, t0 + 3 * spb)
+            # claps & tambourine
+            place(buf, clap() * 0.30, t0 + 1 * spb)
+            place(buf, clap() * 0.30, t0 + 3 * spb)
+            for s in range(8):
+                place(buf, tambourine() * 0.16, t0 + s * spb / 2)
+            # drums — present from the very first bar
+            place(buf, kick() * 0.52, t0)
+            place(buf, kick(punch=0.85) * 0.40, t0 + 2 * spb)
+            place(buf, snare(vol=0.85) * 0.38, t0 + 1 * spb)
+            place(buf, snare(vol=0.85) * 0.38, t0 + 3 * spb)
             # fills
             if bar == bars - 1 and name in ("A", "B"):
                 for i, p in enumerate([180, 150, 120, 95]):
@@ -1981,9 +1967,9 @@ def t_gospel_joy():
             play_melody(buf, mel, cursor + 8 * 4 * spb, spb, pluck,
                         vol=0.32, harm=BELL, decay=4.5)
             if name == "A2":
-                # gospel run harmony 3rd above
-                har = [(transpose(n, 4) if n and n != "_" else n, b) for n, b, *_ in mel]
-                play_melody(buf, har, cursor, spb, pluck, vol=0.18, harm=PIANO, decay=4.0)
+                # octave-down doubling — adds weight without clashing
+                har = [(transpose(n, -12) if n and n != "_" else n, b) for n, b, *_ in mel]
+                play_melody(buf, har, cursor, spb, pluck, vol=0.20, harm=PIANO, decay=4.0)
         elif name == "B":
             # softer call/response — high choir-like sustains
             br = [(n, b * 2) for n, b, *_ in mel[:8]]
