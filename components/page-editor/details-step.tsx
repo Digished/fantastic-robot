@@ -139,14 +139,12 @@ export function DetailsStep({
               placeholder="Their personality, what they love, what makes them who they are — the more you share, the richer the experience."
               maxLength={1500}
             />
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-ink/45">
-                {draft.celebrantDescription.length}/1500
-              </span>
-              <span className="text-xs text-ink/40">
-                Used to craft the personalised opening — not shown on the page.
-              </span>
-            </div>
+            <p className="text-xs text-ink/45">
+              Used to craft the personalised opening — not shown on the page.
+            </p>
+            <p className="text-xs text-ink/40 text-right">
+              {draft.celebrantDescription.length}/1500
+            </p>
           </div>
 
           <div className="pt-6 border-t border-ink/10 space-y-4">

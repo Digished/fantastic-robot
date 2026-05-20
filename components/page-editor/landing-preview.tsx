@@ -2,6 +2,7 @@
 
 import { formatDate } from "@/lib/time";
 import { CoverEditor } from "./cover-editor";
+import { EditHint } from "./edit-hint";
 import { GalleryEditor } from "./gallery-editor";
 import { InlineText } from "./inline-text";
 import { eventLabel, type PageDraft } from "./types";
@@ -56,15 +57,18 @@ export function LandingPreview({
               <p className="text-[10px] uppercase tracking-[0.3em] text-ink/35 font-medium">
                 {eventName} · {niceDate}
               </p>
-              <h1 className="serif text-4xl md:text-5xl text-ink mt-3 leading-[0.95]">
-                <InlineText
-                  value={draft.title}
-                  onChange={(v) => update({ title: v })}
-                  placeholder="A title for the page"
-                  maxLength={80}
-                  ariaLabel="Page title"
-                />
-              </h1>
+              <div className="flex items-center justify-between gap-2 mt-3">
+                <h1 className="serif text-4xl md:text-5xl text-ink leading-[0.95] flex-1 min-w-0">
+                  <InlineText
+                    value={draft.title}
+                    onChange={(v) => update({ title: v })}
+                    placeholder="A title for the page"
+                    maxLength={80}
+                    ariaLabel="Page title"
+                  />
+                </h1>
+                <EditHint label="Title" className="shrink-0" />
+              </div>
               <p className="text-ink/35 mt-2 text-sm">
                 For {draft.recipientName || firstName}
               </p>
@@ -91,7 +95,10 @@ export function LandingPreview({
 
             {/* Tagline — italic, inline */}
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-ink/30 mb-1">Tagline</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[10px] uppercase tracking-widest text-ink/40">Tagline</p>
+                <EditHint />
+              </div>
               <p className="serif italic text-ink/80 text-lg leading-snug">
                 <InlineText
                   value={draft.tagline}
@@ -105,7 +112,10 @@ export function LandingPreview({
 
             {/* Message from creator — blockquote-style */}
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-ink/30 mb-1">A note from you</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[10px] uppercase tracking-widest text-ink/40">A note from you</p>
+                <EditHint />
+              </div>
               <blockquote className="serif text-ink text-2xl leading-tight italic">
                 <InlineText
                   value={draft.messageFromCreator}

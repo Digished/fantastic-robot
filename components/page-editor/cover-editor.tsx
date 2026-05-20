@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ImagePlus } from "lucide-react";
+import { ImagePlus, Pencil } from "lucide-react";
 import { uploadWithProgress } from "@/lib/upload";
 
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "webp"];
@@ -125,9 +125,17 @@ export function CoverEditor({
         )}
 
         {!uploading && display && (
-          <span className="absolute bottom-3 right-3 glass-dark text-white rounded-full px-3 py-1 text-xs opacity-0 group-hover:opacity-100 transition">
-            Change cover
-          </span>
+          <>
+            <span
+              aria-hidden
+              className="absolute top-3 right-3 grid size-8 place-items-center rounded-full glass-dark text-white opacity-90 group-hover:opacity-100 transition"
+            >
+              <Pencil className="size-3.5" />
+            </span>
+            <span className="absolute bottom-3 right-3 glass-dark text-white rounded-full px-3 py-1 text-xs opacity-0 group-hover:opacity-100 transition">
+              Change cover
+            </span>
+          </>
         )}
       </button>
     </>

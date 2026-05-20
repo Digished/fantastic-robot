@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { InlineText } from "./inline-text";
 import type { IntroContent, PageDraft } from "./types";
 
@@ -378,8 +378,8 @@ function SlideCard({
       <div className="absolute inset-0 bg-black/35 pointer-events-none" aria-hidden />
       <div className="relative p-5 space-y-3 text-white">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] uppercase tracking-[0.28em] text-white/55">
-            {label} · slide {position}
+          <span className="text-[10px] uppercase tracking-[0.28em] text-white/55 inline-flex items-center gap-1.5">
+            <Pencil className="size-3" /> {label} · slide {position}
           </span>
           {onRemove && (
             <button
