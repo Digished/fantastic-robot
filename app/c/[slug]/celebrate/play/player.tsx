@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X, Video, Gift, Lock, Loader2 } from "lucide-react";
 import type { Theme } from "@/lib/themes";
-import { musicSrc } from "@/lib/music";
 import type { IntroContent } from "@/lib/openai/generate-intro";
 import { Interactive, type InteractiveKind } from "@/components/interactives";
 
@@ -264,13 +263,13 @@ function durationFor(m: Msg): number {
 // ─── Player ───────────────────────────────────────────────────────────────────
 
 export function Player({
-  slug, theme, backgroundMusic, recipientName, eventType, celebrationDate, celebrationTitle,
+  slug, theme, musicUrl, recipientName, eventType, celebrationDate, celebrationTitle,
   tagline, celebrantDescription, introContent, messages, galleryImages,
   totalRaisedKobo, claimableAt, payoutStatus, createdBy,
 }: {
   slug: string;
   theme: Theme;
-  backgroundMusic: string | null;
+  musicUrl: string | null;
   recipientName: string;
   eventType: string;
   celebrationDate: string;
@@ -395,9 +394,9 @@ export function Player({
         if (x < w / 3) prev(); else next();
       }}
     >
-      {backgroundMusic && (
+      {musicUrl && (
         // eslint-disable-next-line jsx-a11y/media-has-caption
-        <audio ref={musicRef} src={musicSrc(backgroundMusic)} loop preload="auto" />
+        <audio ref={musicRef} src={musicUrl} loop preload="auto" />
       )}
       {/* Progress bar — hidden in gallery view */}
       {!done && (

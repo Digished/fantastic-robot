@@ -97,4 +97,11 @@ export const paystack = {
       { method: "POST", body: JSON.stringify({ source: "balance", ...rest }), idempotencyKey },
     );
   },
+
+  async getBalance() {
+    return paystackFetch<Array<{ currency: string; balance: number }>>(
+      "/balance",
+      { method: "GET" },
+    );
+  },
 };

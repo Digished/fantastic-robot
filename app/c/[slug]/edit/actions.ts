@@ -6,7 +6,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { generateIntroContent } from "@/lib/openai/generate-intro";
 import { THEME_IDS } from "@/lib/themes";
-import { MUSIC_IDS } from "@/lib/music";
+import { resolveSavedTrackId } from "@/lib/music/server";
 
 const editSchema = z.object({
   title: z.string().min(2).max(80),
@@ -15,7 +15,7 @@ const editSchema = z.object({
   celebrantDescription: z.string().max(1500).optional(),
   coverPhotoPath: z.string().optional(),
   theme: z.enum(THEME_IDS).optional(),
-  backgroundMusic: z.enum(MUSIC_IDS).nullable().optional(),
+  backgroundMusic: z.string().min(1).max(80).nullable().optional(),
   galleryImages: z.string().optional(),
 });
 
@@ -63,6 +63,8 @@ export async function editCelebration(
   let galleryImages: { path: string; caption: string; kind?: "image" | "video" }[] = [];
   try { galleryImages = JSON.parse(parsed.data.galleryImages || "[]"); } catch { /* keep empty */ }
 
+  const resolvedMusic = await resolveSavedTrackId(parsed.data.backgroundMusic ?? null);
+
   const { error } = await admin
     .from("celebrations")
     .update({
@@ -71,7 +73,7 @@ export async function editCelebration(
       tagline: parsed.data.tagline ?? null,
       celebrant_description: parsed.data.celebrantDescription ?? null,
       gallery_images: galleryImages,
-      background_music: parsed.data.backgroundMusic ?? null,
+      background_music: resolvedMusic,
       ...(introContent ? { intro_content: introContent } : {}),
       ...(parsed.data.coverPhotoPath ? { cover_photo_path: parsed.data.coverPhotoPath } : {}),
       ...(parsed.data.theme ? { theme: parsed.data.theme } : {}),

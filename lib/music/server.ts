@@ -1,0 +1,103 @@
+// Server-only helpers that merge built-in tracks with the admin-managed
+// `music_library` table and filter out anything in `music_disabled`. These
+// must only be imported from server components, server actions and route
+// handlers — they use the service-role Supabase client.
+
+import { supabaseAdmin } from "@/lib/supabase/admin";
+import {
+  BUILTIN_TRACKS,
+  builtinSrc,
+  customSrc,
+  type MusicTrack,
+} from "@/lib/music";
+
+export async function getEffectiveTracks(): Promise<MusicTrack[]> {
+  const admin = supabaseAdmin();
+  const [disabledRes, customRes] = await Promise.all([
+    admin.from("music_disabled").select("id"),
+    admin
+      .from("music_library")
+      .select("id, label, mood, storage_path")
+      .order("created_at", { ascending: true }),
+  ]);
+
+  const disabled = new Set(
+    (disabledRes.data ?? []).map((r: { id: string }) => r.id),
+  );
+
+  const builtin: MusicTrack[] = BUILTIN_TRACKS
+    .filter((t) => !disabled.has(t.id))
+    .map((t) => ({ ...t, src: builtinSrc(t.id), source: "builtin" as const }));
+
+  const custom: MusicTrack[] = (customRes.data ?? []).map(
+    (r: { id: string; label: string; mood: string; storage_path: string }) => ({
+      id: r.id,
+      label: r.label,
+      mood: r.mood,
+      src: customSrc(r.storage_path),
+      source: "custom" as const,
+    }),
+  );
+
+  return [...builtin, ...custom];
+}
+
+/**
+ * Returns the saved id when it still resolves to an enabled track (built-in
+ * or custom). Otherwise returns null so the player falls back to silent.
+ */
+export async function resolveSavedTrackId(
+  id: string | null | undefined,
+): Promise<string | null> {
+  if (!id) return null;
+  const tracks = await getEffectiveTracks();
+  return tracks.some((t) => t.id === id) ? id : null;
+}
+
+/**
+ * Like `resolveSavedTrackId` but returns the full track (with playable URL)
+ * — useful for the celebrate/play page so the player gets the resolved URL
+ * without resolving it again on the client.
+ */
+export async function resolveSavedTrack(
+  id: string | null | undefined,
+): Promise<MusicTrack | null> {
+  if (!id) return null;
+  const tracks = await getEffectiveTracks();
+  return tracks.find((t) => t.id === id) ?? null;
+}
+
+/** Pretty list of all admin-managed entries, plus the disabled set. */
+export async function getAdminMusicState(): Promise<{
+  custom: Array<{
+    id: string;
+    label: string;
+    mood: string;
+    storage_path: string;
+    created_at: string;
+    src: string;
+  }>;
+  disabledBuiltins: Set<string>;
+}> {
+  const admin = supabaseAdmin();
+  const [disabledRes, customRes] = await Promise.all([
+    admin.from("music_disabled").select("id"),
+    admin
+      .from("music_library")
+      .select("id, label, mood, storage_path, created_at")
+      .order("created_at", { ascending: false }),
+  ]);
+  const disabled = new Set(
+    (disabledRes.data ?? []).map((r: { id: string }) => r.id),
+  );
+  const custom = (customRes.data ?? []).map(
+    (r: {
+      id: string;
+      label: string;
+      mood: string;
+      storage_path: string;
+      created_at: string;
+    }) => ({ ...r, src: customSrc(r.storage_path) }),
+  );
+  return { custom, disabledBuiltins: disabled };
+}

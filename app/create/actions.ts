@@ -7,6 +7,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paystack, PaystackError } from "@/lib/paystack/client";
 import { createCelebrationSchema } from "@/lib/validation/schemas";
 import { generateIntroContent } from "@/lib/openai/generate-intro";
+import { resolveSavedTrackId } from "@/lib/music/server";
 import { PAGE_CREATION_FEE_KOBO } from "@/lib/fees";
 import { env } from "@/lib/env";
 
@@ -74,6 +75,7 @@ export async function createCelebration(
   let galleryImages: { path: string; caption: string; kind?: "image" | "video" }[] = [];
   try { galleryImages = JSON.parse(parsed.data.galleryImages ?? "[]"); } catch { /* keep empty */ }
 
+  const resolvedMusic = await resolveSavedTrackId(parsed.data.backgroundMusic ?? null);
   const reference = `SPBC-${payRef()}`;
 
   const { error } = await admin.from("celebrations").insert({
@@ -83,7 +85,7 @@ export async function createCelebration(
     recipient_name: parsed.data.recipientName,
     event_type: parsed.data.eventType,
     theme: parsed.data.theme,
-    background_music: parsed.data.backgroundMusic ?? null,
+    background_music: resolvedMusic,
     celebration_date: parsed.data.celebrationDate,
     message_from_creator: parsed.data.messageFromCreator ?? null,
     tagline: parsed.data.tagline ?? null,

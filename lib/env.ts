@@ -14,4 +14,8 @@ export const env = {
     req("NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY", process.env.PAYSTACK_PUBLIC_KEY),
   appUrl: () =>
     process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+  adminEmail: () => req("ADMIN_EMAIL", process.env.ADMIN_EMAIL),
+  adminPassword: () => req("ADMIN_PASSWORD", process.env.ADMIN_PASSWORD),
+  adminSessionSecret: () =>
+    req("ADMIN_SESSION_SECRET", process.env.ADMIN_SESSION_SECRET),
 };

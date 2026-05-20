@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { THEME_IDS } from "@/lib/themes";
-import { MUSIC_IDS } from "@/lib/music";
+
+// Music track ids are validated server-side against the live list of enabled
+// tracks (built-in plus admin-uploaded), so this schema just shape-checks
+// the value.
+const musicTrackId = z.string().min(1).max(80);
 
 export const signupSchema = z.object({
   email: z.string().email().max(120),
@@ -23,7 +27,7 @@ export const createCelebrationSchema = z.object({
     "farewell", "baby_shower", "surprise_gift", "other",
   ]),
   theme: z.enum(THEME_IDS).default("ivory"),
-  backgroundMusic: z.enum(MUSIC_IDS).nullable().optional(),
+  backgroundMusic: musicTrackId.nullable().optional(),
   celebrationDate: z.string().refine(
     (s) => {
       const d = new Date(s);

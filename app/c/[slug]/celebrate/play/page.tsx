@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isTheme, type Theme } from "@/lib/themes";
-import { isMusicTrack } from "@/lib/music";
+import { resolveSavedTrack } from "@/lib/music/server";
 import type { IntroContent } from "@/lib/openai/generate-intro";
 import type { GalleryImage } from "./player";
 import { Player } from "./player";
@@ -33,13 +33,14 @@ export default async function PlayPage({
   const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
   const galleryImages = (page.gallery_images as GalleryImage[]) ?? [];
   const createdBy = await getCreatorLabel(page.creator_id);
+  const musicTrack = await resolveSavedTrack(page.background_music);
 
   return (
     <Player
       createdBy={createdBy}
       slug={slug}
       theme={theme}
-      backgroundMusic={isMusicTrack(page.background_music) ? page.background_music : null}
+      musicUrl={musicTrack?.src ?? null}
       recipientName={page.recipient_name}
       eventType={page.event_type}
       celebrationDate={page.celebration_date}

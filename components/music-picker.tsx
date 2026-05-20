@@ -2,16 +2,18 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, Music, Pause, Play, VolumeX, X } from "lucide-react";
-import { MUSIC_TRACKS, musicSrc, musicTrack } from "@/lib/music";
+import type { MusicTrack } from "@/lib/music";
 
 export function MusicPicker({
   name = "backgroundMusic",
   value,
   onChange,
+  tracks,
 }: {
   name?: string;
   value: string | null;
   onChange: (v: string | null) => void;
+  tracks: ReadonlyArray<MusicTrack>;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [previewing, setPreviewing] = useState<string | null>(null);
@@ -34,22 +36,22 @@ export function MusicPicker({
     setOpen(false);
   }
 
-  function togglePreview(id: string) {
+  function togglePreview(track: MusicTrack) {
     const audio = audioRef.current;
     if (!audio) return;
-    if (previewing === id) {
+    if (previewing === track.id) {
       audio.pause();
       setPreviewing(null);
       return;
     }
-    audio.src = musicSrc(id);
+    audio.src = track.src;
     audio.currentTime = 0;
     audio.volume = 0.6;
     audio.play().catch(() => {});
-    setPreviewing(id);
+    setPreviewing(track.id);
   }
 
-  const selected = value ? musicTrack(value) : null;
+  const selected = value ? tracks.find((t) => t.id === value) ?? null : null;
 
   return (
     <>
@@ -86,12 +88,10 @@ export function MusicPicker({
           onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}
         >
           <div className="w-full sm:max-w-md bg-[#FDFCFB] rounded-t-[28px] sm:rounded-[28px] shadow-2xl flex flex-col max-h-[80vh] sm:max-h-[70vh]">
-            {/* Drag handle — mobile only */}
             <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
               <div className="w-10 h-1 rounded-full bg-ink/15" />
             </div>
 
-            {/* Header */}
             <div className="flex items-center justify-between px-5 pt-4 pb-3.5 shrink-0">
               <div>
                 <p className="font-semibold text-ink text-[15px]">Background music</p>
@@ -109,9 +109,7 @@ export function MusicPicker({
 
             <div className="h-px bg-ink/8 mx-5 shrink-0" />
 
-            {/* Scrollable list */}
             <div className="overflow-y-auto px-5 py-4 space-y-1.5">
-              {/* No music */}
               <button
                 type="button"
                 data-no-loading="true"
@@ -132,7 +130,7 @@ export function MusicPicker({
                 {value === null && <div className="size-2 rounded-full bg-ink/50 shrink-0" />}
               </button>
 
-              {MUSIC_TRACKS.map((t) => {
+              {tracks.map((t) => {
                 const isSel = t.id === value;
                 const isPlaying = previewing === t.id;
                 return (
@@ -147,7 +145,7 @@ export function MusicPicker({
                     <button
                       type="button"
                       data-no-loading="true"
-                      onClick={() => togglePreview(t.id)}
+                      onClick={() => togglePreview(t)}
                       aria-label={isPlaying ? `Stop ${t.label}` : `Preview ${t.label}`}
                       className="grid size-8 shrink-0 place-items-center rounded-full bg-ink/8 text-ink/60 hover:bg-ink/14 transition"
                     >
@@ -170,7 +168,6 @@ export function MusicPicker({
               })}
             </div>
 
-            {/* iOS safe area */}
             <div className="h-safe-b sm:hidden shrink-0" />
           </div>
         </div>

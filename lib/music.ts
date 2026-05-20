@@ -1,18 +1,27 @@
-// Free background-music library for celebration pages.
+// Background-music library for celebration pages.
 //
-// Audio files live in `public/music/<id>.wav` and are served statically.
-// They are synthesised, royalty-free instrumentals — regenerate any time
-// with `python3 scripts/generate-music.py`. See `public/music/README.md`.
+// Two sources are merged into one list at runtime:
+//  1. Built-in tracks — defined here as code; the WAV files live in
+//     `public/music/<id>.wav`, synthesised by `scripts/generate-music.py`.
+//     Any built-in can be hidden site-wide by inserting its id into the
+//     `music_disabled` table from the admin dashboard.
+//  2. Custom tracks — uploaded via the admin dashboard, stored in the
+//     `celebrations` Supabase Storage bucket under `music/<id>.<ext>`, with
+//     metadata in the `music_library` table.
+
+import { env } from "@/lib/env";
+
+export type MusicSource = "builtin" | "custom";
 
 export type MusicTrack = {
   id: string;
   label: string;
   mood: string;
+  src: string;            // playable URL (public)
+  source: MusicSource;
 };
 
-// `id` values are stable (they are also the WAV filenames and are stored on
-// saved celebrations); labels/moods reflect each track's current style.
-export const MUSIC_TRACKS: MusicTrack[] = [
+export const BUILTIN_TRACKS: ReadonlyArray<Omit<MusicTrack, "src" | "source">> = [
   { id: "happy-birthday",   label: "Happy Birthday",     mood: "The classic birthday tune" },
   { id: "birthday-bounce",  label: "Birthday Bounce",    mood: "Upbeat pop birthday party" },
   { id: "celebration",      label: "Celebration",        mood: "Bright, festive party energy" },
@@ -35,17 +44,20 @@ export const MUSIC_TRACKS: MusicTrack[] = [
   { id: "gospel-joy",       label: "Gospel Joy",         mood: "Hand-clapping gospel celebration" },
 ];
 
-export const MUSIC_IDS = MUSIC_TRACKS.map((t) => t.id) as [string, ...string[]];
+export const BUILTIN_TRACK_IDS = new Set(BUILTIN_TRACKS.map((t) => t.id));
 
-export function isMusicTrack(v: unknown): v is string {
-  return typeof v === "string" && MUSIC_TRACKS.some((t) => t.id === v);
-}
-
-export function musicTrack(id: string | null | undefined): MusicTrack | null {
-  if (!id) return null;
-  return MUSIC_TRACKS.find((t) => t.id === id) ?? null;
-}
-
-export function musicSrc(id: string): string {
+export function builtinSrc(id: string): string {
   return `/music/${id}.wav`;
+}
+
+export function customSrc(storagePath: string): string {
+  return `${env.supabaseUrl()}/storage/v1/object/public/celebrations/${storagePath}`;
+}
+
+export function findTrack(
+  id: string | null | undefined,
+  tracks: ReadonlyArray<MusicTrack>,
+): MusicTrack | null {
+  if (!id) return null;
+  return tracks.find((t) => t.id === id) ?? null;
 }

@@ -4,7 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { EditForm } from "./form";
 import { MessagesManager } from "./messages-manager";
 import { isTheme, type Theme } from "@/lib/themes";
-import { isMusicTrack } from "@/lib/music";
+import { getEffectiveTracks } from "@/lib/music/server";
 
 export default async function EditPage({
   params,
@@ -30,6 +30,10 @@ export default async function EditPage({
     .order("created_at", { ascending: false });
 
   const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
+  const tracks = await getEffectiveTracks();
+  const savedMusic = tracks.some((t) => t.id === page.background_music)
+    ? page.background_music
+    : null;
 
   return (
     <main className="min-h-[100dvh] bg-white pb-32">
@@ -42,6 +46,7 @@ export default async function EditPage({
 
         <EditForm
           slug={slug}
+          tracks={tracks}
           initial={{
             title: page.title,
             messageFromCreator: page.message_from_creator ?? "",
@@ -49,7 +54,7 @@ export default async function EditPage({
             celebrantDescription: page.celebrant_description ?? "",
             coverPhotoPath: page.cover_photo_path ?? null,
             theme,
-            backgroundMusic: isMusicTrack(page.background_music) ? page.background_music : null,
+            backgroundMusic: savedMusic,
             recipientName: page.recipient_name,
             galleryImages: (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [],
           }}

@@ -1,9 +1,46 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import { jwtVerify } from "jose";
 
 type CookieToSet = { name: string; value: string; options?: CookieOptions };
 
+const ADMIN_COOKIE_NAME = "admin_session";
+
+async function isAdminAuthenticated(token: string | undefined): Promise<boolean> {
+  if (!token) return false;
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  const expected = process.env.ADMIN_EMAIL;
+  if (!secret || !expected) return false;
+  try {
+    const { payload } = await jwtVerify(
+      token,
+      new TextEncoder().encode(secret),
+      { algorithms: ["HS256"] },
+    );
+    return payload.sub === expected;
+  } catch {
+    return false;
+  }
+}
+
 export async function middleware(request: NextRequest) {
+  const url = request.nextUrl;
+
+  // Admin auth — separate from Supabase user auth. The /admin/login page is
+  // public; everything else under /admin requires the signed admin cookie.
+  if (url.pathname.startsWith("/admin") && url.pathname !== "/admin/login") {
+    const ok = await isAdminAuthenticated(
+      request.cookies.get(ADMIN_COOKIE_NAME)?.value,
+    );
+    if (!ok) {
+      const redirect = new URL("/admin/login", url);
+      if (url.pathname !== "/admin") {
+        redirect.searchParams.set("next", url.pathname + url.search);
+      }
+      return NextResponse.redirect(redirect);
+    }
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -25,7 +62,6 @@ export async function middleware(request: NextRequest) {
 
   await supabase.auth.getUser();
 
-  const url = request.nextUrl;
   const isProtected =
     url.pathname.startsWith("/create") ||
     url.pathname.startsWith("/dashboard") ||

@@ -4,6 +4,7 @@ import { useActionState, useRef, useState } from "react";
 import { editCelebration, type EditState } from "./actions";
 import { ThemePicker } from "@/components/theme-picker";
 import { MusicPicker } from "@/components/music-picker";
+import type { MusicTrack } from "@/lib/music";
 import type { Theme } from "@/lib/themes";
 import { X, ImagePlus, Loader2, Video } from "lucide-react";
 
@@ -26,9 +27,10 @@ function galleryExt(file: File): { ext: string; kind: "image" | "video" } | null
 }
 
 export function EditForm({
-  slug, initial,
+  slug, initial, tracks,
 }: {
   slug: string;
+  tracks: MusicTrack[];
   initial: {
     title: string;
     messageFromCreator: string;
@@ -125,7 +127,7 @@ export function EditForm({
 
       <ThemePicker value={theme} onChange={setTheme} />
 
-      <MusicPicker value={backgroundMusic} onChange={setBackgroundMusic} />
+      <MusicPicker value={backgroundMusic} onChange={setBackgroundMusic} tracks={tracks} />
 
       <div className="space-y-2">
         <label className="label">Cover photo</label>

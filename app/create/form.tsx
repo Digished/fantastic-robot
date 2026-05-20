@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { createCelebration } from "./actions";
 import { ThemePicker } from "@/components/theme-picker";
 import { MusicPicker } from "@/components/music-picker";
-import { musicTrack } from "@/lib/music";
+import { findTrack, type MusicTrack } from "@/lib/music";
 import type { Theme } from "@/lib/themes";
 import { X, ImagePlus, Loader2, Video, Search, Check } from "lucide-react";
 
@@ -40,7 +40,7 @@ function galleryExt(file: File): { ext: string; kind: "image" | "video" } | null
   return null;
 }
 
-export function CreateForm({ banks }: { banks: Bank[] }) {
+export function CreateForm({ banks, tracks }: { banks: Bank[]; tracks: MusicTrack[] }) {
   const [step, setStep] = useState<Step>(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -236,7 +236,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
             <ThemePicker value={theme} onChange={setTheme} />
 
             <div className="pt-2">
-              <MusicPicker value={backgroundMusic} onChange={setBackgroundMusic} />
+              <MusicPicker value={backgroundMusic} onChange={setBackgroundMusic} tracks={tracks} />
             </div>
 
             <div className="space-y-2 pt-2">
@@ -488,7 +488,7 @@ export function CreateForm({ banks }: { banks: Bank[] }) {
               <li className="py-2 flex justify-between"><span className="text-ink/55">Recipient</span><span className="text-ink">{resolved ?? "—"}</span></li>
               <li className="py-2 flex justify-between"><span className="text-ink/55">Account</span><span className="text-ink">****{accountNumber.slice(-4)}</span></li>
               <li className="py-2 flex justify-between"><span className="text-ink/55">Theme</span><span className="text-ink capitalize">{theme}</span></li>
-              <li className="py-2 flex justify-between"><span className="text-ink/55">Music</span><span className="text-ink">{musicTrack(backgroundMusic)?.label ?? "None"}</span></li>
+              <li className="py-2 flex justify-between"><span className="text-ink/55">Music</span><span className="text-ink">{findTrack(backgroundMusic, tracks)?.label ?? "None"}</span></li>
               <li className="py-2 flex justify-between"><span className="text-ink/55">Gallery</span><span className="text-ink">{galleryImages.length > 0 ? `${galleryImages.length} item${galleryImages.length > 1 ? "s" : ""}` : "None"}</span></li>
             </ul>
 
