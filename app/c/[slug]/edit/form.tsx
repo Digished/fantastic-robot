@@ -4,6 +4,7 @@ import { useActionState, useRef, useState } from "react";
 import { editCelebration, type EditState } from "./actions";
 import { ThemePicker } from "@/components/theme-picker";
 import { MusicPicker } from "@/components/music-picker";
+import { uploadWithProgress } from "@/lib/upload";
 import type { MusicTrack } from "@/lib/music";
 import type { Theme } from "@/lib/themes";
 import { X, ImagePlus, Loader2, Video } from "lucide-react";
@@ -54,6 +55,7 @@ export function EditForm({
     initial.coverPhotoPath ? publicUrl(initial.coverPhotoPath) : null,
   );
   const [uploading, setUploading] = useState(false);
+  const [coverProgress, setCoverProgress] = useState(0);
 
   // Gallery
   const galleryFileRef = useRef<HTMLInputElement>(null);
@@ -69,7 +71,10 @@ export function EditForm({
   async function onCover(file: File) {
     if (!file.type.startsWith("image/")) return;
     if (file.size > 8 * 1024 * 1024) { alert("Cover must be under 8 MB."); return; }
+    const previousPreview = coverPreview;
     setUploading(true);
+    setCoverProgress(0);
+    setCoverPreview(URL.createObjectURL(file));
     const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
     const res = await fetch("/api/media/sign-cover", {
       method: "POST",
@@ -77,12 +82,24 @@ export function EditForm({
       body: JSON.stringify({ ext: IMAGE_EXTS.includes(ext) ? ext : "jpg" }),
     });
     const sign = await res.json();
-    if (!res.ok) { setUploading(false); alert(sign.error ?? "Upload failed"); return; }
-    const put = await fetch(sign.signedUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-    setUploading(false);
-    if (!put.ok) { alert("Upload failed"); return; }
+    if (!res.ok) { setUploading(false); setCoverPreview(previousPreview); alert(sign.error ?? "Upload failed"); return; }
+    try {
+      await uploadWithProgress({
+        url: sign.signedUrl,
+        file,
+        contentType: file.type,
+        onProgress: setCoverProgress,
+      });
+    } catch (e) {
+      setUploading(false);
+      setCoverProgress(0);
+      setCoverPreview(previousPreview);
+      alert(e instanceof Error ? e.message : "Upload failed");
+      return;
+    }
     setCoverPath(sign.path);
-    setCoverPreview(URL.createObjectURL(file));
+    setCoverProgress(100);
+    setUploading(false);
   }
 
   async function onGalleryFiles(files: FileList) {
@@ -134,18 +151,35 @@ export function EditForm({
         <input ref={fileRef} type="file" accept="image/*" className="hidden"
           onChange={(e) => e.target.files?.[0] && onCover(e.target.files[0])} />
         {coverPreview ? (
-          <button type="button" onClick={() => fileRef.current?.click()}
+          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
             className="relative w-full aspect-[4/3] rounded-3xl2 overflow-hidden shadow-card">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={coverPreview} alt="" className="size-full object-cover" />
-            <span className="absolute bottom-3 right-3 glass-dark text-white rounded-full px-3 py-1 text-xs">
-              {uploading ? "Uploading…" : "Change"}
-            </span>
+            <img src={coverPreview} alt="" className={`size-full object-cover transition ${uploading ? "scale-[1.02] blur-[1px]" : ""}`} />
+            {uploading && (
+              <>
+                <div className="absolute inset-0 bg-ink/30" />
+                <div
+                  className="absolute inset-x-0 bottom-0 bg-white/95 transition-[height] duration-200 ease-out"
+                  style={{ height: `${coverProgress}%` }}
+                />
+                <div className="absolute inset-0 grid place-items-center">
+                  <div className="text-center">
+                    <p className="serif text-3xl text-white drop-shadow">{coverProgress}%</p>
+                    <p className="text-xs uppercase tracking-widest mt-1 text-white/80">Uploading</p>
+                  </div>
+                </div>
+              </>
+            )}
+            {!uploading && (
+              <span className="absolute bottom-3 right-3 glass-dark text-white rounded-full px-3 py-1 text-xs">
+                Change
+              </span>
+            )}
           </button>
         ) : (
           <button type="button" onClick={() => fileRef.current?.click()}
             className="w-full aspect-[4/3] rounded-3xl2 border-2 border-dashed border-ink/15 grid place-items-center text-ink/55">
-            {uploading ? "Uploading…" : "+ Add a cover photo"}
+            + Add a cover photo
           </button>
         )}
         {coverPath && <input type="hidden" name="coverPhotoPath" value={coverPath} />}

@@ -7,6 +7,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { generateIntroContent } from "@/lib/openai/generate-intro";
 import { THEME_IDS } from "@/lib/themes";
 import { resolveSavedTrackId } from "@/lib/music/server";
+import { contentWindowOpen } from "@/lib/celebration-windows";
 
 const editSchema = z.object({
   title: z.string().min(2).max(80),
@@ -49,6 +50,9 @@ export async function editCelebration(
     .eq("slug", slug)
     .maybeSingle();
   if (!page || page.creator_id !== user.id) return { error: "Not allowed." };
+  if (!contentWindowOpen(page.celebration_date)) {
+    return { error: "Page edits close 1 hour before the celebration." };
+  }
 
   const firstName = page.recipient_name.split(" ")[0];
   const introContent = await generateIntroContent({

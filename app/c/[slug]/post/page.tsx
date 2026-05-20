@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
+import { contentWindowOpen } from "@/lib/celebration-windows";
 import { PostForm } from "./form";
 
 export default async function PostPage({
@@ -10,12 +11,12 @@ export default async function PostPage({
   const supabase = await supabaseServer();
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, title, recipient_name, status, deadline_at")
+    .select("id, slug, title, recipient_name, status, celebration_date")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) notFound();
 
-  const closed = page.status !== "active" || new Date(page.deadline_at).getTime() < Date.now();
+  const closed = page.status !== "active" || !contentWindowOpen(page.celebration_date);
 
   return (
     <main className="min-h-[100dvh] bg-white pb-16">

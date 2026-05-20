@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { customAlphabet } from "nanoid";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { contentWindowOpen } from "@/lib/celebration-windows";
 
 export const runtime = "nodejs";
 const nid = customAlphabet("23456789abcdefghjkmnpqrstvwxyz", 16);
@@ -19,12 +20,12 @@ export async function POST(req: Request) {
   const admin = supabaseAdmin();
   const { data: page } = await admin
     .from("celebrations")
-    .select("id, status, deadline_at")
+    .select("id, status, celebration_date")
     .eq("slug", parsed.data.slug)
     .maybeSingle();
 
   if (!page) return NextResponse.json({ error: "not found" }, { status: 404 });
-  if (page.status !== "active" || new Date(page.deadline_at).getTime() < Date.now()) {
+  if (page.status !== "active" || !contentWindowOpen(page.celebration_date)) {
     return NextResponse.json({ error: "closed" }, { status: 403 });
   }
 

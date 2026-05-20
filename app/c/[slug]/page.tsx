@@ -13,6 +13,7 @@ import { Sparkles } from "@/components/sparkles";
 import { CelebrantLinkButton } from "./celebrant-link-button";
 import { GalleryStrip } from "@/components/gallery-strip";
 import { GalleryUploadButton } from "@/components/gallery-upload-button";
+import { contentWindowOpen, contentWindowClosesAt } from "@/lib/celebration-windows";
 import { NavLoadingLink } from "@/components/nav-loading-link";
 import { getCreatorLabel } from "@/lib/creator";
 
@@ -56,7 +57,11 @@ export default async function WallPage({
 
   const now = Date.now();
   const claimable = new Date(page.claimable_at).getTime() <= now;
+  // Two windows: contributions close 72h before the date (deadline_at);
+  // wall posts / gallery uploads stay open until 1h before.
   const closed = page.status !== "active" || new Date(page.deadline_at).getTime() <= now;
+  const contentOpen =
+    page.status === "active" && contentWindowOpen(page.celebration_date, now);
   const cover = coverUrl(page.cover_photo_path);
   const galleryImages = (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [];
   const eventLabel = page.event_type.replace(/_/g, " ");
@@ -163,14 +168,24 @@ export default async function WallPage({
               <p className="text-ink/55 mt-2">For {page.recipient_name}</p>
             </div>
 
-            {/* Stats */}
+            {/* Stats — raised amount is creator-only */}
             <div className="rounded-3xl2 bg-white shadow-ring p-5 grid grid-cols-2 gap-5 fade-up">
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-ink/50">Raised</p>
-                <p className="serif text-3xl text-[var(--accent)] mt-1.5">
-                  <AnimatedNaira kobo={Number(page.total_raised_kobo)} />
-                </p>
-                <p className="text-xs text-ink/50 mt-1">{page.contributor_count} contributors</p>
+                {isCreator ? (
+                  <>
+                    <p className="text-[10px] uppercase tracking-widest text-ink/50">Raised</p>
+                    <p className="serif text-3xl text-[var(--accent)] mt-1.5">
+                      <AnimatedNaira kobo={Number(page.total_raised_kobo)} />
+                    </p>
+                    <p className="text-xs text-ink/50 mt-1">{page.contributor_count} contributors</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[10px] uppercase tracking-widest text-ink/50">Contributors</p>
+                    <p className="serif text-3xl text-ink mt-1.5">{page.contributor_count}</p>
+                    <p className="text-xs text-ink/50 mt-1">have sent love so far</p>
+                  </>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-[10px] uppercase tracking-widest text-ink/50">
@@ -179,7 +194,9 @@ export default async function WallPage({
                 <p className="serif text-3xl text-ink mt-1.5">
                   {closed && claimable ? "today" : timeUntil(page.deadline_at)}
                 </p>
-                <p className="text-xs text-ink/50 mt-1 truncate">to {page.recipient_account_name}</p>
+                <p className="text-xs text-ink/50 mt-1 truncate">
+                  {isCreator ? `to ${page.recipient_account_name}` : "to send your gift"}
+                </p>
               </div>
             </div>
 
@@ -202,28 +219,37 @@ export default async function WallPage({
               </p>
             )}
 
-            {/* CTA buttons */}
-            {!closed && (
+            {/* CTA buttons — wall stays open longer than contributions */}
+            {(contentOpen || !closed) && (
               <div className="flex gap-3 fade-up">
-                <NavLoadingLink
-                  href={`/c/${page.slug}/post`}
-                  className="btn-accent flex-1 shadow-soft inline-flex items-center justify-center gap-2"
-                  loadingText="Opening…"
-                >
-                  Leave a message
-                </NavLoadingLink>
-                <NavLoadingLink
-                  href={`/c/${page.slug}/contribute`}
-                  className="btn-outline flex-1 inline-flex items-center justify-center gap-2"
-                  loadingText="Opening…"
-                >
-                  Contribute
-                </NavLoadingLink>
+                {contentOpen && (
+                  <NavLoadingLink
+                    href={`/c/${page.slug}/post`}
+                    className={`btn-accent ${closed ? "w-full" : "flex-1"} shadow-soft inline-flex items-center justify-center gap-2`}
+                    loadingText="Opening…"
+                  >
+                    Leave a message
+                  </NavLoadingLink>
+                )}
+                {!closed && (
+                  <NavLoadingLink
+                    href={`/c/${page.slug}/contribute`}
+                    className={`btn-outline ${contentOpen ? "flex-1" : "w-full"} inline-flex items-center justify-center gap-2`}
+                    loadingText="Opening…"
+                  >
+                    Contribute
+                  </NavLoadingLink>
+                )}
               </div>
             )}
-            {closed && !claimable && (
+            {closed && contentOpen && (
+              <p className="text-center text-xs text-ink/50 fade-up">
+                Contributions closed. Wall messages stay open until {formatDate(contentWindowClosesAt(page.celebration_date).toISOString())}.
+              </p>
+            )}
+            {closed && !contentOpen && !claimable && (
               <p className="text-center text-sm text-ink/60 fade-up">
-                Contributions closed. The gift unlocks on {formatDate(page.celebration_date)}.
+                Wall and contributions closed. The gift unlocks on {formatDate(page.celebration_date)}.
               </p>
             )}
 
