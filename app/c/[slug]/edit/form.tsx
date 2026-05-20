@@ -1,34 +1,21 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
 import { editCelebration, type EditState } from "./actions";
-import { ThemePicker } from "@/components/theme-picker";
-import { MusicPicker } from "@/components/music-picker";
-import { uploadWithProgress } from "@/lib/upload";
+import { DesignStep } from "@/components/page-editor/design-step";
 import type { MusicTrack } from "@/lib/music";
 import type { Theme } from "@/lib/themes";
-import { X, ImagePlus, Loader2, Video } from "lucide-react";
+import type { PageDraft } from "@/components/page-editor/types";
 
 function publicUrl(path: string) {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${path}`;
 }
 
-type GalleryItem = { path: string; caption: string; preview: string; kind: "image" | "video" };
-
-const IMAGE_EXTS = ["jpg", "jpeg", "png", "webp"];
-const VIDEO_EXTS = ["mp4", "mov", "webm"];
-
-function galleryExt(file: File): { ext: string; kind: "image" | "video" } | null {
-  const ext = (file.name.split(".").pop() ?? "").toLowerCase();
-  if (file.type.startsWith("image/") && IMAGE_EXTS.includes(ext)) return { ext, kind: "image" };
-  if (file.type.startsWith("image/")) return { ext: "jpg", kind: "image" };
-  if (file.type.startsWith("video/") && VIDEO_EXTS.includes(ext)) return { ext, kind: "video" };
-  if (file.type.startsWith("video/")) return { ext: "mp4", kind: "video" };
-  return null;
-}
-
 export function EditForm({
-  slug, initial, tracks,
+  slug,
+  initial,
+  tracks,
 }: {
   slug: string;
   tracks: MusicTrack[];
@@ -41,260 +28,94 @@ export function EditForm({
     theme: Theme;
     backgroundMusic: string | null;
     recipientName: string;
+    eventType: string;
+    celebrationDate: string;
     galleryImages: { path: string; caption: string; kind?: "image" | "video" }[];
   };
 }) {
+  const router = useRouter();
   const action = editCelebration.bind(null, slug);
-  const [state, dispatch] = useActionState<EditState, FormData>(action, {});
-  const [theme, setTheme] = useState<Theme>(initial.theme);
-  const [backgroundMusic, setBackgroundMusic] = useState<string | null>(initial.backgroundMusic);
+  const [state, dispatch, pending] = useActionState<EditState, FormData>(action, {});
 
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [coverPath, setCoverPath] = useState<string | null>(initial.coverPhotoPath);
-  const [coverPreview, setCoverPreview] = useState<string | null>(
-    initial.coverPhotoPath ? publicUrl(initial.coverPhotoPath) : null,
-  );
-  const [uploading, setUploading] = useState(false);
-  const [coverProgress, setCoverProgress] = useState(0);
-
-  // Gallery
-  const galleryFileRef = useRef<HTMLInputElement>(null);
-  const [galleryImages, setGalleryImages] = useState<GalleryItem[]>(
-    initial.galleryImages.map((img) => ({
-      ...img,
+  const [draft, setDraft] = useState<PageDraft>({
+    title: initial.title,
+    recipientName: initial.recipientName,
+    eventType: initial.eventType,
+    celebrationDate: initial.celebrationDate,
+    messageFromCreator: initial.messageFromCreator,
+    tagline: initial.tagline,
+    celebrantDescription: initial.celebrantDescription,
+    coverPath: initial.coverPhotoPath,
+    coverPreview: initial.coverPhotoPath ? publicUrl(initial.coverPhotoPath) : null,
+    theme: initial.theme,
+    backgroundMusic: initial.backgroundMusic,
+    gallery: initial.galleryImages.map((img) => ({
+      path: img.path,
+      caption: img.caption,
       kind: img.kind ?? "image",
       preview: publicUrl(img.path),
     })),
-  );
-  const [uploadingGallery, setUploadingGallery] = useState(false);
+  });
 
-  async function onCover(file: File) {
-    if (!file.type.startsWith("image/")) return;
-    if (file.size > 8 * 1024 * 1024) { alert("Cover must be under 8 MB."); return; }
-    const previousPreview = coverPreview;
-    setUploading(true);
-    setCoverProgress(0);
-    setCoverPreview(URL.createObjectURL(file));
-    const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
-    const res = await fetch("/api/media/sign-cover", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ext: IMAGE_EXTS.includes(ext) ? ext : "jpg" }),
-    });
-    const sign = await res.json();
-    if (!res.ok) { setUploading(false); setCoverPreview(previousPreview); alert(sign.error ?? "Upload failed"); return; }
-    try {
-      await uploadWithProgress({
-        url: sign.signedUrl,
-        file,
-        contentType: file.type,
-        onProgress: setCoverProgress,
-      });
-    } catch (e) {
-      setUploading(false);
-      setCoverProgress(0);
-      setCoverPreview(previousPreview);
-      alert(e instanceof Error ? e.message : "Upload failed");
-      return;
-    }
-    setCoverPath(sign.path);
-    setCoverProgress(100);
-    setUploading(false);
+  function update(patch: Partial<PageDraft>) {
+    setDraft((prev) => ({ ...prev, ...patch }));
   }
 
-  async function onGalleryFiles(files: FileList) {
-    const remaining = 20 - galleryImages.length;
-    const toUpload = Array.from(files).slice(0, remaining);
-    if (toUpload.length === 0) { alert("Maximum 20 gallery items reached."); return; }
-    setUploadingGallery(true);
-    for (const file of toUpload) {
-      if (file.size > 50 * 1024 * 1024) { alert(`${file.name} is too large (max 50 MB).`); continue; }
-      const meta = galleryExt(file);
-      if (!meta) { alert(`${file.name} is not a supported image or video.`); continue; }
-      const res = await fetch("/api/media/sign-gallery", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ext: meta.ext }),
-      });
-      const sign = await res.json();
-      if (!res.ok) { alert(sign.error ?? "Upload failed"); continue; }
-      const put = await fetch(sign.signedUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-      if (!put.ok) { alert("Upload failed"); continue; }
-      const preview = URL.createObjectURL(file);
-      setGalleryImages((prev) => [...prev, { path: sign.path, caption: "", preview, kind: meta.kind }]);
-    }
-    setUploadingGallery(false);
+  function save() {
+    const fd = new FormData();
+    fd.set("title", draft.title);
+    fd.set("theme", draft.theme);
+    if (draft.backgroundMusic) fd.set("backgroundMusic", draft.backgroundMusic);
+    if (draft.messageFromCreator) fd.set("messageFromCreator", draft.messageFromCreator);
+    if (draft.tagline) fd.set("tagline", draft.tagline);
+    fd.set("celebrantDescription", draft.celebrantDescription);
+    if (draft.coverPath) fd.set("coverPhotoPath", draft.coverPath);
+    fd.set(
+      "galleryImages",
+      JSON.stringify(
+        draft.gallery.map(({ path, caption, kind }) => ({ path, caption, kind })),
+      ),
+    );
+    dispatch(fd);
   }
 
-  function removeGalleryImage(idx: number) {
-    setGalleryImages((prev) => prev.filter((_, i) => i !== idx));
-  }
-
-  function updateCaption(idx: number, caption: string) {
-    setGalleryImages((prev) => prev.map((img, i) => i === idx ? { ...img, caption } : img));
-  }
-
-  const firstName = initial.recipientName.split(" ")[0];
+  const firstName = draft.recipientName.split(" ")[0] || "them";
 
   return (
-    <form action={dispatch} className="mt-8 space-y-6" data-theme={theme}>
-      <div className="relative h-28 rounded-3xl2 overflow-hidden shadow-ring theme-mesh">
-        <p className="absolute bottom-3 left-4 text-[11px] uppercase tracking-widest text-ink/60">Preview</p>
-      </div>
-
-      <ThemePicker value={theme} onChange={setTheme} />
-
-      <MusicPicker value={backgroundMusic} onChange={setBackgroundMusic} tracks={tracks} />
-
-      <div className="space-y-2">
-        <label className="label">Cover photo</label>
-        <input ref={fileRef} type="file" accept="image/*" className="hidden"
-          onChange={(e) => e.target.files?.[0] && onCover(e.target.files[0])} />
-        {coverPreview ? (
-          <button type="button" onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="relative w-full aspect-[4/3] rounded-3xl2 overflow-hidden shadow-card">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={coverPreview} alt="" className={`size-full object-cover transition ${uploading ? "scale-[1.02] blur-[1px]" : ""}`} />
-            {uploading && (
-              <>
-                <div className="absolute inset-0 bg-ink/30" />
-                <div
-                  className="absolute inset-x-0 bottom-0 bg-white/95 transition-[height] duration-200 ease-out"
-                  style={{ height: `${coverProgress}%` }}
-                />
-                <div className="absolute inset-0 grid place-items-center">
-                  <div className="text-center">
-                    <p className="serif text-3xl text-white drop-shadow">{coverProgress}%</p>
-                    <p className="text-xs uppercase tracking-widest mt-1 text-white/80">Uploading</p>
-                  </div>
-                </div>
-              </>
-            )}
-            {!uploading && (
-              <span className="absolute bottom-3 right-3 glass-dark text-white rounded-full px-3 py-1 text-xs">
-                Change
-              </span>
-            )}
-          </button>
-        ) : (
-          <button type="button" onClick={() => fileRef.current?.click()}
-            className="w-full aspect-[4/3] rounded-3xl2 border-2 border-dashed border-ink/15 grid place-items-center text-ink/55">
-            + Add a cover photo
-          </button>
-        )}
-        {coverPath && <input type="hidden" name="coverPhotoPath" value={coverPath} />}
-      </div>
-
-      {/* Gallery */}
-      <div className="space-y-3">
-        <div>
-          <label className="label">Photo &amp; video gallery (optional)</label>
-          <p className="text-xs text-ink/45 mt-0.5">
-            Full-screen slides during {firstName}&apos;s opening. Add up to 20 photos or short videos ({galleryImages.length}/20).
+    <DesignStep
+      draft={draft}
+      update={update}
+      tracks={tracks}
+      mode="edit"
+      onBack={() => router.push(`/c/${slug}`)}
+      backLabel="Back to page"
+      errorText={state.error ?? null}
+      primary={{
+        label: state.ok ? "Saved ✓" : "Save changes",
+        submittingLabel: "Saving…",
+        onClick: save,
+        submitting: pending,
+      }}
+      extrasBelow={
+        <div className="rounded-3xl2 bg-white shadow-ring p-5 space-y-3">
+          <div>
+            <p className="font-medium text-ink">AI brief about {firstName}</p>
+            <p className="text-xs text-ink/50 mt-0.5">
+              Only you see this. Used to personalise {firstName}&apos;s slideshow opening.
+            </p>
+          </div>
+          <textarea
+            className="field min-h-[120px] resize-none"
+            value={draft.celebrantDescription}
+            onChange={(e) => update({ celebrantDescription: e.target.value })}
+            maxLength={1500}
+            placeholder={`Tell us about ${firstName} — their personality, what they love, what makes them who they are.`}
+          />
+          <p className="text-xs text-ink/45">
+            {draft.celebrantDescription.length}/1500
           </p>
         </div>
-
-        {galleryImages.length > 0 && (
-          <div className="grid grid-cols-2 gap-3">
-            {galleryImages.map((img, idx) => (
-              <div key={idx} className="relative rounded-2xl overflow-hidden shadow-ring bg-ink/5">
-                {img.kind === "video" ? (
-                  <div className="w-full aspect-[4/3] bg-ink/80 grid place-items-center">
-                    <Video className="size-8 text-white/60" />
-                  </div>
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={img.preview} alt="" className="w-full aspect-[4/3] object-cover" />
-                )}
-                <button
-                  type="button"
-                  onClick={() => removeGalleryImage(idx)}
-                  className="absolute top-2 right-2 size-6 rounded-full glass-dark text-white grid place-items-center"
-                  aria-label="Remove"
-                >
-                  <X className="size-3" />
-                </button>
-                <input
-                  type="text"
-                  placeholder="Add a caption…"
-                  maxLength={100}
-                  value={img.caption}
-                  onChange={(e) => updateCaption(idx, e.target.value)}
-                  className="w-full px-3 py-2 text-sm text-ink/80 bg-white/80 border-0 focus:outline-none focus:ring-0 placeholder:text-ink/35"
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        <input
-          ref={galleryFileRef}
-          type="file"
-          accept="image/*,video/*"
-          multiple
-          className="hidden"
-          onChange={(e) => e.target.files && e.target.files.length > 0 && onGalleryFiles(e.target.files)}
-        />
-        {galleryImages.length < 20 && (
-          <button
-            type="button"
-            onClick={() => galleryFileRef.current?.click()}
-            disabled={uploadingGallery}
-            className="btn-outline inline-flex text-sm disabled:opacity-50"
-          >
-            {uploadingGallery
-              ? <><Loader2 className="size-4 animate-spin" /> Uploading…</>
-              : <><ImagePlus className="size-4" /> Add photos / videos</>
-            }
-          </button>
-        )}
-
-        <input
-          type="hidden"
-          name="galleryImages"
-          value={JSON.stringify(galleryImages.map(({ path, caption, kind }) => ({ path, caption, kind })))}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <label className="label">Page title</label>
-        <input className="field" name="title" defaultValue={initial.title} required maxLength={80} />
-      </div>
-
-      <div className="space-y-1.5">
-        <label className="label">Custom tagline (optional)</label>
-        <input
-          className="field"
-          name="tagline"
-          defaultValue={initial.tagline}
-          maxLength={140}
-          placeholder={`e.g. "We got you, queen ✨" or leave blank to hide`}
-        />
-        <p className="text-xs text-ink/45">Shown on {firstName}&apos;s cover page. Leave blank to hide.</p>
-      </div>
-
-      <div className="space-y-1.5">
-        <label className="label">About {firstName}</label>
-        <textarea
-          className="field min-h-[120px] resize-none"
-          name="celebrantDescription"
-          defaultValue={initial.celebrantDescription}
-          maxLength={1500}
-          placeholder={`Tell us about ${firstName} — their personality, what they love, what makes them who they are. This creates a personalised opening when they press Play.`}
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <label className="label">A note from you</label>
-        <textarea className="field min-h-[100px] resize-none" name="messageFromCreator"
-          defaultValue={initial.messageFromCreator} maxLength={280}
-          placeholder="Tell everyone what this is for…" />
-      </div>
-
-      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-      {state.ok && <p className="text-sm text-ink/70">Saved.</p>}
-
-      <button className="btn-accent w-full py-4 shadow-soft">Save changes</button>
-    </form>
+      }
+    />
   );
 }
