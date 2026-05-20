@@ -42,6 +42,7 @@ export async function createCelebration(
     recipientAccountNumber: formData.get("recipientAccountNumber"),
     coverPhotoPath: formData.get("coverPhotoPath") || undefined,
     galleryImages: formData.get("galleryImages") || undefined,
+    introContent: formData.get("introContent") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0].message };
@@ -62,15 +63,28 @@ export async function createCelebration(
   const slug = slugId();
   const admin = supabaseAdmin();
 
-  const firstName = parsed.data.recipientName.split(" ")[0];
-  const introContent = await generateIntroContent({
-    firstName,
-    recipientName: parsed.data.recipientName,
-    eventType: parsed.data.eventType,
-    celebrationDate: parsed.data.celebrationDate,
-    celebrationTitle: parsed.data.title,
-    celebrantDescription: parsed.data.celebrantDescription ?? null,
-  });
+  // The client-side editor lets users generate slides on demand and tweak
+  // them. If they sent edited slides through, trust those; otherwise fall
+  // back to a server-side generation so a page always has a slideshow.
+  let introContent: Awaited<ReturnType<typeof generateIntroContent>> = null;
+  if (parsed.data.introContent) {
+    try {
+      introContent = JSON.parse(parsed.data.introContent);
+    } catch {
+      introContent = null;
+    }
+  }
+  if (!introContent) {
+    const firstName = parsed.data.recipientName.split(" ")[0];
+    introContent = await generateIntroContent({
+      firstName,
+      recipientName: parsed.data.recipientName,
+      eventType: parsed.data.eventType,
+      celebrationDate: parsed.data.celebrationDate,
+      celebrationTitle: parsed.data.title,
+      celebrantDescription: parsed.data.celebrantDescription ?? null,
+    });
+  }
 
   let galleryImages: { path: string; caption: string; kind?: "image" | "video" }[] = [];
   try { galleryImages = JSON.parse(parsed.data.galleryImages ?? "[]"); } catch { /* keep empty */ }

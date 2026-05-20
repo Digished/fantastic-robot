@@ -16,6 +16,7 @@ export function InlineText({
   maxLength,
   className = "",
   ariaLabel,
+  tone = "light",
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -24,6 +25,11 @@ export function InlineText({
   maxLength?: number;
   className?: string;
   ariaLabel?: string;
+  /**
+   * Pick "dark" when the field sits on a coloured slide card so hover and
+   * focus affordances stay visible against a dark backdrop.
+   */
+  tone?: "light" | "dark";
 }) {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -35,10 +41,11 @@ export function InlineText({
     el.style.height = `${el.scrollHeight}px`;
   }, [value, multiline]);
 
-  const shared =
-    "w-full bg-transparent outline-none rounded-md transition " +
-    "px-1.5 -mx-1.5 hover:bg-ink/[0.04] focus:bg-white/90 focus:ring-1 focus:ring-[var(--accent)]/40 " +
-    "placeholder:text-ink/30";
+  const toneClasses =
+    tone === "dark"
+      ? "hover:bg-white/10 focus:bg-white/15 focus:ring-1 focus:ring-white/40 placeholder:text-white/40 text-white"
+      : "hover:bg-ink/[0.04] focus:bg-white/90 focus:ring-1 focus:ring-[var(--accent)]/40 placeholder:text-ink/30";
+  const shared = `w-full bg-transparent outline-none rounded-md transition px-1.5 -mx-1.5 ${toneClasses}`;
 
   if (multiline) {
     return (

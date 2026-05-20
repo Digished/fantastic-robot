@@ -5,6 +5,7 @@ import { Music, Pause, Play, Sparkles, VolumeX } from "lucide-react";
 import { Sparkles as SparkleField } from "@/components/sparkles";
 import { findTrack, type MusicTrack } from "@/lib/music";
 import { CoverEditor } from "./cover-editor";
+import { IntroSlidesEditor } from "./intro-slides-editor";
 import type { PageDraft } from "./types";
 
 /**
@@ -17,10 +18,16 @@ export function SlideshowPreview({
   draft,
   update,
   tracks,
+  onGenerateIntro,
+  generatingIntro,
+  introError,
 }: {
   draft: PageDraft;
   update: (patch: Partial<PageDraft>) => void;
   tracks: MusicTrack[];
+  onGenerateIntro: () => Promise<void>;
+  generatingIntro: boolean;
+  introError: string | null;
 }) {
   const firstName = draft.recipientName.split(" ")[0] || "Them";
   const track: MusicTrack | null = findTrack(draft.backgroundMusic, tracks);
@@ -68,18 +75,18 @@ export function SlideshowPreview({
           <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/85 pointer-events-none" />
           <SparkleField count={6} />
 
-          {/* Bottom captions */}
-          <div className="absolute inset-x-0 bottom-0 p-6 text-white pointer-events-none">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-white/70">
+          {/* Bottom captions — mock preview, faded */}
+          <div className="absolute inset-x-0 bottom-0 p-6 text-white pointer-events-none select-none opacity-60">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-white/60">
               <Sparkles className="size-3 inline -mt-0.5" /> Tap to play
             </p>
             <h2 className="serif text-4xl mt-2 leading-tight">
               For you, {firstName}.
             </h2>
-            <p className="text-white/80 text-sm mt-2">
+            <p className="text-white/65 text-sm mt-2">
               {draft.gallery.length > 0
-                ? `${draft.gallery.length} slide${draft.gallery.length > 1 ? "s" : ""} of memories · ${draft.tagline || draft.title || "Your celebration"}`
-                : draft.tagline || draft.title || "Your celebration"}
+                ? `${draft.gallery.length} slide${draft.gallery.length > 1 ? "s" : ""} of memories`
+                : "Cover · slideshow opens here"}
             </p>
           </div>
         </div>
@@ -113,11 +120,22 @@ export function SlideshowPreview({
           )}
         </div>
 
-        {/* Gallery thumbnails */}
+        {/* Editable AI intro slides */}
+        <div className="mt-6">
+          <IntroSlidesEditor
+            draft={draft}
+            update={update}
+            onGenerate={onGenerateIntro}
+            generating={generatingIntro}
+            error={introError}
+          />
+        </div>
+
+        {/* Gallery thumbnails — purely visual reminder of what plays */}
         {draft.gallery.length > 0 && (
-          <div className="mt-5">
+          <div className="mt-6">
             <p className="text-[10px] uppercase tracking-widest text-ink/40 mb-2">
-              Slides
+              Gallery slides
             </p>
             <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
               {draft.gallery.map((g, idx) => (

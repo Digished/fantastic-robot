@@ -6,7 +6,7 @@ import { editCelebration, type EditState } from "./actions";
 import { DesignStep } from "@/components/page-editor/design-step";
 import type { MusicTrack } from "@/lib/music";
 import type { Theme } from "@/lib/themes";
-import type { PageDraft } from "@/components/page-editor/types";
+import type { IntroContent, PageDraft } from "@/components/page-editor/types";
 
 function publicUrl(path: string) {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${path}`;
@@ -30,6 +30,7 @@ export function EditForm({
     recipientName: string;
     eventType: string;
     celebrationDate: string;
+    introContent: IntroContent | null;
     galleryImages: { path: string; caption: string; kind?: "image" | "video" }[];
   };
 }) {
@@ -55,10 +56,42 @@ export function EditForm({
       kind: img.kind ?? "image",
       preview: publicUrl(img.path),
     })),
+    introContent: initial.introContent,
   });
+  const [generatingIntro, setGeneratingIntro] = useState(false);
+  const [introError, setIntroError] = useState<string | null>(null);
 
   function update(patch: Partial<PageDraft>) {
     setDraft((prev) => ({ ...prev, ...patch }));
+  }
+
+  async function generateIntro() {
+    setIntroError(null);
+    if (draft.celebrantDescription.trim().length < 20) {
+      setIntroError(`Add at least 20 characters in the AI brief about ${draft.recipientName.split(" ")[0] || "them"} below.`);
+      return;
+    }
+    setGeneratingIntro(true);
+    try {
+      const res = await fetch("/api/ai/generate-intro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientName: draft.recipientName,
+          eventType: draft.eventType,
+          celebrationDate: draft.celebrationDate,
+          celebrationTitle: draft.title,
+          celebrantDescription: draft.celebrantDescription,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) setIntroError(json.error ?? "Could not generate slides.");
+      else update({ introContent: json.introContent });
+    } catch {
+      setIntroError("Could not reach the slide generator.");
+    } finally {
+      setGeneratingIntro(false);
+    }
   }
 
   function save() {
@@ -76,6 +109,9 @@ export function EditForm({
         draft.gallery.map(({ path, caption, kind }) => ({ path, caption, kind })),
       ),
     );
+    if (draft.introContent) {
+      fd.set("introContent", JSON.stringify(draft.introContent));
+    }
     dispatch(fd);
   }
 
@@ -96,6 +132,9 @@ export function EditForm({
         onClick: save,
         submitting: pending,
       }}
+      onGenerateIntro={generateIntro}
+      generatingIntro={generatingIntro}
+      introError={introError}
       extrasBelow={
         <div className="rounded-3xl2 bg-white shadow-ring p-5 space-y-3">
           <div>

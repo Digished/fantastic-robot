@@ -42,6 +42,7 @@ export const createCelebrationSchema = z.object({
   recipientAccountNumber: naijaAccountNumber,
   coverPhotoPath: z.string().optional(),
   galleryImages: z.string().optional(),
+  introContent: z.string().optional(),
 });
 
 export const messageSchema = z.object({

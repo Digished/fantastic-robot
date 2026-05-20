@@ -27,6 +27,9 @@ export function DesignStep({
   initialTab = "landing",
   extrasBelow,
   mode,
+  onGenerateIntro,
+  generatingIntro,
+  introError,
 }: {
   draft: PageDraft;
   update: (patch: Partial<PageDraft>) => void;
@@ -44,6 +47,9 @@ export function DesignStep({
   initialTab?: Tab;
   extrasBelow?: React.ReactNode;
   mode: "create" | "edit";
+  onGenerateIntro: () => Promise<void>;
+  generatingIntro: boolean;
+  introError: string | null;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
 
@@ -111,7 +117,14 @@ export function DesignStep({
         {tab === "landing" ? (
           <LandingPreview draft={draft} update={update} mode={mode} />
         ) : (
-          <SlideshowPreview draft={draft} update={update} tracks={tracks} />
+          <SlideshowPreview
+            draft={draft}
+            update={update}
+            tracks={tracks}
+            onGenerateIntro={onGenerateIntro}
+            generatingIntro={generatingIntro}
+            introError={introError}
+          />
         )}
       </div>
 

@@ -1,4 +1,5 @@
 import type { Theme } from "@/lib/themes";
+import type { IntroContent } from "@/lib/openai/generate-intro";
 
 export type GalleryItem = {
   path: string;
@@ -41,4 +42,7 @@ export type PageDraft = {
   theme: Theme;
   backgroundMusic: string | null;
   gallery: GalleryItem[];
+  introContent: IntroContent | null;
 };
+
+export type { IntroContent } from "@/lib/openai/generate-intro";

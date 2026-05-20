@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { generateIntroContent } from "@/lib/openai/generate-intro";
+import type { IntroContent } from "@/lib/openai/generate-intro";
 import { THEME_IDS } from "@/lib/themes";
 import { resolveSavedTrackId } from "@/lib/music/server";
 import { contentWindowOpen } from "@/lib/celebration-windows";
@@ -18,6 +18,7 @@ const editSchema = z.object({
   theme: z.enum(THEME_IDS).optional(),
   backgroundMusic: z.string().min(1).max(80).nullable().optional(),
   galleryImages: z.string().optional(),
+  introContent: z.string().optional(),
 });
 
 export type EditState = { error?: string; ok?: boolean };
@@ -40,6 +41,7 @@ export async function editCelebration(
     theme: (formData.get("theme") as string) || undefined,
     backgroundMusic: (formData.get("backgroundMusic") as string) || null,
     galleryImages: (formData.get("galleryImages") as string) || undefined,
+    introContent: (formData.get("introContent") as string) || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -54,15 +56,13 @@ export async function editCelebration(
     return { error: "Page edits close 1 hour before the celebration." };
   }
 
-  const firstName = page.recipient_name.split(" ")[0];
-  const introContent = await generateIntroContent({
-    firstName,
-    recipientName: page.recipient_name,
-    eventType: page.event_type,
-    celebrationDate: page.celebration_date,
-    celebrationTitle: parsed.data.title,
-    celebrantDescription: parsed.data.celebrantDescription ?? null,
-  });
+  // The editor sends edited slides as JSON. Use them verbatim — we no
+  // longer overwrite the user's hand-tuned slides with a fresh AI call on
+  // every save.
+  let introContent: IntroContent | null = null;
+  if (parsed.data.introContent) {
+    try { introContent = JSON.parse(parsed.data.introContent) as IntroContent; } catch { /* ignore */ }
+  }
 
   let galleryImages: { path: string; caption: string; kind?: "image" | "video" }[] = [];
   try { galleryImages = JSON.parse(parsed.data.galleryImages || "[]"); } catch { /* keep empty */ }

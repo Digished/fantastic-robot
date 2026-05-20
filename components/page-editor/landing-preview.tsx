@@ -1,6 +1,5 @@
 "use client";
 
-import { Gift } from "lucide-react";
 import { formatDate } from "@/lib/time";
 import { CoverEditor } from "./cover-editor";
 import { GalleryEditor } from "./gallery-editor";
@@ -8,9 +7,10 @@ import { InlineText } from "./inline-text";
 import { eventLabel, type PageDraft } from "./types";
 
 /**
- * Editable preview of the public landing page (/c/[slug]). Click any text
- * to edit; tap the cover to upload a new one. Stats and the wall are mocked
- * to give the user a sense of what visitors will see.
+ * Editable preview of the public landing page. Editable surfaces (title,
+ * tagline, message, cover, gallery) sit at full opacity; mock/preview
+ * surfaces (date badge, stats card, CTAs, footer notes) sit at low opacity
+ * so it's obvious what's editable and what's just illustration.
  */
 export function LandingPreview({
   draft,
@@ -43,7 +43,7 @@ export function LandingPreview({
               emptyLabel={`Add a photo of ${firstName}`}
             />
             {!draft.coverPath && (
-              <p className="text-xs text-ink/50 text-center">
+              <p className="text-xs text-ink/40 text-center">
                 Tap the photo above to upload {firstName}&apos;s cover.
               </p>
             )}
@@ -52,7 +52,8 @@ export function LandingPreview({
           {/* RIGHT: editable content */}
           <div className="space-y-5 mt-4 md:mt-0">
             <div>
-              <p className="text-[10px] uppercase tracking-[0.3em] text-ink/50 font-medium">
+              {/* Date / event — display only */}
+              <p className="text-[10px] uppercase tracking-[0.3em] text-ink/35 font-medium">
                 {eventName} · {niceDate}
               </p>
               <h1 className="serif text-4xl md:text-5xl text-ink mt-3 leading-[0.95]">
@@ -64,26 +65,33 @@ export function LandingPreview({
                   ariaLabel="Page title"
                 />
               </h1>
-              <p className="text-ink/55 mt-2">For {draft.recipientName || firstName}</p>
+              <p className="text-ink/35 mt-2 text-sm">
+                For {draft.recipientName || firstName}
+              </p>
             </div>
 
-            {/* Stats — mock for the editor */}
-            <div className="rounded-3xl2 bg-white shadow-ring p-5 grid grid-cols-2 gap-5">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-ink/50">Raised</p>
-                <p className="serif text-3xl text-[var(--accent)] mt-1.5">₦0</p>
-                <p className="text-xs text-ink/50 mt-1">0 contributors yet</p>
+            {/* Stats — mock, faded out */}
+            <div className="relative">
+              <div className="rounded-3xl2 bg-white shadow-ring p-5 grid grid-cols-2 gap-5 opacity-35 pointer-events-none select-none">
+                <div>
+                  <p className="text-[10px] uppercase tracking-widest text-ink/50">Raised</p>
+                  <p className="serif text-3xl text-[var(--accent)] mt-1.5">₦0</p>
+                  <p className="text-xs text-ink/50 mt-1">0 contributors yet</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] uppercase tracking-widest text-ink/50">Closes in</p>
+                  <p className="serif text-3xl text-ink mt-1.5">—</p>
+                  <p className="text-xs text-ink/50 mt-1 truncate">once published</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-[10px] uppercase tracking-widest text-ink/50">Closes in</p>
-                <p className="serif text-3xl text-ink mt-1.5">—</p>
-                <p className="text-xs text-ink/50 mt-1 truncate">when your page goes live</p>
-              </div>
+              <span className="absolute top-2 right-3 text-[9px] uppercase tracking-[0.28em] text-ink/40">
+                Preview
+              </span>
             </div>
 
             {/* Tagline — italic, inline */}
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-ink/40 mb-1">Tagline</p>
+              <p className="text-[10px] uppercase tracking-widest text-ink/30 mb-1">Tagline</p>
               <p className="serif italic text-ink/80 text-lg leading-snug">
                 <InlineText
                   value={draft.tagline}
@@ -97,7 +105,7 @@ export function LandingPreview({
 
             {/* Message from creator — blockquote-style */}
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-ink/40 mb-1">A note from you</p>
+              <p className="text-[10px] uppercase tracking-widest text-ink/30 mb-1">A note from you</p>
               <blockquote className="serif text-ink text-2xl leading-tight italic">
                 <InlineText
                   value={draft.messageFromCreator}
@@ -110,8 +118,8 @@ export function LandingPreview({
               </blockquote>
             </div>
 
-            {/* Mock CTAs */}
-            <div className="flex gap-3 opacity-60 pointer-events-none">
+            {/* Mock CTAs — faded */}
+            <div className="flex gap-3 opacity-25 pointer-events-none select-none">
               <span className="btn-accent flex-1 shadow-soft inline-flex items-center justify-center gap-2">
                 Leave a message
               </span>
@@ -120,14 +128,11 @@ export function LandingPreview({
               </span>
             </div>
 
-            <p className="text-[11px] text-ink/40 text-center flex items-center justify-center gap-1.5">
-              <Gift className="size-3.5 text-[var(--accent)]" />
-              {mode === "create"
-                ? "Preview — friends will see these buttons live once you publish."
-                : "Preview — this is what visitors see on your page."}
+            <p className="text-[10px] uppercase tracking-[0.28em] text-ink/35 text-center">
+              {mode === "create" ? "Preview · live once published" : "Preview · visitor view"}
             </p>
 
-            {/* Gallery — managed below */}
+            {/* Gallery — editable, full opacity */}
             <div className="rounded-3xl2 bg-white shadow-ring p-5">
               <GalleryEditor
                 items={draft.gallery}

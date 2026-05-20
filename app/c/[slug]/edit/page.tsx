@@ -4,6 +4,7 @@ import { EditForm } from "./form";
 import { MessagesManager } from "./messages-manager";
 import { isTheme, type Theme } from "@/lib/themes";
 import { getEffectiveTracks } from "@/lib/music/server";
+import type { IntroContent } from "@/lib/openai/generate-intro";
 
 export default async function EditPage({
   params,
@@ -15,7 +16,7 @@ export default async function EditPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, title, recipient_name, event_type, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, creator_id, theme, background_music, gallery_images")
+    .select("id, slug, title, recipient_name, event_type, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, creator_id, theme, background_music, gallery_images, intro_content")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) notFound();
@@ -50,6 +51,7 @@ export default async function EditPage({
           recipientName: page.recipient_name,
           eventType: page.event_type,
           celebrationDate: page.celebration_date,
+          introContent: (page.intro_content as IntroContent | null) ?? null,
           galleryImages: (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [],
         }}
       />

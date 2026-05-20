@@ -35,14 +35,53 @@ export function CreateForm({
     theme: "ivory" as Theme,
     backgroundMusic: null,
     gallery: [],
+    introContent: null,
   });
 
   const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [resolvedAccountName, setResolvedAccountName] = useState<string | null>(null);
+  const [generatingIntro, setGeneratingIntro] = useState(false);
+  const [introError, setIntroError] = useState<string | null>(null);
 
   function update(patch: Partial<PageDraft>) {
     setDraft((prev) => ({ ...prev, ...patch }));
+  }
+
+  async function generateIntro() {
+    setIntroError(null);
+    if (
+      draft.celebrantDescription.trim().length < 20 ||
+      !draft.recipientName ||
+      !draft.celebrationDate
+    ) {
+      setIntroError("Add the brief and basics in step 1 first.");
+      return;
+    }
+    setGeneratingIntro(true);
+    try {
+      const res = await fetch("/api/ai/generate-intro", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientName: draft.recipientName,
+          eventType: draft.eventType,
+          celebrationDate: draft.celebrationDate,
+          celebrationTitle: draft.title || `For ${draft.recipientName}`,
+          celebrantDescription: draft.celebrantDescription,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setIntroError(json.error ?? "Could not generate slides.");
+      } else {
+        update({ introContent: json.introContent });
+      }
+    } catch {
+      setIntroError("Could not reach the slide generator.");
+    } finally {
+      setGeneratingIntro(false);
+    }
   }
 
   const designErrors = collectDesignErrors(draft);
@@ -74,6 +113,9 @@ export function CreateForm({
         draft.gallery.map(({ path, caption, kind }) => ({ path, caption, kind })),
       ),
     );
+    if (draft.introContent) {
+      fd.set("introContent", JSON.stringify(draft.introContent));
+    }
 
     const result = await createCelebration({}, fd);
     if (result?.authorizationUrl) {
@@ -119,6 +161,9 @@ export function CreateForm({
         submitting,
         disabled: !canPublish,
       }}
+      onGenerateIntro={generateIntro}
+      generatingIntro={generatingIntro}
+      introError={introError}
     />
   );
 }
