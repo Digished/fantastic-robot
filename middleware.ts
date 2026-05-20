@@ -8,15 +8,17 @@ const ADMIN_COOKIE_NAME = "admin_session";
 
 async function isAdminAuthenticated(token: string | undefined): Promise<boolean> {
   if (!token) return false;
-  const secret = process.env.ADMIN_SESSION_SECRET;
+  const password = process.env.ADMIN_PASSWORD;
   const expected = process.env.ADMIN_EMAIL;
-  if (!secret || !expected) return false;
+  if (!password || !expected) return false;
   try {
-    const { payload } = await jwtVerify(
-      token,
-      new TextEncoder().encode(secret),
-      { algorithms: ["HS256"] },
+    const material = new TextEncoder().encode(
+      `spendbox-admin-session\0${password}`,
     );
+    const digest = await crypto.subtle.digest("SHA-256", material);
+    const { payload } = await jwtVerify(token, new Uint8Array(digest), {
+      algorithms: ["HS256"],
+    });
     return payload.sub === expected;
   } catch {
     return false;

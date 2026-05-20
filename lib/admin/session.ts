@@ -1,6 +1,8 @@
 // Admin dashboard authentication — a separate, env-driven login that is
 // independent of the Supabase user system. Email/password live in
-// ADMIN_EMAIL / ADMIN_PASSWORD; the session cookie is a signed JWT.
+// ADMIN_EMAIL / ADMIN_PASSWORD; the session cookie is a signed JWT whose
+// signing key is derived from ADMIN_PASSWORD, so rotating the password
+// also invalidates every existing session.
 
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
@@ -9,8 +11,13 @@ import { env } from "@/lib/env";
 const COOKIE_NAME = "admin_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7;  // 7 days
 
-function secretKey() {
-  return new TextEncoder().encode(env.adminSessionSecret());
+// Web Crypto is available on both Node and the edge runtime (middleware).
+async function secretKey(): Promise<Uint8Array> {
+  const material = new TextEncoder().encode(
+    `spendbox-admin-session\0${env.adminPassword()}`,
+  );
+  const digest = await crypto.subtle.digest("SHA-256", material);
+  return new Uint8Array(digest);
 }
 
 export async function signAdminToken(email: string): Promise<string> {
@@ -18,7 +25,7 @@ export async function signAdminToken(email: string): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${COOKIE_MAX_AGE}s`)
-    .sign(secretKey());
+    .sign(await secretKey());
 }
 
 export async function verifyAdminToken(
@@ -26,7 +33,7 @@ export async function verifyAdminToken(
 ): Promise<{ email: string } | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secretKey(), {
+    const { payload } = await jwtVerify(token, await secretKey(), {
       algorithms: ["HS256"],
     });
     const email = typeof payload.sub === "string" ? payload.sub : null;
