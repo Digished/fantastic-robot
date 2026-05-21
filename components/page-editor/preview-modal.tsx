@@ -41,45 +41,60 @@ export function PreviewModal({
   const track = findTrack(draft.backgroundMusic, tracks);
   const clip = parseMusicValue(draft.backgroundMusic).clip;
 
+  const toggle = (
+    <div className="flex items-center gap-1 rounded-full bg-ink/6 p-1">
+      <ViewTab active={view === "contributor"} onClick={() => setView("contributor")}>
+        <Layout className="size-3.5" /> Contributor
+      </ViewTab>
+      <ViewTab active={view === "celebrant"} onClick={() => setView("celebrant")}>
+        <Sparkles className="size-3.5" /> Celebrant
+      </ViewTab>
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-[70] bg-white flex flex-col">
       {/* Top bar */}
       <header className="shrink-0 border-b border-ink/8 bg-white/95 backdrop-blur">
-        <div className="mx-auto max-w-6xl px-4 md:px-8 py-3 flex items-center gap-3">
-          <span className="text-[11px] uppercase tracking-[0.28em] text-ink/40 hidden sm:block">
-            Preview
-          </span>
-          <div className="mx-auto flex items-center gap-1 rounded-full bg-ink/6 p-1">
-            <ViewTab active={view === "contributor"} onClick={() => setView("contributor")}>
-              <Layout className="size-3.5" /> Contributor
-            </ViewTab>
-            <ViewTab active={view === "celebrant"} onClick={() => setView("celebrant")}>
-              <Sparkles className="size-3.5" /> Celebrant
-            </ViewTab>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="btn-outline text-sm py-2 px-3 inline-flex items-center gap-1.5"
-          >
-            <X className="size-4" /> {confirm ? "Back to editing" : "Close"}
-          </button>
-          {confirm && (
-            <div className="flex flex-col items-end">
+        <div className="mx-auto max-w-6xl px-4 md:px-8 py-3">
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn-outline text-sm py-2 px-3 inline-flex items-center gap-1.5 shrink-0"
+            >
+              <X className="size-4" />
+              <span className="hidden sm:inline">{confirm ? "Back to editing" : "Close"}</span>
+            </button>
+
+            {/* Toggle — inline on desktop, own row on mobile */}
+            <div className="hidden sm:block sm:mx-auto">{toggle}</div>
+
+            {confirm && (
               <button
                 type="button"
                 onClick={confirm.onClick}
                 disabled={confirm.disabled || confirm.submitting}
                 title={confirm.disabled ? "Add a page title and cover photo to publish" : undefined}
-                className="btn-accent shadow-soft text-sm py-2 px-4 disabled:opacity-60"
+                className="btn-accent shadow-soft text-sm py-2 px-3.5 disabled:opacity-60 ml-auto sm:ml-0 shrink-0"
               >
-                {confirm.submitting ? confirm.submittingLabel ?? "Publishing…" : confirm.label}
+                {confirm.submitting ? (
+                  confirm.submittingLabel ?? "Publishing…"
+                ) : (
+                  <>
+                    <span className="sm:hidden">Pay &amp; publish</span>
+                    <span className="hidden sm:inline">{confirm.label}</span>
+                  </>
+                )}
               </button>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* Mobile toggle row */}
+          <div className="sm:hidden mt-2.5 flex justify-center">{toggle}</div>
         </div>
         {confirm && (confirmError || confirm.disabled) && (
-          <p className="mx-auto max-w-6xl px-4 md:px-8 pb-2 -mt-1 text-xs text-right text-red-600">
+          <p className="mx-auto max-w-6xl px-4 md:px-8 pb-2 text-xs text-center sm:text-right text-red-600">
             {confirmError ?? "Add a page title and cover photo before publishing."}
           </p>
         )}
