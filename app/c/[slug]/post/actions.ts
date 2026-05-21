@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { editMessageSchema, messageSchema } from "@/lib/validation/schemas";
+import { contentWindowOpen } from "@/lib/celebration-windows";
 
 export type PostState = { error?: string };
 
@@ -44,11 +45,11 @@ export async function postMessage(
   const admin = supabaseAdmin();
   const { data: page } = await admin
     .from("celebrations")
-    .select("id, status, deadline_at")
+    .select("id, status, celebration_date")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) return { error: "Page not found." };
-  if (page.status !== "active" || new Date(page.deadline_at).getTime() < Date.now()) {
+  if (page.status !== "active" || !contentWindowOpen(page.celebration_date)) {
     return { error: "Messages are closed for this celebration." };
   }
 

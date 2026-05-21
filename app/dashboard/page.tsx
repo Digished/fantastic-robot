@@ -57,7 +57,7 @@ export default async function Dashboard() {
               return (
                 <Link
                   key={p.id}
-                  href={p.is_paid_for_creation === false ? `/c/${p.slug}/post-payment` : `/c/${p.slug}`}
+                  href={`/c/${p.slug}`}
                   data-theme={p.theme ?? "ivory"}
                   className="group rounded-3xl2 overflow-hidden bg-white shadow-ring hover:shadow-card transition fade-up"
                   style={{ animationDelay: `${i * 0.04}s` }}

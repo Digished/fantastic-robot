@@ -13,9 +13,10 @@ pip install numpy
 python3 scripts/generate-music.py
 ```
 
-Each clip is a short, seamlessly-looping phrase (~15–30s) and is kept small
-(22 kHz mono) since it plays quietly under the slideshow. If a file is missing
-the slideshow simply plays silently.
+Each clip is a ~2-minute multi-section arrangement (intro / verses / bridge /
+outro) with genre-specific drums, hand-written melodies and dynamic builds —
+not just a short looping arpeggio. Mono 22 kHz keeps file size reasonable
+(~5 MB per track). If a file is missing the slideshow simply plays silently.
 
 To add or swap a track: add a `t_<name>()` builder + entry in `TRACKS` in the
 script, add the matching entry to `MUSIC_TRACKS` in `lib/music.ts`, then rerun

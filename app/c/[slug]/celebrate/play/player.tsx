@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X, Video, Gift, Lock, Loader2 } from "lucide-react";
 import type { Theme } from "@/lib/themes";
-import { musicSrc } from "@/lib/music";
 import type { IntroContent } from "@/lib/openai/generate-intro";
+import { slideAccentBg, slideStyleKey } from "@/lib/slide-accents";
 import { Interactive, type InteractiveKind } from "@/components/interactives";
 
 type Msg = {
@@ -194,6 +194,45 @@ function SparkleField() {
   );
 }
 
+// A one-shot, then gently looping confetti shower for the closing slide —
+// the "we made it" celebratory beat at the very end of the experience.
+const CONFETTI_TONES = ["var(--accent)", "var(--mesh-b)", "var(--mesh-c)", "#fff"];
+function ConfettiBurst() {
+  const pieces = useMemo(() => {
+    const rand = mulberry32(hashSeed("final-confetti"));
+    return Array.from({ length: 26 }, (_, i) => ({
+      key: i,
+      left: `${(rand() * 100).toFixed(1)}%`,
+      delay: `${(rand() * 2.4).toFixed(2)}s`,
+      dur: `${(3.2 + rand() * 2.4).toFixed(2)}s`,
+      size: 6 + Math.floor(rand() * 7),
+      tone: CONFETTI_TONES[Math.floor(rand() * CONFETTI_TONES.length)],
+      round: rand() < 0.35,
+      drift: `${(rand() * 60 - 30).toFixed(0)}px`,
+    }));
+  }, []);
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+      {pieces.map((p) => (
+        <span
+          key={p.key}
+          className="absolute -top-6"
+          style={{
+            left: p.left,
+            width: p.size,
+            height: p.round ? p.size : p.size * 0.5,
+            background: p.tone,
+            borderRadius: p.round ? "9999px" : "1px",
+            opacity: 0.9,
+            ["--drift" as string]: p.drift,
+            animation: `confettiFall ${p.dur} linear ${p.delay} infinite`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ─── Slide builder ────────────────────────────────────────────────────────────
 
 function buildBaseSlides(
@@ -219,9 +258,9 @@ function buildBaseSlides(
   });
 
   slides.push({ id: "ready", kind: "intro-ready", duration: 5000 });
-  if (introContent?.final) {
-    slides.push({ id: "final", kind: "intro-final", duration: 7500 });
-  }
+  // A closing slide always ends the experience. Even without AI copy the
+  // render falls back to a warm default, so the show never just stops.
+  slides.push({ id: "final", kind: "intro-final", duration: 7500 });
   return slides;
 }
 
@@ -231,24 +270,28 @@ function buildIntroSequence(
   galleryImages: GalleryImage[],
 ): IntroSlide[] {
   const base = buildBaseSlides(introContent, celebrantDescription);
+
+  // Hold the closing slide aside so gallery memories can never push past it —
+  // it must land at the very end of everything.
+  const finalSlide = base[base.length - 1]?.kind === "intro-final" ? base[base.length - 1] : null;
+  const core = finalSlide ? base.slice(0, -1) : base;
+
   if (galleryImages.length === 0) return base;
 
   const result: IntroSlide[] = [];
   let g = 0;
-  for (let i = 0; i < base.length; i++) {
-    result.push(base[i]);
-    if (i < base.length - 1 && g < galleryImages.length) {
-      result.push({
-        id: `gallery-${g}`,
-        kind: "intro-gallery",
-        duration: 7000,
-        gallery: galleryImages[g++],
-      });
+  // Alternate intro slides with memories, then dump any remaining memories…
+  for (let i = 0; i < core.length; i++) {
+    result.push(core[i]);
+    if (g < galleryImages.length) {
+      result.push({ id: `gallery-${g}`, kind: "intro-gallery", duration: 7000, gallery: galleryImages[g++] });
     }
   }
   while (g < galleryImages.length) {
     result.push({ id: `gallery-extra-${g}`, kind: "intro-gallery", duration: 7000, gallery: galleryImages[g++] });
   }
+  // …and only then the closing slide, so it is always the last thing seen.
+  if (finalSlide) result.push(finalSlide);
   return result;
 }
 
@@ -264,13 +307,14 @@ function durationFor(m: Msg): number {
 // ─── Player ───────────────────────────────────────────────────────────────────
 
 export function Player({
-  slug, theme, backgroundMusic, recipientName, eventType, celebrationDate, celebrationTitle,
+  slug, theme, musicUrl, musicClip, recipientName, eventType, celebrationDate, celebrationTitle,
   tagline, celebrantDescription, introContent, messages, galleryImages,
-  totalRaisedKobo, claimableAt, payoutStatus, createdBy,
+  totalRaisedKobo, claimableAt, payoutStatus, createdBy, onExit,
 }: {
   slug: string;
   theme: Theme;
-  backgroundMusic: string | null;
+  musicUrl: string | null;
+  musicClip?: { startSec: number; endSec: number } | null;
   recipientName: string;
   eventType: string;
   celebrationDate: string;
@@ -284,6 +328,7 @@ export function Player({
   claimableAt: string;
   payoutStatus: string;
   createdBy: string | null;
+  onExit?: () => void;
 }) {
   const introSlides = useMemo(
     () => buildIntroSequence(introContent, celebrantDescription, galleryImages),
@@ -319,6 +364,14 @@ export function Player({
 
   const scene = useMemo(() => sceneFor(i), [i]);
 
+  // Per-slide accent override (set in the editor), else the default scene.
+  const slideBg = useMemo(() => {
+    if (!current || current.kind !== "intro") return scene.bg;
+    const key = slideStyleKey(current.intro.kind, current.intro.chapterIdx);
+    const accent = key ? introContent?.slideStyles?.[key]?.accent : undefined;
+    return slideAccentBg(accent) ?? scene.bg;
+  }, [current, scene, introContent]);
+
   // Background music ducks (pauses) whenever a slide is itself playing sound:
   // voice-note / video cards, or a gallery video.
   const musicRef = useRef<HTMLAudioElement | null>(null);
@@ -330,9 +383,27 @@ export function Player({
     !!currentMsg && (currentMsg.media_kind === "audio" || currentMsg.media_kind === "video");
   const duckMusic = done || paused || messageMediaPlaying || galleryVideoPlaying;
 
+  function clampToClip(audio: HTMLAudioElement) {
+    if (!musicClip) return;
+    if (audio.currentTime < musicClip.startSec || audio.currentTime >= musicClip.endSec) {
+      audio.currentTime = musicClip.startSec;
+    }
+  }
+
+  function onMusicTime() {
+    const audio = musicRef.current;
+    if (!audio || !musicClip) return;
+    // Loop within the chosen window.
+    if (audio.currentTime >= musicClip.endSec) {
+      audio.currentTime = musicClip.startSec;
+      audio.play().catch(() => {});
+    }
+  }
+
   function resumeMusic() {
     const audio = musicRef.current;
     if (!audio || duckMusic) return;
+    clampToClip(audio);
     audio.volume = 0.32;
     audio.play().catch(() => { /* autoplay blocked — retried on next tap */ });
   }
@@ -343,6 +414,7 @@ export function Player({
     if (duckMusic) {
       audio.pause();
     } else {
+      clampToClip(audio);
       audio.volume = 0.32;
       audio.play().catch(() => { /* autoplay blocked — retried on next tap */ });
     }
@@ -386,7 +458,7 @@ export function Player({
     <main
       data-theme={theme}
       className="fixed inset-0 select-none overflow-hidden"
-      style={{ background: done ? "white" : scene.bg }}
+      style={{ background: done ? "white" : slideBg }}
       onClick={(e) => {
         resumeMusic();
         if (done) return;
@@ -395,9 +467,16 @@ export function Player({
         if (x < w / 3) prev(); else next();
       }}
     >
-      {backgroundMusic && (
+      {musicUrl && (
         // eslint-disable-next-line jsx-a11y/media-has-caption
-        <audio ref={musicRef} src={musicSrc(backgroundMusic)} loop preload="auto" />
+        <audio
+          ref={musicRef}
+          src={musicUrl}
+          loop={!musicClip}
+          onTimeUpdate={musicClip ? onMusicTime : undefined}
+          onLoadedMetadata={() => { const a = musicRef.current; if (a) clampToClip(a); }}
+          preload="auto"
+        />
       )}
       {/* Progress bar — hidden in gallery view */}
       {!done && (
@@ -419,10 +498,17 @@ export function Player({
             className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label={paused ? "Play" : "Pause"}>
             {paused ? <Play className="size-4 fill-current" /> : <Pause className="size-4 fill-current" />}
           </button>
-          <Link href={`/c/${slug}/celebrate`} onClick={(e) => e.stopPropagation()}
-            className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label="Close">
-            <X className="size-4" />
-          </Link>
+          {onExit ? (
+            <button data-no-loading="true" onClick={(e) => { e.stopPropagation(); onExit(); }}
+              className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label="Close preview">
+              <X className="size-4" />
+            </button>
+          ) : (
+            <Link href={`/c/${slug}/celebrate`} onClick={(e) => e.stopPropagation()}
+              className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label="Close">
+              <X className="size-4" />
+            </Link>
+          )}
         </div>
       )}
 
@@ -468,6 +554,7 @@ export function Player({
           createdBy={createdBy}
           onSelectSlide={selectSlide}
           onReplay={replay}
+          onExit={onExit}
         />
       )}
 
@@ -540,7 +627,7 @@ function IntroSlideView({
             className="serif slide-accent leading-[0.85]"
             style={{ fontSize: "clamp(2.8rem,11vw,5.5rem)" }}
           >
-            <WordsIn text={firstName} baseDelay={120} />
+            <WordsIn text={ai?.welcome.title?.trim() ? ai.welcome.title : firstName} baseDelay={120} />
           </h1>
           {subtext && (
             <p className="mt-6 slide-ink-soft text-xl leading-snug max-w-sm">
@@ -803,10 +890,15 @@ function IntroSlideView({
   }
 
   // ── Final statement ───────────────────────────────────────────────────────────
-  if (slide.kind === "intro-final" && ai?.final) {
-    const fin = ai.final;
+  if (slide.kind === "intro-final") {
+    const fin = ai?.final ?? {
+      headline: "With love",
+      subtext: "Today, and every day after.",
+      emoji: EVENT_FALLBACK_EMOJI[eventType] ?? "✨",
+    };
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
+        <ConfettiBurst />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
           <div
             className="rounded-full border border-white/[0.10]"
@@ -1137,7 +1229,7 @@ function GiftReveal({
 
 function PostPlayGallery({
   allSlides, firstName, slug, introContent, celebrationTitle,
-  totalRaisedKobo, claimableAt, payoutStatus, createdBy, onSelectSlide, onReplay,
+  totalRaisedKobo, claimableAt, payoutStatus, createdBy, onSelectSlide, onReplay, onExit,
 }: {
   allSlides: AnySlide[];
   firstName: string;
@@ -1150,6 +1242,7 @@ function PostPlayGallery({
   createdBy: string | null;
   onSelectSlide: (idx: number) => void;
   onReplay: () => void;
+  onExit?: () => void;
 }) {
   return (
     <div
@@ -1170,12 +1263,22 @@ function PostPlayGallery({
             >
               <RotateCcw className="size-3.5" /> Replay all
             </button>
-            <Link
-              href={`/c/${slug}/celebrate`}
-              className="size-9 grid place-items-center rounded-full bg-ink/8 text-ink"
-            >
-              <X className="size-4" />
-            </Link>
+            {onExit ? (
+              <button
+                onClick={onExit}
+                className="size-9 grid place-items-center rounded-full bg-ink/8 text-ink"
+                aria-label="Close preview"
+              >
+                <X className="size-4" />
+              </button>
+            ) : (
+              <Link
+                href={`/c/${slug}/celebrate`}
+                className="size-9 grid place-items-center rounded-full bg-ink/8 text-ink"
+              >
+                <X className="size-4" />
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -1204,9 +1307,15 @@ function PostPlayGallery({
         {/* Footer */}
         <div className="pb-12 pt-2 text-center">
           <p className="serif text-2xl text-ink/80 mb-4">You are loved, {firstName}.</p>
-          <Link href={`/c/${slug}/celebrate`} className="btn-outline inline-flex">
-            Back to your page
-          </Link>
+          {onExit ? (
+            <button onClick={onExit} className="btn-outline inline-flex">
+              Close preview
+            </button>
+          ) : (
+            <Link href={`/c/${slug}/celebrate`} className="btn-outline inline-flex">
+              Back to your page
+            </Link>
+          )}
           {createdBy && (
             <p className="text-[11px] text-ink/40 mt-6">
               This page was put together by <span className="text-ink/60">{createdBy}</span>

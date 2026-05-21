@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { contentWindowOpen } from "@/lib/celebration-windows";
 
 type GalleryItem = { path: string; caption: string; kind: "image" | "video" };
 
@@ -13,12 +14,12 @@ export async function addGalleryItem(
 
   const { data: page } = await admin
     .from("celebrations")
-    .select("id, status, deadline_at, gallery_images")
+    .select("id, status, celebration_date, gallery_images")
     .eq("slug", slug)
     .maybeSingle();
 
   if (!page) return { error: "not found" };
-  if (page.status !== "active" || new Date(page.deadline_at).getTime() < Date.now()) {
+  if (page.status !== "active" || !contentWindowOpen(page.celebration_date)) {
     return { error: "closed" };
   }
 
