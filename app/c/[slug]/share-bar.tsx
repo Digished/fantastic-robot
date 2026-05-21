@@ -14,7 +14,7 @@ export function ShareBar({
   const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
 
   async function copy() {
-    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
+    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
   }
 
   return (
@@ -24,7 +24,7 @@ export function ShareBar({
         WhatsApp
       </a>
       <button onClick={copy} className="btn-outline inline-flex">
-        {copied ? <><Check className="size-4" /> Copied</> : <><Copy className="size-4" /> Copy link</>}
+        {copied ? <><Check className="size-4" /> Copied</> : <><Copy className="size-4" /> Copy message</>}
       </button>
     </div>
   );
