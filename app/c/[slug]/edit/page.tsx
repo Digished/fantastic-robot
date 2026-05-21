@@ -4,6 +4,7 @@ import { EditForm } from "./form";
 import { MessagesManager } from "./messages-manager";
 import { isTheme, type Theme } from "@/lib/themes";
 import { getEffectiveTracks } from "@/lib/music/server";
+import { findTrack } from "@/lib/music";
 import type { IntroContent } from "@/lib/openai/generate-intro";
 
 export default async function EditPage({
@@ -31,7 +32,9 @@ export default async function EditPage({
 
   const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
   const tracks = await getEffectiveTracks();
-  const savedMusic = tracks.some((t) => t.id === page.background_music)
+  // background_music may carry an `#clip=` suffix and/or be an uploaded track
+  // that isn't in the library — keep the full stored value if it resolves.
+  const savedMusic = findTrack(page.background_music, tracks)
     ? page.background_music
     : null;
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Loader2, Pencil, Plus, RefreshCw, Sparkles, Trash2, Undo2 } from "lucide-react";
 import { InlineText } from "./inline-text";
 import {
   SLIDE_ACCENTS,
@@ -34,20 +34,43 @@ export function IntroSlidesEditor({
   const intro = draft.introContent;
   const firstName = draft.recipientName.split(" ")[0] || "them";
 
+  // Undo history for slide edits. Rapid edits (e.g. typing) within a short
+  // window collapse into a single undo step so one click rolls back a burst.
+  const [history, setHistory] = useState<IntroContent[]>([]);
+  const lastPushRef = useRef(0);
+
+  function commit(next: IntroContent) {
+    const now = Date.now();
+    if (intro && now - lastPushRef.current > 700) {
+      setHistory((h) => [...h.slice(-49), intro]);
+    }
+    lastPushRef.current = now;
+    update({ introContent: next });
+  }
+
+  function undo() {
+    setHistory((h) => {
+      if (h.length === 0) return h;
+      update({ introContent: h[h.length - 1] });
+      lastPushRef.current = 0; // next edit starts a fresh undo step
+      return h.slice(0, -1);
+    });
+  }
+
   function patchIntro(patch: Partial<IntroContent>) {
     if (!intro) return;
-    update({ introContent: { ...intro, ...patch } as IntroContent });
+    commit({ ...intro, ...patch } as IntroContent);
   }
 
   function patchAbout(patch: Partial<NonNullable<IntroContent["about"]>>) {
     if (!intro) return;
     const next = { ...(intro.about ?? { headline: "", lines: [] }), ...patch };
-    update({ introContent: { ...intro, about: next } as IntroContent });
+    commit({ ...intro, about: next } as IntroContent);
   }
 
   function setChapters(next: IntroChapter[]) {
     if (!intro) return;
-    update({ introContent: { ...intro, chapters: next } as IntroContent });
+    commit({ ...intro, chapters: next } as IntroContent);
   }
 
   function getAccent(key: string): SlideAccent {
@@ -58,7 +81,7 @@ export function IntroSlidesEditor({
     const next = { ...(intro.slideStyles ?? {}) };
     if (accent === "default") delete next[key];
     else next[key] = { ...(next[key] ?? {}), accent };
-    update({ introContent: { ...intro, slideStyles: next } as IntroContent });
+    commit({ ...intro, slideStyles: next } as IntroContent);
   }
 
   if (!intro) {
@@ -97,18 +120,30 @@ export function IntroSlidesEditor({
             Click any line to rewrite it. Add or trim chapters to match {firstName}.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onGenerate}
-          disabled={generating}
-          className="btn-outline inline-flex text-sm shrink-0 disabled:opacity-50"
-        >
-          {generating ? (
-            <><Loader2 className="size-4 animate-spin" /> Rewriting…</>
-          ) : (
-            <><RefreshCw className="size-4" /> Regenerate</>
-          )}
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={undo}
+            disabled={history.length === 0}
+            title="Undo last slide edit"
+            className="btn-outline inline-flex text-sm disabled:opacity-40"
+          >
+            <Undo2 className="size-4" />
+            <span className="hidden sm:inline">Undo</span>
+          </button>
+          <button
+            type="button"
+            onClick={onGenerate}
+            disabled={generating}
+            className="btn-outline inline-flex text-sm disabled:opacity-50"
+          >
+            {generating ? (
+              <><Loader2 className="size-4 animate-spin" /> Rewriting…</>
+            ) : (
+              <><RefreshCw className="size-4" /> Regenerate</>
+            )}
+          </button>
+        </div>
       </div>
 
       {error && (

@@ -15,6 +15,7 @@ import { GalleryStrip } from "@/components/gallery-strip";
 import { GalleryUploadButton } from "@/components/gallery-upload-button";
 import { contentWindowOpen, contentWindowClosesAt } from "@/lib/celebration-windows";
 import { NavLoadingLink } from "@/components/nav-loading-link";
+import { CompletePaymentBanner } from "./complete-payment-banner";
 import { getCreatorLabel } from "@/lib/creator";
 
 export const dynamic = "force-dynamic";
@@ -158,6 +159,10 @@ export default async function WallPage({
 
           {/* ══ RIGHT: All content ══ */}
           <div className="space-y-5 mt-4 md:mt-0">
+
+            {isCreator && page.is_paid_for_creation === false && (
+              <CompletePaymentBanner slug={page.slug} />
+            )}
 
             {/* Desktop title (hidden on mobile — shown inside hero) */}
             <div className="hidden md:block">

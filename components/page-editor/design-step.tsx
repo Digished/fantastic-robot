@@ -28,6 +28,7 @@ export function DesignStep({
   initialTab = "landing",
   extrasBelow,
   mode,
+  confirmViaPreview,
   onGenerateIntro,
   generatingIntro,
   introError,
@@ -49,6 +50,9 @@ export function DesignStep({
   initialTab?: Tab;
   extrasBelow?: React.ReactNode;
   mode: "create" | "edit";
+  /** When set, the primary action runs from inside the preview, so the
+   *  creator always sees the page before it's published/paid for. */
+  confirmViaPreview?: boolean;
   onGenerateIntro: () => Promise<void>;
   generatingIntro: boolean;
   introError: string | null;
@@ -60,7 +64,13 @@ export function DesignStep({
   return (
     <div className="min-h-[100dvh] bg-white">
       {previewing && (
-        <PreviewModal draft={draft} tracks={tracks} onClose={() => setPreviewing(false)} />
+        <PreviewModal
+          draft={draft}
+          tracks={tracks}
+          onClose={() => setPreviewing(false)}
+          confirm={confirmViaPreview ? primary : undefined}
+          confirmError={errorText}
+        />
       )}
       {/* Top bar */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-ink/8">
@@ -88,21 +98,26 @@ export function DesignStep({
             </TabButton>
           </div>
 
+          {!confirmViaPreview && (
+            <button
+              type="button"
+              onClick={() => setPreviewing(true)}
+              className="btn-outline text-sm py-2.5 px-3 inline-flex items-center gap-1.5"
+            >
+              <Eye className="size-4" />
+              <span className="hidden sm:inline">Preview</span>
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setPreviewing(true)}
-            className="btn-outline text-sm py-2.5 px-3 inline-flex items-center gap-1.5"
+            onClick={confirmViaPreview ? () => setPreviewing(true) : primary.onClick}
+            disabled={primary.submitting || (!confirmViaPreview && primary.disabled)}
+            className="btn-accent shadow-soft text-sm py-2.5 px-4 disabled:opacity-60 inline-flex items-center gap-1.5"
           >
-            <Eye className="size-4" />
-            <span className="hidden sm:inline">Preview</span>
-          </button>
-          <button
-            type="button"
-            onClick={primary.onClick}
-            disabled={primary.disabled || primary.submitting}
-            className="btn-accent shadow-soft text-sm py-2.5 px-4 disabled:opacity-60"
-          >
-            {primary.submitting ? primary.submittingLabel ?? "Saving…" : primary.label}
+            {confirmViaPreview && <Eye className="size-4" />}
+            {primary.submitting
+              ? primary.submittingLabel ?? "Saving…"
+              : confirmViaPreview ? "Preview & publish" : primary.label}
           </button>
         </div>
 

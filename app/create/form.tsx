@@ -25,7 +25,7 @@ export function CreateForm({
 
   function addTrack(track: MusicTrack) {
     setTracks((prev) =>
-      prev.some((t) => t.id === track.id) ? prev : [...prev, track],
+      prev.some((t) => t.id === track.id) ? prev : [track, ...prev],
     );
   }
 
@@ -161,6 +161,7 @@ export function CreateForm({
       onBack={() => setStep("details")}
       backLabel="Edit details"
       errorText={submitError}
+      confirmViaPreview
       primary={{
         label: "Pay ₦500 & publish",
         submittingLabel: "Publishing…",

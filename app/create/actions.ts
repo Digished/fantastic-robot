@@ -17,6 +17,7 @@ const payRef = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 18);
 export type CreateState = {
   error?: string;
   authorizationUrl?: string;
+  alreadyPaid?: boolean;
 };
 
 export async function createCelebration(
@@ -143,6 +144,72 @@ export async function createCelebration(
   } catch (err) {
     // Roll back the unpublished row so the slug doesn't dangle.
     await admin.from("celebrations").delete().eq("slug", slug).eq("is_paid_for_creation", false);
+    const message = err instanceof PaystackError ? err.message : "Could not start payment";
+    return { error: `Payment setup failed: ${message}` };
+  }
+}
+
+/**
+ * Re-initiate the page-creation payment for an existing unpaid page. Lets a
+ * creator who abandoned (or mistakenly hit pay) come back, keep editing, and
+ * complete the fee later — without losing the page.
+ */
+export async function restartCreationPayment(slug: string): Promise<CreateState> {
+  const supabase = await supabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Please sign in again." };
+  if (!user.email) return { error: "Your account is missing an email." };
+
+  const admin = supabaseAdmin();
+  const { data: page } = await admin
+    .from("celebrations")
+    .select("id, slug, creator_id, is_paid_for_creation, creation_payment_reference")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (!page || page.creator_id !== user.id) return { error: "Page not found." };
+  if (page.is_paid_for_creation) return { alreadyPaid: true };
+
+  // Guard against a double charge: if the previous attempt actually went
+  // through (webhook just hadn't landed yet), settle it instead of re-billing.
+  if (page.creation_payment_reference) {
+    try {
+      const { data } = await paystack.verifyTransaction(page.creation_payment_reference);
+      if (data.status === "success") {
+        await admin
+          .from("celebrations")
+          .update({ is_paid_for_creation: true })
+          .eq("id", page.id);
+        return { alreadyPaid: true };
+      }
+    } catch {
+      // Couldn't verify — fall through to a fresh transaction.
+    }
+  }
+
+  const reference = `SPBC-${payRef()}`;
+  await admin
+    .from("celebrations")
+    .update({ creation_payment_reference: reference })
+    .eq("id", page.id);
+
+  const h = await headers();
+  const forwardedHost = h.get("x-forwarded-host") ?? h.get("host");
+  const forwardedProto = h.get("x-forwarded-proto") ?? "https";
+  const origin = forwardedHost
+    ? `${forwardedProto}://${forwardedHost}`
+    : env.appUrl();
+
+  try {
+    const { data } = await paystack.initTransaction({
+      email: user.email,
+      amount: Number(PAGE_CREATION_FEE_KOBO),
+      reference,
+      callback_url: `${origin}/c/${slug}/post-payment`,
+      metadata: { kind: "page_creation", slug, creator_id: user.id },
+    });
+    return { authorizationUrl: data.authorization_url };
+  } catch (err) {
     const message = err instanceof PaystackError ? err.message : "Could not start payment";
     return { error: `Payment setup failed: ${message}` };
   }

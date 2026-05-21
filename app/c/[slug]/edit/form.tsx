@@ -7,6 +7,7 @@ import { DesignStep } from "@/components/page-editor/design-step";
 import {
   isValidUploadedTrackId,
   makeUploadedTrack,
+  parseMusicValue,
   type MusicTrack,
 } from "@/lib/music";
 import type { Theme } from "@/lib/themes";
@@ -45,16 +46,16 @@ export function EditForm({
   // A previously uploaded song lives only in background_music; surface it in
   // the picker list so it shows as selected and can be previewed.
   const [tracks, setTracks] = useState<MusicTrack[]>(() => {
-    const id = initial.backgroundMusic;
+    const { id } = parseMusicValue(initial.backgroundMusic);
     if (id && isValidUploadedTrackId(id) && !initialTracks.some((t) => t.id === id)) {
-      return [...initialTracks, makeUploadedTrack(id)];
+      return [makeUploadedTrack(id), ...initialTracks];
     }
     return initialTracks;
   });
 
   function addTrack(track: MusicTrack) {
     setTracks((prev) =>
-      prev.some((t) => t.id === track.id) ? prev : [...prev, track],
+      prev.some((t) => t.id === track.id) ? prev : [track, ...prev],
     );
   }
 

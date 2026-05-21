@@ -1,6 +1,7 @@
 "use client";
 
 import { formatDate } from "@/lib/time";
+import { AiSuggestButton } from "./ai-suggest-button";
 import { CoverEditor } from "./cover-editor";
 import { EditHint } from "./edit-hint";
 import { GalleryEditor } from "./gallery-editor";
@@ -67,7 +68,17 @@ export function LandingPreview({
                     ariaLabel="Page title"
                   />
                 </h1>
-                <EditHint label="Title" className="shrink-0" />
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <AiSuggestButton
+                    field="title"
+                    recipientName={draft.recipientName}
+                    eventType={draft.eventType}
+                    celebrantDescription={draft.celebrantDescription}
+                    current={draft.title}
+                    onPick={(v) => update({ title: v })}
+                  />
+                  <EditHint label="Title" />
+                </div>
               </div>
               <p className="text-ink/35 mt-2 text-sm">
                 For {draft.recipientName || firstName}
@@ -97,7 +108,17 @@ export function LandingPreview({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[10px] uppercase tracking-widest text-ink/40">Tagline</p>
-                <EditHint />
+                <div className="flex items-center gap-1.5">
+                  <AiSuggestButton
+                    field="tagline"
+                    recipientName={draft.recipientName}
+                    eventType={draft.eventType}
+                    celebrantDescription={draft.celebrantDescription}
+                    current={draft.tagline}
+                    onPick={(v) => update({ tagline: v })}
+                  />
+                  <EditHint />
+                </div>
               </div>
               <p className="serif italic text-ink/80 text-lg leading-snug">
                 <InlineText
@@ -114,7 +135,17 @@ export function LandingPreview({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <p className="text-[10px] uppercase tracking-widest text-ink/40">A note from you</p>
-                <EditHint />
+                <div className="flex items-center gap-1.5">
+                  <AiSuggestButton
+                    field="message"
+                    recipientName={draft.recipientName}
+                    eventType={draft.eventType}
+                    celebrantDescription={draft.celebrantDescription}
+                    current={draft.messageFromCreator}
+                    onPick={(v) => update({ messageFromCreator: v })}
+                  />
+                  <EditHint />
+                </div>
               </div>
               <blockquote className="serif text-ink text-2xl leading-tight italic">
                 <InlineText

@@ -20,10 +20,20 @@ export function PreviewModal({
   draft,
   tracks,
   onClose,
+  confirm,
+  confirmError,
 }: {
   draft: PageDraft;
   tracks: MusicTrack[];
   onClose: () => void;
+  confirm?: {
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+    submitting?: boolean;
+    submittingLabel?: string;
+  };
+  confirmError?: string | null;
 }) {
   const [view, setView] = useState<View>("contributor");
 
@@ -51,9 +61,27 @@ export function PreviewModal({
             onClick={onClose}
             className="btn-outline text-sm py-2 px-3 inline-flex items-center gap-1.5"
           >
-            <X className="size-4" /> Close
+            <X className="size-4" /> {confirm ? "Back to editing" : "Close"}
           </button>
+          {confirm && (
+            <div className="flex flex-col items-end">
+              <button
+                type="button"
+                onClick={confirm.onClick}
+                disabled={confirm.disabled || confirm.submitting}
+                title={confirm.disabled ? "Add a page title and cover photo to publish" : undefined}
+                className="btn-accent shadow-soft text-sm py-2 px-4 disabled:opacity-60"
+              >
+                {confirm.submitting ? confirm.submittingLabel ?? "Publishing…" : confirm.label}
+              </button>
+            </div>
+          )}
         </div>
+        {confirm && (confirmError || confirm.disabled) && (
+          <p className="mx-auto max-w-6xl px-4 md:px-8 pb-2 -mt-1 text-xs text-right text-red-600">
+            {confirmError ?? "Add a page title and cover photo before publishing."}
+          </p>
+        )}
       </header>
 
       {/* Body */}

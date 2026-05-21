@@ -13,6 +13,7 @@ function fmt(sec: number): string {
 }
 
 const MIN_WINDOW = 3; // seconds
+const WAVE_BARS = 64;
 
 /**
  * A clean popup for choosing which section of a track plays. Drag the two
@@ -37,12 +38,49 @@ export function AudioTrimModal({
   const [playing, setPlaying] = useState(false);
   const [cursor, setCursor] = useState(0);
   const [drag, setDrag] = useState<null | "start" | "end">(null);
+  const [peaks, setPeaks] = useState<number[] | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  // Decode the audio once to draw a real waveform. Falls back silently to a
+  // flat bar (peaks stays null) if decoding/CORS fails.
+  useEffect(() => {
+    let cancelled = false;
+    setPeaks(null);
+    (async () => {
+      try {
+        const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (!AC) return;
+        const res = await fetch(track.src);
+        const raw = await res.arrayBuffer();
+        const ctx = new AC();
+        const decoded = await ctx.decodeAudioData(raw);
+        ctx.close();
+        if (cancelled) return;
+        const channel = decoded.getChannelData(0);
+        const buckets = WAVE_BARS;
+        const block = Math.floor(channel.length / buckets) || 1;
+        const out: number[] = [];
+        for (let i = 0; i < buckets; i++) {
+          let max = 0;
+          for (let j = 0; j < block; j++) {
+            const v = Math.abs(channel[i * block + j] ?? 0);
+            if (v > max) max = v;
+          }
+          out.push(max);
+        }
+        const top = Math.max(...out, 0.01);
+        setPeaks(out.map((p) => Math.max(0.06, p / top)));
+      } catch {
+        if (!cancelled) setPeaks(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [track.src]);
 
   function onMeta() {
     const d = audioRef.current?.duration ?? 0;
@@ -142,20 +180,39 @@ export function AudioTrimModal({
 
         <div className="px-6 pb-2">
           {/* Timeline */}
-          <div className="relative h-16 select-none touch-none">
+          <div className="relative h-20 select-none touch-none">
             <div
               ref={barRef}
-              className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-12 rounded-2xl bg-ink/8 overflow-hidden"
+              className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-16 rounded-2xl bg-ink/[0.06] overflow-hidden"
             >
-              {/* Selected window */}
+              {/* Waveform */}
+              <div className="absolute inset-0 flex items-center gap-px px-1">
+                {(peaks ?? Array.from({ length: WAVE_BARS }, () => 0.45)).map((p, idx) => {
+                  const barPct = ((idx + 0.5) / WAVE_BARS) * 100;
+                  const inWindow = barPct >= startPct && barPct <= endPct;
+                  return (
+                    <span
+                      key={idx}
+                      className={`flex-1 rounded-full transition-colors ${
+                        inWindow ? "bg-[var(--accent)]" : "bg-ink/20"
+                      }`}
+                      style={{ height: `${Math.round(p * 100)}%` }}
+                    />
+                  );
+                })}
+              </div>
+              {/* Dim the unselected ends */}
+              <div className="absolute inset-y-0 left-0 bg-white/55 pointer-events-none" style={{ width: `${startPct}%` }} />
+              <div className="absolute inset-y-0 right-0 bg-white/55 pointer-events-none" style={{ width: `${100 - endPct}%` }} />
+              {/* Selected window outline */}
               <div
-                className="absolute inset-y-0 bg-[var(--accent)]/20 border-x-2 border-[var(--accent)]"
+                className="absolute inset-y-0 border-x-2 border-[var(--accent)] pointer-events-none"
                 style={{ left: `${startPct}%`, right: `${100 - endPct}%` }}
               />
               {/* Playhead */}
               {playing && cursor >= start && cursor <= end && (
                 <div
-                  className="absolute inset-y-0 w-0.5 bg-[var(--accent)]"
+                  className="absolute inset-y-0 w-0.5 bg-ink pointer-events-none"
                   style={{ left: `${cursorPct}%` }}
                 />
               )}
