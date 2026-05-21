@@ -51,8 +51,10 @@ export function CreateForm({
   const [generatingIntro, setGeneratingIntro] = useState(false);
   const [introError, setIntroError] = useState<string | null>(null);
 
-  function update(patch: Partial<PageDraft>) {
-    setDraft((prev) => ({ ...prev, ...patch }));
+  function update(
+    patch: Partial<PageDraft> | ((prev: PageDraft) => Partial<PageDraft>),
+  ) {
+    setDraft((prev) => ({ ...prev, ...(typeof patch === "function" ? patch(prev) : patch) }));
   }
 
   async function generateIntro() {
@@ -117,7 +119,9 @@ export function CreateForm({
     fd.set(
       "galleryImages",
       JSON.stringify(
-        draft.gallery.map(({ path, caption, kind }) => ({ path, caption, kind })),
+        draft.gallery
+          .filter((g) => g.path) // drop any item still uploading
+          .map(({ path, caption, kind }) => ({ path, caption, kind })),
       ),
     );
     if (draft.introContent) {
@@ -126,6 +130,10 @@ export function CreateForm({
 
     const result = await createCelebration({}, fd);
     if (result?.authorizationUrl) {
+      // The unpaid page is already saved and listed on the dashboard. Point the
+      // browser's back/return target there so cancelling at Paystack doesn't
+      // drop the user back onto a blank "new celebration" form.
+      window.history.replaceState(null, "", "/dashboard");
       window.location.href = result.authorizationUrl;
       return;
     }
@@ -162,6 +170,7 @@ export function CreateForm({
       backLabel="Edit details"
       errorText={submitError}
       confirmViaPreview
+      publishChecklist={designErrors}
       primary={{
         label: "Pay ₦500 & publish",
         submittingLabel: "Publishing…",
@@ -179,7 +188,8 @@ export function CreateForm({
 
 function collectDesignErrors(draft: PageDraft): string[] {
   const errs: string[] = [];
-  if (draft.title.trim().length < 2) errs.push("Add a page title.");
-  if (!draft.coverPath) errs.push("Upload a cover photo.");
+  if (draft.title.trim().length < 2) errs.push("Add a page title");
+  if (!draft.coverPath) errs.push("Add a cover photo");
+  if (draft.gallery.some((g) => g.uploading)) errs.push("Wait for media to finish uploading");
   return errs;
 }

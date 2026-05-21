@@ -183,6 +183,7 @@
   .fade-up { animation: fadeUp .55s cubic-bezier(.2,.7,.2,1) both; }
   .fade-in { animation: fadeIn .45s ease both; }
   .ken-burns { animation: kenBurns 22s ease-in-out infinite alternate; }
+  .cover-pan { animation: coverPan3d 26s ease-in-out infinite; transform-origin: center; will-change: transform; backface-visibility: hidden; }
   .float-y   { animation: floatY 7s ease-in-out infinite; }
   .shimmer-text {
     background: linear-gradient(90deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, white) 50%, var(--accent) 100%);
@@ -232,6 +233,18 @@
 @keyframes kenBurns {
   0%   { transform: scale(1.05) translate(0, 0); }
   100% { transform: scale(1.18) translate(-2%, -2%); }
+}
+/* Slow, looping pan with a hint of perspective so the cover feels alive and
+   subtly three-dimensional rather than a flat still. */
+@keyframes coverPan3d {
+  0%   { transform: perspective(1400px) scale(1.14) translate3d(-1.6%, -1.2%, 0) rotateY(-1.1deg) rotateX(0.6deg); }
+  50%  { transform: perspective(1400px) scale(1.2)  translate3d(1.8%, 1.4%, 0)  rotateY(1.3deg)  rotateX(-0.5deg); }
+  100% { transform: perspective(1400px) scale(1.14) translate3d(-1.6%, -1.2%, 0) rotateY(-1.1deg) rotateX(0.6deg); }
+}
+@keyframes confettiFall {
+  0%   { transform: translateY(-10%) translateX(0)            rotate(0deg);   opacity: 0; }
+  8%   { opacity: 0.95; }
+  100% { transform: translateY(115vh) translateX(var(--drift, 0px)) rotate(540deg); opacity: 0.9; }
 }
 @keyframes floatY {
   0%, 100% { transform: translateY(0px); }
@@ -289,4 +302,11 @@
   display: inline-block;
   opacity: 0;
   animation: wordIn .55s cubic-bezier(.2,.7,.2,1) both;
+}
+
+/* Respect users who ask for less motion: hold the cover still and drop the
+   confetti shower (other entrance animations are brief and harmless). */
+@media (prefers-reduced-motion: reduce) {
+  .cover-pan { animation: none; transform: scale(1.04); }
+  .ken-burns { animation: none; }
 }

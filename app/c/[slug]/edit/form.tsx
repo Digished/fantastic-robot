@@ -82,8 +82,10 @@ export function EditForm({
   const [generatingIntro, setGeneratingIntro] = useState(false);
   const [introError, setIntroError] = useState<string | null>(null);
 
-  function update(patch: Partial<PageDraft>) {
-    setDraft((prev) => ({ ...prev, ...patch }));
+  function update(
+    patch: Partial<PageDraft> | ((prev: PageDraft) => Partial<PageDraft>),
+  ) {
+    setDraft((prev) => ({ ...prev, ...(typeof patch === "function" ? patch(prev) : patch) }));
   }
 
   async function generateIntro() {
@@ -127,7 +129,9 @@ export function EditForm({
     fd.set(
       "galleryImages",
       JSON.stringify(
-        draft.gallery.map(({ path, caption, kind }) => ({ path, caption, kind })),
+        draft.gallery
+          .filter((g) => g.path) // drop any item still uploading
+          .map(({ path, caption, kind }) => ({ path, caption, kind })),
       ),
     );
     if (draft.introContent) {

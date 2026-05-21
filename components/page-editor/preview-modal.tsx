@@ -179,7 +179,7 @@ function ContributorView({ draft }: { draft: PageDraft }) {
               <div className="relative aspect-[4/5]">
                 {draft.coverPreview ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={draft.coverPreview} alt="" className="absolute inset-0 size-full object-cover" />
+                  <img src={draft.coverPreview} alt="" className="absolute inset-0 size-full object-cover cover-pan" />
                 ) : (
                   <div className="absolute inset-0 theme-mesh" />
                 )}

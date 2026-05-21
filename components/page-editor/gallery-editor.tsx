@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { ImagePlus, Loader2, Video, X } from "lucide-react";
+import { useRef } from "react";
+import { ImagePlus, Video, X } from "lucide-react";
+import { uploadWithProgress } from "@/lib/upload";
 import type { GalleryItem } from "./types";
 
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "webp"];
@@ -16,10 +17,14 @@ function galleryExt(file: File): { ext: string; kind: "image" | "video" } | null
   return null;
 }
 
+type SetItems = (next: GalleryItem[] | ((prev: GalleryItem[]) => GalleryItem[])) => void;
+
 /**
- * Gallery panel — manages the user's photos & short videos. Rendered as a
- * grid that matches the look of the wall on the live page. Each tile has an
- * inline caption editor and a remove button.
+ * Gallery panel — manages the user's photos & short videos. Uploads run in the
+ * background: each picked file is added to the grid immediately and uploads on
+ * its own with a real progress bar. Because the items (and their progress) live
+ * in the draft, uploads keep going and stay visible even if the creator
+ * navigates to another step and back while they finish.
  */
 export function GalleryEditor({
   items,
@@ -29,24 +34,63 @@ export function GalleryEditor({
   endpointBody,
 }: {
   items: GalleryItem[];
-  setItems: (next: GalleryItem[]) => void;
+  setItems: SetItems;
   recipientFirstName: string;
   endpoint?: string;
   endpointBody?: Record<string, unknown>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
+  const uploadsRef = useRef<Map<string, AbortController>>(new Map());
 
-  async function onFiles(files: FileList) {
+  const uploadingCount = items.filter((i) => i.uploading).length;
+
+  function patchItem(id: string, patch: Partial<GalleryItem>) {
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+  }
+  function dropItem(id: string) {
+    setItems((prev) => prev.filter((it) => it.id !== id));
+  }
+
+  async function uploadOne(id: string, file: File, ext: string) {
+    const controller = new AbortController();
+    uploadsRef.current.set(id, controller);
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ext, ...(endpointBody ?? {}) }),
+      });
+      const sign = await res.json();
+      if (!res.ok) throw new Error(sign.error ?? "Upload failed");
+
+      await uploadWithProgress({
+        url: sign.signedUrl,
+        file,
+        contentType: file.type,
+        signal: controller.signal,
+        onProgress: (p) => patchItem(id, { progress: p }),
+      });
+
+      patchItem(id, { path: sign.path, uploading: false, progress: 100 });
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") return; // user removed it
+      dropItem(id);
+      alert(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      uploadsRef.current.delete(id);
+    }
+  }
+
+  function onFiles(files: FileList) {
     const remaining = 20 - items.length;
-    const toUpload = Array.from(files).slice(0, remaining);
-    if (toUpload.length === 0) {
+    if (remaining <= 0) {
       alert("Maximum 20 gallery items reached.");
       return;
     }
-    setBusy(true);
-    const acc: GalleryItem[] = [];
-    for (const file of toUpload) {
+    const placeholders: GalleryItem[] = [];
+    const jobs: { id: string; file: File; ext: string }[] = [];
+
+    for (const file of Array.from(files).slice(0, remaining)) {
       if (file.size > 50 * 1024 * 1024) {
         alert(`${file.name} is too large (max 50 MB).`);
         continue;
@@ -56,41 +100,42 @@ export function GalleryEditor({
         alert(`${file.name} is not a supported image or video.`);
         continue;
       }
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ext: meta.ext, ...(endpointBody ?? {}) }),
-      });
-      const sign = await res.json();
-      if (!res.ok) {
-        alert(sign.error ?? "Upload failed");
-        continue;
-      }
-      const put = await fetch(sign.signedUrl, {
-        method: "PUT",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      if (!put.ok) {
-        alert("Upload failed");
-        continue;
-      }
-      acc.push({
-        path: sign.path,
+      const id = crypto.randomUUID();
+      placeholders.push({
+        id,
+        path: "",
         caption: "",
         preview: URL.createObjectURL(file),
         kind: meta.kind,
+        uploading: true,
+        progress: 0,
       });
+      jobs.push({ id, file, ext: meta.ext });
     }
-    if (acc.length) setItems([...items, ...acc]);
-    setBusy(false);
+
+    if (placeholders.length === 0) return;
+    // Show every tile right away, then upload each in the background.
+    setItems((prev) => [...prev, ...placeholders]);
+    jobs.forEach((j) => void uploadOne(j.id, j.file, j.ext));
   }
 
-  function remove(idx: number) {
-    setItems(items.filter((_, i) => i !== idx));
+  // Match by stable id when present (the object identity churns as progress
+  // updates land); fall back to reference equality for already-saved items.
+  function remove(item: GalleryItem) {
+    if (item.id) {
+      uploadsRef.current.get(item.id)?.abort();
+      uploadsRef.current.delete(item.id);
+      setItems((prev) => prev.filter((it) => it.id !== item.id));
+    } else {
+      setItems((prev) => prev.filter((it) => it !== item));
+    }
   }
-  function updateCaption(idx: number, caption: string) {
-    setItems(items.map((img, i) => (i === idx ? { ...img, caption } : img)));
+  function updateCaption(item: GalleryItem, caption: string) {
+    setItems((prev) =>
+      prev.map((it) =>
+        (item.id ? it.id === item.id : it === item) ? { ...it, caption } : it,
+      ),
+    );
   }
 
   return (
@@ -100,6 +145,9 @@ export function GalleryEditor({
           <p className="font-medium text-ink">Photo &amp; video gallery</p>
           <p className="text-xs text-ink/50 mt-0.5">
             Full-screen slides during {recipientFirstName}&apos;s opening · {items.length}/20
+            {uploadingCount > 0 && (
+              <span className="text-[var(--accent)]"> · {uploadingCount} uploading…</span>
+            )}
           </p>
         </div>
         <input
@@ -108,24 +156,18 @@ export function GalleryEditor({
           accept="image/*,video/*"
           multiple
           className="hidden"
-          onChange={(e) => e.target.files && e.target.files.length > 0 && onFiles(e.target.files)}
+          onChange={(e) => {
+            if (e.target.files && e.target.files.length > 0) onFiles(e.target.files);
+            e.target.value = ""; // allow re-picking the same file
+          }}
         />
         {items.length < 20 && (
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            disabled={busy}
-            className="btn-outline inline-flex text-sm shrink-0 disabled:opacity-50"
+            className="btn-outline inline-flex text-sm shrink-0"
           >
-            {busy ? (
-              <>
-                <Loader2 className="size-4 animate-spin" /> Uploading…
-              </>
-            ) : (
-              <>
-                <ImagePlus className="size-4" /> Add media
-              </>
-            )}
+            <ImagePlus className="size-4" /> Add media
           </button>
         )}
       </div>
@@ -143,9 +185,9 @@ export function GalleryEditor({
         </button>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {items.map((img, idx) => (
+          {items.map((img) => (
             <div
-              key={`${img.path}-${idx}`}
+              key={img.id ?? img.path}
               className="relative rounded-2xl overflow-hidden shadow-ring bg-ink/5"
             >
               {img.kind === "video" ? (
@@ -168,10 +210,25 @@ export function GalleryEditor({
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img src={img.preview} alt="" className="w-full aspect-[4/3] object-cover" />
               )}
+
+              {img.uploading && (
+                <div className="absolute inset-0 bg-ink/45 grid place-items-center">
+                  <div className="w-3/4 text-center text-white">
+                    <p className="serif text-2xl drop-shadow">{img.progress ?? 0}%</p>
+                    <div className="mt-2 h-1.5 rounded-full bg-white/25 overflow-hidden">
+                      <div
+                        className="h-full bg-white transition-[width] duration-200 ease-out"
+                        style={{ width: `${img.progress ?? 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <button
                 type="button"
-                onClick={() => remove(idx)}
-                className="absolute top-2 right-2 size-6 rounded-full glass-dark text-white grid place-items-center"
+                onClick={() => remove(img)}
+                className="absolute top-2 right-2 size-6 rounded-full glass-dark text-white grid place-items-center z-10"
                 aria-label="Remove"
               >
                 <X className="size-3" />
@@ -180,9 +237,10 @@ export function GalleryEditor({
                 type="text"
                 placeholder="Add a caption…"
                 maxLength={100}
+                disabled={img.uploading}
                 value={img.caption}
-                onChange={(e) => updateCaption(idx, e.target.value)}
-                className="w-full px-3 py-2 text-sm text-ink/80 bg-white/80 border-0 focus:outline-none focus:ring-0 placeholder:text-ink/35"
+                onChange={(e) => updateCaption(img, e.target.value)}
+                className="w-full px-3 py-2 text-sm text-ink/80 bg-white/80 border-0 focus:outline-none focus:ring-0 placeholder:text-ink/35 disabled:opacity-50"
               />
             </div>
           ))}

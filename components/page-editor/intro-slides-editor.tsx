@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Loader2, Pencil, Plus, RefreshCw, Sparkles, Trash2, Undo2 } from "lucide-react";
 import { InlineText } from "./inline-text";
+import { buildDefaultIntro } from "@/lib/intro-default";
 import {
   SLIDE_ACCENTS,
   slideAccentBg,
@@ -57,6 +58,19 @@ export function IntroSlidesEditor({
     await onGenerate();
   }
 
+  // Skip AI and start from an editable default deck built from the brief.
+  function seedManual() {
+    update({
+      introContent: buildDefaultIntro({
+        recipientName: draft.recipientName,
+        eventType: draft.eventType,
+        celebrationTitle: draft.title,
+        tagline: draft.tagline || null,
+        celebrantDescription: draft.celebrantDescription || null,
+      }),
+    });
+  }
+
   function undo() {
     if (history.length === 0) return;
     const prev = history[history.length - 1];
@@ -102,18 +116,28 @@ export function IntroSlidesEditor({
             ? `Add at least 20 characters in the AI brief about ${firstName} (below the gallery) and we'll write the opening slides.`
             : `Generate the opening slides ${firstName} sees when they tap play. You'll be able to tweak every line.`}
         </p>
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={generating || draft.celebrantDescription.trim().length < 20}
-          className="btn-accent inline-flex mt-5 shadow-soft text-sm disabled:opacity-50"
-        >
-          {generating ? (
-            <><Loader2 className="size-4 animate-spin" /> Writing slides…</>
-          ) : (
-            <><Sparkles className="size-4" /> Generate slides</>
-          )}
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-2 mt-5">
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={generating || draft.celebrantDescription.trim().length < 20}
+            className="btn-accent inline-flex shadow-soft text-sm disabled:opacity-50"
+          >
+            {generating ? (
+              <><Loader2 className="size-4 animate-spin" /> Writing slides…</>
+            ) : (
+              <><Sparkles className="size-4" /> Generate slides</>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={seedManual}
+            disabled={generating}
+            className="btn-outline inline-flex text-sm disabled:opacity-50"
+          >
+            Write them myself
+          </button>
+        </div>
         {error && <p className="text-xs text-red-600 mt-3">{error}</p>}
       </div>
     );
@@ -389,14 +413,14 @@ export function IntroSlidesEditor({
         <InlineSlideText
           value={intro.ready.headline}
           onChange={(v) => patchIntro({ ready: { ...intro.ready, headline: v } })}
-          placeholder="The anticipation before they dive in"
+          placeholder="What they're about to relive — tied to the occasion"
           maxLength={55}
           tone="headline"
         />
         <InlineSlideText
           value={intro.ready.subtext}
           onChange={(v) => patchIntro({ ready: { ...intro.ready, subtext: v } })}
-          placeholder="A warm send-off"
+          placeholder="A warm send-off into the memories"
           maxLength={80}
           tone="soft"
           multiline

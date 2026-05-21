@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Music, Pause, Play, Sparkles, VolumeX } from "lucide-react";
 import { Sparkles as SparkleField } from "@/components/sparkles";
 import { findTrack, parseMusicValue, type MusicTrack } from "@/lib/music";
+import { buildDefaultIntro } from "@/lib/intro-default";
 import { CoverEditor } from "./cover-editor";
 import { IntroSlidesEditor } from "./intro-slides-editor";
 import type { PageDraft } from "./types";
@@ -33,6 +34,35 @@ export function SlideshowPreview({
   const track: MusicTrack | null = findTrack(draft.backgroundMusic, tracks);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
+
+  // The opening should never be empty here while the preview shows a full
+  // slideshow. On first open, if nothing's been written yet, pull real AI copy
+  // when there's a brief to work from, otherwise seed an editable default deck —
+  // either way the creator always has slides to edit, and they persist.
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current || draft.introContent || generatingIntro) return;
+    seededRef.current = true;
+    const hasBrief =
+      draft.celebrantDescription.trim().length >= 20 &&
+      !!draft.recipientName &&
+      !!draft.celebrationDate;
+    if (hasBrief && !introError) {
+      void onGenerateIntro();
+    } else {
+      update({
+        introContent: buildDefaultIntro({
+          recipientName: draft.recipientName,
+          eventType: draft.eventType,
+          celebrationTitle: draft.title,
+          tagline: draft.tagline || null,
+          celebrantDescription: draft.celebrantDescription || null,
+        }),
+      });
+    }
+    // Run once when the slideshow editor first mounts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setPlaying(false);
@@ -152,7 +182,8 @@ export function SlideshowPreview({
                   className="aspect-square rounded-xl overflow-hidden bg-ink/5"
                 >
                   {g.kind === "video" ? (
-                    <div className="size-full bg-ink/80" />
+                    // eslint-disable-next-line jsx-a11y/media-has-caption
+                    <video src={`${g.preview}#t=0.1`} className="size-full object-cover" muted playsInline preload="metadata" />
                   ) : (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={g.preview} alt="" className="size-full object-cover" />

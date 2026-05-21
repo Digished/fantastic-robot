@@ -7,7 +7,7 @@ import { AiSuggestButton } from "./ai-suggest-button";
 import { CoverEditor } from "./cover-editor";
 import { GalleryEditor } from "./gallery-editor";
 import { InlineText } from "./inline-text";
-import { eventLabel, type PageDraft } from "./types";
+import { eventLabel, type PageDraft, type UpdateDraft } from "./types";
 
 const STEPS = [
   { key: "cover", label: "Cover" },
@@ -27,7 +27,7 @@ export function LandingPreview({
   mode,
 }: {
   draft: PageDraft;
-  update: (patch: Partial<PageDraft>) => void;
+  update: UpdateDraft;
   mode: "create" | "edit";
 }) {
   const [sub, setSub] = useState(0);
@@ -185,7 +185,11 @@ export function LandingPreview({
             <div className="rounded-3xl2 bg-white shadow-ring p-5">
               <GalleryEditor
                 items={draft.gallery}
-                setItems={(next) => update({ gallery: next })}
+                setItems={(next) =>
+                  update((prev) => ({
+                    gallery: typeof next === "function" ? next(prev.gallery) : next,
+                  }))
+                }
                 recipientFirstName={firstName}
               />
             </div>
@@ -212,7 +216,7 @@ export function LandingPreview({
             </button>
           ) : (
             <span className="text-xs text-ink/45 text-right">
-              {mode === "create" ? "Preview & publish up top." : "Save changes up top."}
+              {mode === "create" ? "Scroll down to preview & publish." : "Save changes up top."}
             </span>
           )}
         </div>

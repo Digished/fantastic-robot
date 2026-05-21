@@ -103,7 +103,7 @@ export default async function WallPage({
                 {cover ? (
                   <div className="absolute inset-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={cover} alt="" className="absolute inset-0 size-full object-cover ken-burns" />
+                    <img src={cover} alt="" className="absolute inset-0 size-full object-cover cover-pan" />
                     <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/25 to-black/80" />
                   </div>
                 ) : (

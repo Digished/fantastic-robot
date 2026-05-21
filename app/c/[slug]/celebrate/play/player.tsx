@@ -194,6 +194,45 @@ function SparkleField() {
   );
 }
 
+// A one-shot, then gently looping confetti shower for the closing slide —
+// the "we made it" celebratory beat at the very end of the experience.
+const CONFETTI_TONES = ["var(--accent)", "var(--mesh-b)", "var(--mesh-c)", "#fff"];
+function ConfettiBurst() {
+  const pieces = useMemo(() => {
+    const rand = mulberry32(hashSeed("final-confetti"));
+    return Array.from({ length: 26 }, (_, i) => ({
+      key: i,
+      left: `${(rand() * 100).toFixed(1)}%`,
+      delay: `${(rand() * 2.4).toFixed(2)}s`,
+      dur: `${(3.2 + rand() * 2.4).toFixed(2)}s`,
+      size: 6 + Math.floor(rand() * 7),
+      tone: CONFETTI_TONES[Math.floor(rand() * CONFETTI_TONES.length)],
+      round: rand() < 0.35,
+      drift: `${(rand() * 60 - 30).toFixed(0)}px`,
+    }));
+  }, []);
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+      {pieces.map((p) => (
+        <span
+          key={p.key}
+          className="absolute -top-6"
+          style={{
+            left: p.left,
+            width: p.size,
+            height: p.round ? p.size : p.size * 0.5,
+            background: p.tone,
+            borderRadius: p.round ? "9999px" : "1px",
+            opacity: 0.9,
+            ["--drift" as string]: p.drift,
+            animation: `confettiFall ${p.dur} linear ${p.delay} infinite`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ─── Slide builder ────────────────────────────────────────────────────────────
 
 function buildBaseSlides(
@@ -219,9 +258,9 @@ function buildBaseSlides(
   });
 
   slides.push({ id: "ready", kind: "intro-ready", duration: 5000 });
-  if (introContent?.final) {
-    slides.push({ id: "final", kind: "intro-final", duration: 7500 });
-  }
+  // A closing slide always ends the experience. Even without AI copy the
+  // render falls back to a warm default, so the show never just stops.
+  slides.push({ id: "final", kind: "intro-final", duration: 7500 });
   return slides;
 }
 
@@ -231,24 +270,28 @@ function buildIntroSequence(
   galleryImages: GalleryImage[],
 ): IntroSlide[] {
   const base = buildBaseSlides(introContent, celebrantDescription);
+
+  // Hold the closing slide aside so gallery memories can never push past it —
+  // it must land at the very end of everything.
+  const finalSlide = base[base.length - 1]?.kind === "intro-final" ? base[base.length - 1] : null;
+  const core = finalSlide ? base.slice(0, -1) : base;
+
   if (galleryImages.length === 0) return base;
 
   const result: IntroSlide[] = [];
   let g = 0;
-  for (let i = 0; i < base.length; i++) {
-    result.push(base[i]);
-    if (i < base.length - 1 && g < galleryImages.length) {
-      result.push({
-        id: `gallery-${g}`,
-        kind: "intro-gallery",
-        duration: 7000,
-        gallery: galleryImages[g++],
-      });
+  // Alternate intro slides with memories, then dump any remaining memories…
+  for (let i = 0; i < core.length; i++) {
+    result.push(core[i]);
+    if (g < galleryImages.length) {
+      result.push({ id: `gallery-${g}`, kind: "intro-gallery", duration: 7000, gallery: galleryImages[g++] });
     }
   }
   while (g < galleryImages.length) {
     result.push({ id: `gallery-extra-${g}`, kind: "intro-gallery", duration: 7000, gallery: galleryImages[g++] });
   }
+  // …and only then the closing slide, so it is always the last thing seen.
+  if (finalSlide) result.push(finalSlide);
   return result;
 }
 
@@ -847,10 +890,15 @@ function IntroSlideView({
   }
 
   // ── Final statement ───────────────────────────────────────────────────────────
-  if (slide.kind === "intro-final" && ai?.final) {
-    const fin = ai.final;
+  if (slide.kind === "intro-final") {
+    const fin = ai?.final ?? {
+      headline: "With love",
+      subtext: "Today, and every day after.",
+      emoji: EVENT_FALLBACK_EMOJI[eventType] ?? "✨",
+    };
     return (
       <section className="absolute inset-0 flex flex-col items-center justify-center px-10 text-center overflow-hidden">
+        <ConfettiBurst />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden>
           <div
             className="rounded-full border border-white/[0.10]"

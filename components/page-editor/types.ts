@@ -6,6 +6,12 @@ export type GalleryItem = {
   caption: string;
   preview: string;
   kind: "image" | "video";
+  /** Stable client-side key for in-flight uploads (path is empty until done). */
+  id?: string;
+  /** True while the file is still uploading in the background. */
+  uploading?: boolean;
+  /** Upload progress 0–100, shown as a per-tile bar. */
+  progress?: number;
 };
 
 export type EventType =
@@ -44,5 +50,10 @@ export type PageDraft = {
   gallery: GalleryItem[];
   introContent: IntroContent | null;
 };
+
+/** Draft updater — accepts a partial patch or a function of the previous draft. */
+export type UpdateDraft = (
+  patch: Partial<PageDraft> | ((prev: PageDraft) => Partial<PageDraft>),
+) => void;
 
 export type { IntroContent } from "@/lib/openai/generate-intro";
