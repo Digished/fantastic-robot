@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, Eye, Layout, Sparkles } from "lucide-react";
 import { MusicPicker } from "@/components/music-picker";
 import type { MusicTrack } from "@/lib/music";
@@ -61,6 +61,20 @@ export function DesignStep({
   const [tab, setTab] = useState<Tab>(initialTab);
   const [previewing, setPreviewing] = useState(false);
 
+  // Step 2 should open at the top, not wherever step 1 was scrolled to.
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+
+  const tabs = (
+    <div className="flex items-center gap-1 rounded-full bg-ink/6 p-1">
+      <TabButton active={tab === "landing"} onClick={() => setTab("landing")}>
+        <Layout className="size-3.5" /> Landing
+      </TabButton>
+      <TabButton active={tab === "slideshow"} onClick={() => setTab("slideshow")}>
+        <Sparkles className="size-3.5" /> Slideshow
+      </TabButton>
+    </div>
+  );
+
   return (
     <div className="min-h-[100dvh] bg-white">
       {previewing && (
@@ -74,51 +88,56 @@ export function DesignStep({
       )}
       {/* Top bar */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-ink/8">
-        <div className="mx-auto max-w-6xl px-4 md:px-10 py-3 flex items-center gap-3">
-          {onBack ? (
-            <button
-              type="button"
-              onClick={onBack}
-              className="text-sm text-ink/60 hover:text-ink inline-flex items-center gap-1"
-            >
-              <ArrowLeft className="size-4" />
-              <span className="hidden sm:inline">{backLabel ?? "Back"}</span>
-            </button>
-          ) : (
-            <span className="serif text-lg text-ink">Spendbox</span>
-          )}
+        <div className="mx-auto max-w-6xl px-4 md:px-10 py-3">
+          <div className="flex items-center gap-2.5">
+            {onBack ? (
+              <button
+                type="button"
+                onClick={onBack}
+                className="text-sm text-ink/60 hover:text-ink inline-flex items-center gap-1 shrink-0"
+              >
+                <ArrowLeft className="size-4" />
+                <span className="hidden sm:inline">{backLabel ?? "Back"}</span>
+              </button>
+            ) : (
+              <span className="serif text-lg text-ink shrink-0">Spendbox</span>
+            )}
 
-          {/* Tabs */}
-          <div className="mx-auto flex items-center gap-1 rounded-full bg-ink/6 p-1">
-            <TabButton active={tab === "landing"} onClick={() => setTab("landing")}>
-              <Layout className="size-3.5" /> Landing
-            </TabButton>
-            <TabButton active={tab === "slideshow"} onClick={() => setTab("slideshow")}>
-              <Sparkles className="size-3.5" /> Slideshow
-            </TabButton>
+            {/* Tabs — inline on desktop, dropped to their own row on mobile */}
+            <div className="hidden sm:block sm:mx-auto">{tabs}</div>
+
+            <div className="ml-auto sm:ml-0 flex items-center gap-2 shrink-0">
+              {!confirmViaPreview && (
+                <button
+                  type="button"
+                  onClick={() => setPreviewing(true)}
+                  className="btn-outline text-sm py-2.5 px-3 inline-flex items-center gap-1.5"
+                >
+                  <Eye className="size-4" />
+                  <span className="hidden sm:inline">Preview</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={confirmViaPreview ? () => setPreviewing(true) : primary.onClick}
+                disabled={primary.submitting || (!confirmViaPreview && primary.disabled)}
+                className="btn-accent shadow-soft text-sm py-2.5 px-3.5 disabled:opacity-60 inline-flex items-center gap-1.5"
+              >
+                {confirmViaPreview && <Eye className="size-4" />}
+                {primary.submitting
+                  ? primary.submittingLabel ?? "Saving…"
+                  : confirmViaPreview ? (
+                    <>
+                      <span className="sm:hidden">Publish</span>
+                      <span className="hidden sm:inline">Preview &amp; publish</span>
+                    </>
+                  ) : primary.label}
+              </button>
+            </div>
           </div>
 
-          {!confirmViaPreview && (
-            <button
-              type="button"
-              onClick={() => setPreviewing(true)}
-              className="btn-outline text-sm py-2.5 px-3 inline-flex items-center gap-1.5"
-            >
-              <Eye className="size-4" />
-              <span className="hidden sm:inline">Preview</span>
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={confirmViaPreview ? () => setPreviewing(true) : primary.onClick}
-            disabled={primary.submitting || (!confirmViaPreview && primary.disabled)}
-            className="btn-accent shadow-soft text-sm py-2.5 px-4 disabled:opacity-60 inline-flex items-center gap-1.5"
-          >
-            {confirmViaPreview && <Eye className="size-4" />}
-            {primary.submitting
-              ? primary.submittingLabel ?? "Saving…"
-              : confirmViaPreview ? "Preview & publish" : primary.label}
-          </button>
+          {/* Mobile tab row */}
+          <div className="sm:hidden mt-2.5 flex justify-center">{tabs}</div>
         </div>
 
         {/* Style toolbar — compact pills that open popups */}

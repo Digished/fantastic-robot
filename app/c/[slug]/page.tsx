@@ -16,6 +16,7 @@ import { GalleryUploadButton } from "@/components/gallery-upload-button";
 import { contentWindowOpen, contentWindowClosesAt } from "@/lib/celebration-windows";
 import { NavLoadingLink } from "@/components/nav-loading-link";
 import { CompletePaymentBanner } from "./complete-payment-banner";
+import { AudienceActions } from "@/components/page-editor/audience-actions";
 import { getCreatorLabel } from "@/lib/creator";
 
 export const dynamic = "force-dynamic";
@@ -64,6 +65,8 @@ export default async function WallPage({
   const contentOpen =
     page.status === "active" && contentWindowOpen(page.celebration_date, now);
   const cover = coverUrl(page.cover_photo_path);
+  const unpaid = page.is_paid_for_creation === false;
+  const firstName = page.recipient_name.split(" ")[0];
   const galleryImages = (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [];
   const eventLabel = page.event_type.replace(/_/g, " ");
   const createdBy = await getCreatorLabel(page.creator_id);
@@ -225,7 +228,11 @@ export default async function WallPage({
             )}
 
             {/* CTA buttons — wall stays open longer than contributions */}
-            {(contentOpen || !closed) && (
+            {unpaid ? (
+              <div className="fade-up">
+                <AudienceActions firstName={firstName} theme={theme} />
+              </div>
+            ) : (contentOpen || !closed) && (
               <div className="flex gap-3 fade-up">
                 {contentOpen && (
                   <NavLoadingLink

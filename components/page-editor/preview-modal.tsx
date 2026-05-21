@@ -5,6 +5,7 @@ import { Gift, Layout, Sparkles, X } from "lucide-react";
 import { Player } from "@/app/c/[slug]/celebrate/play/player";
 import { findTrack, parseMusicValue, type MusicTrack } from "@/lib/music";
 import { formatDate } from "@/lib/time";
+import { AudienceActions } from "./audience-actions";
 import { eventLabel, type PageDraft } from "./types";
 
 type View = "contributor" | "celebrant";
@@ -215,14 +216,7 @@ function ContributorView({ draft }: { draft: PageDraft }) {
               </blockquote>
             )}
 
-            <div className="flex gap-3">
-              <span className="btn-accent flex-1 shadow-soft inline-flex items-center justify-center gap-2 cursor-default">
-                Leave a message
-              </span>
-              <span className="btn-outline flex-1 inline-flex items-center justify-center gap-2 cursor-default">
-                Contribute
-              </span>
-            </div>
+            <AudienceActions firstName={firstName} theme={draft.theme} />
 
             <p className="text-[11px] text-ink/40 text-center flex items-center justify-center gap-1.5">
               <Gift className="size-3.5 text-[var(--accent)]" />
