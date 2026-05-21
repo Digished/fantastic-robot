@@ -16,7 +16,7 @@ const editSchema = z.object({
   celebrantDescription: z.string().max(1500).optional(),
   coverPhotoPath: z.string().optional(),
   theme: z.enum(THEME_IDS).optional(),
-  backgroundMusic: z.string().min(1).max(80).nullable().optional(),
+  backgroundMusic: z.string().min(1).max(200).nullable().optional(),
   galleryImages: z.string().optional(),
   introContent: z.string().optional(),
 });

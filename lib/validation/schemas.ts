@@ -4,7 +4,9 @@ import { THEME_IDS } from "@/lib/themes";
 // Music track ids are validated server-side against the live list of enabled
 // tracks (built-in plus admin-uploaded), so this schema just shape-checks
 // the value.
-const musicTrackId = z.string().min(1).max(80);
+// Holds a track id, an `upload:<path>` sentinel, and an optional
+// `#clip=<start>-<end>` window — so it needs more room than a bare id.
+const musicTrackId = z.string().min(1).max(200);
 
 export const signupSchema = z.object({
   email: z.string().email().max(120),

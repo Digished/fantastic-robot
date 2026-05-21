@@ -7,11 +7,14 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import {
   BUILTIN_TRACKS,
   builtinSrc,
+  buildMusicValue,
   customSrc,
   isUploadedTrackId,
   isValidUploadedTrackId,
   makeUploadedTrack,
+  parseMusicValue,
   type MusicTrack,
+  type TrackClip,
 } from "@/lib/music";
 
 export async function getEffectiveTracks(): Promise<MusicTrack[]> {
@@ -50,13 +53,19 @@ export async function getEffectiveTracks(): Promise<MusicTrack[]> {
  * or custom). Otherwise returns null so the player falls back to silent.
  */
 export async function resolveSavedTrackId(
-  id: string | null | undefined,
+  value: string | null | undefined,
 ): Promise<string | null> {
+  const { id, clip } = parseMusicValue(value);
   if (!id) return null;
   // Per-page uploaded songs aren't in the library; validate the path shape.
-  if (isUploadedTrackId(id)) return isValidUploadedTrackId(id) ? id : null;
-  const tracks = await getEffectiveTracks();
-  return tracks.some((t) => t.id === id) ? id : null;
+  let valid: boolean;
+  if (isUploadedTrackId(id)) valid = isValidUploadedTrackId(id);
+  else {
+    const tracks = await getEffectiveTracks();
+    valid = tracks.some((t) => t.id === id);
+  }
+  if (!valid) return null;
+  return buildMusicValue(id, clip);
 }
 
 /**
@@ -65,14 +74,18 @@ export async function resolveSavedTrackId(
  * without resolving it again on the client.
  */
 export async function resolveSavedTrack(
-  id: string | null | undefined,
-): Promise<MusicTrack | null> {
+  value: string | null | undefined,
+): Promise<(MusicTrack & { clip: TrackClip | null }) | null> {
+  const { id, clip } = parseMusicValue(value);
   if (!id) return null;
   if (isUploadedTrackId(id)) {
-    return isValidUploadedTrackId(id) ? makeUploadedTrack(id) : null;
+    return isValidUploadedTrackId(id)
+      ? { ...makeUploadedTrack(id), clip }
+      : null;
   }
   const tracks = await getEffectiveTracks();
-  return tracks.find((t) => t.id === id) ?? null;
+  const track = tracks.find((t) => t.id === id);
+  return track ? { ...track, clip } : null;
 }
 
 /** Pretty list of all admin-managed entries, plus the disabled set. */

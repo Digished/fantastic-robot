@@ -6,10 +6,16 @@ export type IntroChapter = {
   emoji?: string;
 };
 
+// Optional creator-set styling, layered on top of the AI copy. These are not
+// produced by the model — they're set in the WYSIWYG editor and stored in the
+// same intro_content JSONB.
+export type SlideStyleMap = Record<string, { accent?: string }>;
+
 export type IntroContent = {
   welcome: {
     subtext: string;
     emoji: string;
+    title?: string; // creator override for the cover headline (defaults to name)
   };
   occasion: {
     title: string;
@@ -34,6 +40,7 @@ export type IntroContent = {
     subtext: string;
     emoji?: string;
   };
+  slideStyles?: SlideStyleMap;
 };
 
 const SYSTEM_PROMPT = `You write short, warm, personalised copy for a digital celebration surprise page.

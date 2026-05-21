@@ -41,6 +41,7 @@ export default async function PlayPage({
       slug={slug}
       theme={theme}
       musicUrl={musicTrack?.src ?? null}
+      musicClip={musicTrack?.clip ?? null}
       recipientName={page.recipient_name}
       eventType={page.event_type}
       celebrationDate={page.celebration_date}

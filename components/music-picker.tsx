@@ -1,13 +1,22 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Loader2, Music, Pause, Play, Upload, VolumeX, X } from "lucide-react";
+import { ChevronDown, Loader2, Music, Pause, Play, Scissors, Upload, VolumeX, X } from "lucide-react";
 import {
+  buildMusicValue,
   makeUploadedTrack,
+  parseMusicValue,
   uploadedTrackId,
   type MusicTrack,
+  type TrackClip,
 } from "@/lib/music";
 import { uploadWithProgress } from "@/lib/upload";
+import { AudioTrimModal } from "./page-editor/audio-trim-modal";
+
+function fmtClip(clip: TrackClip): string {
+  const f = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+  return `${f(clip.startSec)}–${f(clip.endSec)}`;
+}
 
 const AUDIO_EXTS = ["mp3", "m4a", "aac", "ogg", "wav"];
 
@@ -38,6 +47,13 @@ export function MusicPicker({
   const [uploading, setUploading] = useState(false);
   const [uploadPct, setUploadPct] = useState(0);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [trimming, setTrimming] = useState<MusicTrack | null>(null);
+
+  const { id: selectedId, clip: selectedClip } = parseMusicValue(value);
+
+  function selectTrack(id: string, clip: TrackClip | null) {
+    onChange(buildMusicValue(id, clip));
+  }
 
   async function onUploadFile(file: File) {
     setUploadError(null);
@@ -72,6 +88,8 @@ export function MusicPicker({
       onAddTrack?.(track);
       onChange(track.id);
       setUploadPct(100);
+      // Let them immediately pick the section of their song that plays.
+      setTrimming(track);
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : "Upload failed");
     } finally {
@@ -111,11 +129,19 @@ export function MusicPicker({
     setPreviewing(track.id);
   }
 
-  const selected = value ? tracks.find((t) => t.id === value) ?? null : null;
+  const selected = selectedId ? tracks.find((t) => t.id === selectedId) ?? null : null;
 
   return (
     <>
       <input type="hidden" name={name} value={value ?? ""} />
+      {trimming && (
+        <AudioTrimModal
+          track={trimming}
+          initialClip={trimming.id === selectedId ? selectedClip : null}
+          onSave={(clip) => { selectTrack(trimming.id, clip); setTrimming(null); }}
+          onClose={() => setTrimming(null)}
+        />
+      )}
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio ref={audioRef} onEnded={() => setPreviewing(null)} className="hidden" />
 
@@ -245,7 +271,7 @@ export function MusicPicker({
               </button>
 
               {tracks.map((t) => {
-                const isSel = t.id === value;
+                const isSel = t.id === selectedId;
                 const isPlaying = previewing === t.id;
                 return (
                   <div
@@ -270,11 +296,27 @@ export function MusicPicker({
                     <button
                       type="button"
                       data-no-loading="true"
-                      onClick={() => { onChange(t.id); close(); }}
+                      onClick={() => { selectTrack(t.id, isSel ? selectedClip : null); }}
                       className="min-w-0 flex-1 text-left"
                     >
                       <span className="block truncate text-sm font-medium text-ink leading-tight">{t.label}</span>
-                      <span className="block truncate text-xs text-ink/45 mt-0.5">{t.mood}</span>
+                      <span className="block truncate text-xs text-ink/45 mt-0.5">
+                        {isSel && selectedClip ? `Clip ${fmtClip(selectedClip)}` : t.mood}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      data-no-loading="true"
+                      onClick={() => setTrimming(t)}
+                      aria-label={`Choose section of ${t.label}`}
+                      title="Choose section"
+                      className={`grid size-8 shrink-0 place-items-center rounded-full transition ${
+                        isSel && selectedClip
+                          ? "bg-[var(--accent)]/15 text-[var(--accent)]"
+                          : "bg-ink/8 text-ink/55 hover:bg-ink/14"
+                      }`}
+                    >
+                      <Scissors className="size-3.5" />
                     </button>
                     {isSel && <div className="size-2 rounded-full bg-ink/50 shrink-0" />}
                   </div>

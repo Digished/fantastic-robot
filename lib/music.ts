@@ -13,6 +13,8 @@ import { env } from "@/lib/env";
 
 export type MusicSource = "builtin" | "custom";
 
+export type TrackClip = { startSec: number; endSec: number };
+
 export type MusicTrack = {
   id: string;
   label: string;
@@ -90,10 +92,35 @@ export function makeUploadedTrack(id: string, label?: string): MusicTrack {
   };
 }
 
+// ── Play-from / play-until clip window ─────────────────────────────────────
+// The stored `background_music` value can carry an optional clip window so the
+// slideshow only plays a chosen section: `<trackId>#clip=<start>-<end>` with
+// times in seconds. This rides on the existing column — no schema change.
+export function parseMusicValue(
+  value: string | null | undefined,
+): { id: string | null; clip: TrackClip | null } {
+  if (!value) return { id: null, clip: null };
+  const marker = value.indexOf("#clip=");
+  if (marker === -1) return { id: value, clip: null };
+  const id = value.slice(0, marker);
+  const [s, e] = value.slice(marker + 6).split("-").map(Number);
+  if (!Number.isFinite(s) || !Number.isFinite(e) || e <= s || s < 0) {
+    return { id, clip: null };
+  }
+  return { id, clip: { startSec: s, endSec: e } };
+}
+
+export function buildMusicValue(id: string, clip: TrackClip | null): string {
+  if (!clip) return id;
+  const r = (n: number) => Math.round(n * 10) / 10;
+  return `${id}#clip=${r(clip.startSec)}-${r(clip.endSec)}`;
+}
+
 export function findTrack(
-  id: string | null | undefined,
+  value: string | null | undefined,
   tracks: ReadonlyArray<MusicTrack>,
 ): MusicTrack | null {
+  const { id } = parseMusicValue(value);
   if (!id) return null;
   const found = tracks.find((t) => t.id === id);
   if (found) return found;

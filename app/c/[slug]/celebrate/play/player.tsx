@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X, Video, Gift, Lock, Loader2 } from "lucide-react";
 import type { Theme } from "@/lib/themes";
 import type { IntroContent } from "@/lib/openai/generate-intro";
+import { slideAccentBg, slideStyleKey } from "@/lib/slide-accents";
 import { Interactive, type InteractiveKind } from "@/components/interactives";
 
 type Msg = {
@@ -263,13 +264,14 @@ function durationFor(m: Msg): number {
 // ─── Player ───────────────────────────────────────────────────────────────────
 
 export function Player({
-  slug, theme, musicUrl, recipientName, eventType, celebrationDate, celebrationTitle,
+  slug, theme, musicUrl, musicClip, recipientName, eventType, celebrationDate, celebrationTitle,
   tagline, celebrantDescription, introContent, messages, galleryImages,
-  totalRaisedKobo, claimableAt, payoutStatus, createdBy,
+  totalRaisedKobo, claimableAt, payoutStatus, createdBy, onExit,
 }: {
   slug: string;
   theme: Theme;
   musicUrl: string | null;
+  musicClip?: { startSec: number; endSec: number } | null;
   recipientName: string;
   eventType: string;
   celebrationDate: string;
@@ -283,6 +285,7 @@ export function Player({
   claimableAt: string;
   payoutStatus: string;
   createdBy: string | null;
+  onExit?: () => void;
 }) {
   const introSlides = useMemo(
     () => buildIntroSequence(introContent, celebrantDescription, galleryImages),
@@ -318,6 +321,14 @@ export function Player({
 
   const scene = useMemo(() => sceneFor(i), [i]);
 
+  // Per-slide accent override (set in the editor), else the default scene.
+  const slideBg = useMemo(() => {
+    if (!current || current.kind !== "intro") return scene.bg;
+    const key = slideStyleKey(current.intro.kind, current.intro.chapterIdx);
+    const accent = key ? introContent?.slideStyles?.[key]?.accent : undefined;
+    return slideAccentBg(accent) ?? scene.bg;
+  }, [current, scene, introContent]);
+
   // Background music ducks (pauses) whenever a slide is itself playing sound:
   // voice-note / video cards, or a gallery video.
   const musicRef = useRef<HTMLAudioElement | null>(null);
@@ -329,9 +340,27 @@ export function Player({
     !!currentMsg && (currentMsg.media_kind === "audio" || currentMsg.media_kind === "video");
   const duckMusic = done || paused || messageMediaPlaying || galleryVideoPlaying;
 
+  function clampToClip(audio: HTMLAudioElement) {
+    if (!musicClip) return;
+    if (audio.currentTime < musicClip.startSec || audio.currentTime >= musicClip.endSec) {
+      audio.currentTime = musicClip.startSec;
+    }
+  }
+
+  function onMusicTime() {
+    const audio = musicRef.current;
+    if (!audio || !musicClip) return;
+    // Loop within the chosen window.
+    if (audio.currentTime >= musicClip.endSec) {
+      audio.currentTime = musicClip.startSec;
+      audio.play().catch(() => {});
+    }
+  }
+
   function resumeMusic() {
     const audio = musicRef.current;
     if (!audio || duckMusic) return;
+    clampToClip(audio);
     audio.volume = 0.32;
     audio.play().catch(() => { /* autoplay blocked — retried on next tap */ });
   }
@@ -342,6 +371,7 @@ export function Player({
     if (duckMusic) {
       audio.pause();
     } else {
+      clampToClip(audio);
       audio.volume = 0.32;
       audio.play().catch(() => { /* autoplay blocked — retried on next tap */ });
     }
@@ -385,7 +415,7 @@ export function Player({
     <main
       data-theme={theme}
       className="fixed inset-0 select-none overflow-hidden"
-      style={{ background: done ? "white" : scene.bg }}
+      style={{ background: done ? "white" : slideBg }}
       onClick={(e) => {
         resumeMusic();
         if (done) return;
@@ -396,7 +426,14 @@ export function Player({
     >
       {musicUrl && (
         // eslint-disable-next-line jsx-a11y/media-has-caption
-        <audio ref={musicRef} src={musicUrl} loop preload="auto" />
+        <audio
+          ref={musicRef}
+          src={musicUrl}
+          loop={!musicClip}
+          onTimeUpdate={musicClip ? onMusicTime : undefined}
+          onLoadedMetadata={() => { const a = musicRef.current; if (a) clampToClip(a); }}
+          preload="auto"
+        />
       )}
       {/* Progress bar — hidden in gallery view */}
       {!done && (
@@ -418,10 +455,17 @@ export function Player({
             className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label={paused ? "Play" : "Pause"}>
             {paused ? <Play className="size-4 fill-current" /> : <Pause className="size-4 fill-current" />}
           </button>
-          <Link href={`/c/${slug}/celebrate`} onClick={(e) => e.stopPropagation()}
-            className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label="Close">
-            <X className="size-4" />
-          </Link>
+          {onExit ? (
+            <button data-no-loading="true" onClick={(e) => { e.stopPropagation(); onExit(); }}
+              className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label="Close preview">
+              <X className="size-4" />
+            </button>
+          ) : (
+            <Link href={`/c/${slug}/celebrate`} onClick={(e) => e.stopPropagation()}
+              className="size-9 grid place-items-center rounded-full glass-dark text-white" aria-label="Close">
+              <X className="size-4" />
+            </Link>
+          )}
         </div>
       )}
 
@@ -467,6 +511,7 @@ export function Player({
           createdBy={createdBy}
           onSelectSlide={selectSlide}
           onReplay={replay}
+          onExit={onExit}
         />
       )}
 
@@ -539,7 +584,7 @@ function IntroSlideView({
             className="serif slide-accent leading-[0.85]"
             style={{ fontSize: "clamp(2.8rem,11vw,5.5rem)" }}
           >
-            <WordsIn text={firstName} baseDelay={120} />
+            <WordsIn text={ai?.welcome.title?.trim() ? ai.welcome.title : firstName} baseDelay={120} />
           </h1>
           {subtext && (
             <p className="mt-6 slide-ink-soft text-xl leading-snug max-w-sm">
@@ -1136,7 +1181,7 @@ function GiftReveal({
 
 function PostPlayGallery({
   allSlides, firstName, slug, introContent, celebrationTitle,
-  totalRaisedKobo, claimableAt, payoutStatus, createdBy, onSelectSlide, onReplay,
+  totalRaisedKobo, claimableAt, payoutStatus, createdBy, onSelectSlide, onReplay, onExit,
 }: {
   allSlides: AnySlide[];
   firstName: string;
@@ -1149,6 +1194,7 @@ function PostPlayGallery({
   createdBy: string | null;
   onSelectSlide: (idx: number) => void;
   onReplay: () => void;
+  onExit?: () => void;
 }) {
   return (
     <div
@@ -1169,12 +1215,22 @@ function PostPlayGallery({
             >
               <RotateCcw className="size-3.5" /> Replay all
             </button>
-            <Link
-              href={`/c/${slug}/celebrate`}
-              className="size-9 grid place-items-center rounded-full bg-ink/8 text-ink"
-            >
-              <X className="size-4" />
-            </Link>
+            {onExit ? (
+              <button
+                onClick={onExit}
+                className="size-9 grid place-items-center rounded-full bg-ink/8 text-ink"
+                aria-label="Close preview"
+              >
+                <X className="size-4" />
+              </button>
+            ) : (
+              <Link
+                href={`/c/${slug}/celebrate`}
+                className="size-9 grid place-items-center rounded-full bg-ink/8 text-ink"
+              >
+                <X className="size-4" />
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -1203,9 +1259,15 @@ function PostPlayGallery({
         {/* Footer */}
         <div className="pb-12 pt-2 text-center">
           <p className="serif text-2xl text-ink/80 mb-4">You are loved, {firstName}.</p>
-          <Link href={`/c/${slug}/celebrate`} className="btn-outline inline-flex">
-            Back to your page
-          </Link>
+          {onExit ? (
+            <button onClick={onExit} className="btn-outline inline-flex">
+              Close preview
+            </button>
+          ) : (
+            <Link href={`/c/${slug}/celebrate`} className="btn-outline inline-flex">
+              Back to your page
+            </Link>
+          )}
           {createdBy && (
             <p className="text-[11px] text-ink/40 mt-6">
               This page was put together by <span className="text-ink/60">{createdBy}</span>

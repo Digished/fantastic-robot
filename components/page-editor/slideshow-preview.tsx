@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Music, Pause, Play, Sparkles, VolumeX } from "lucide-react";
 import { Sparkles as SparkleField } from "@/components/sparkles";
-import { findTrack, type MusicTrack } from "@/lib/music";
+import { findTrack, parseMusicValue, type MusicTrack } from "@/lib/music";
 import { CoverEditor } from "./cover-editor";
 import { IntroSlidesEditor } from "./intro-slides-editor";
 import type { PageDraft } from "./types";
@@ -39,6 +39,14 @@ export function SlideshowPreview({
     audioRef.current?.pause();
   }, [track?.id]);
 
+  const clip = parseMusicValue(draft.backgroundMusic).clip;
+
+  function onTime() {
+    const a = audioRef.current;
+    if (!a || !clip) return;
+    if (a.currentTime >= clip.endSec) a.currentTime = clip.startSec;
+  }
+
   function togglePlay() {
     const a = audioRef.current;
     if (!a || !track) return;
@@ -47,7 +55,7 @@ export function SlideshowPreview({
       setPlaying(false);
     } else {
       a.src = track.src;
-      a.currentTime = 0;
+      a.currentTime = clip ? clip.startSec : 0;
       a.volume = 0.6;
       a.play().catch(() => {});
       setPlaying(true);
@@ -156,7 +164,7 @@ export function SlideshowPreview({
         )}
 
         {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-        <audio ref={audioRef} onEnded={() => setPlaying(false)} className="hidden" />
+        <audio ref={audioRef} onEnded={() => setPlaying(false)} onTimeUpdate={onTime} className="hidden" />
       </div>
     </div>
   );

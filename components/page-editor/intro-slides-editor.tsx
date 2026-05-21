@@ -3,6 +3,11 @@
 import { useState } from "react";
 import { Loader2, Pencil, Plus, RefreshCw, Sparkles, Trash2 } from "lucide-react";
 import { InlineText } from "./inline-text";
+import {
+  SLIDE_ACCENTS,
+  slideAccentBg,
+  type SlideAccent,
+} from "@/lib/slide-accents";
 import type { IntroContent, PageDraft } from "./types";
 
 type IntroChapter = NonNullable<IntroContent["chapters"]>[number];
@@ -43,6 +48,17 @@ export function IntroSlidesEditor({
   function setChapters(next: IntroChapter[]) {
     if (!intro) return;
     update({ introContent: { ...intro, chapters: next } as IntroContent });
+  }
+
+  function getAccent(key: string): SlideAccent {
+    return (intro?.slideStyles?.[key]?.accent as SlideAccent) ?? "default";
+  }
+  function setAccent(key: string, accent: SlideAccent) {
+    if (!intro) return;
+    const next = { ...(intro.slideStyles ?? {}) };
+    if (accent === "default") delete next[key];
+    else next[key] = { ...(next[key] ?? {}), accent };
+    update({ introContent: { ...intro, slideStyles: next } as IntroContent });
   }
 
   if (!intro) {
@@ -99,13 +115,29 @@ export function IntroSlidesEditor({
         <p className="text-sm rounded-xl bg-red-50 text-red-700 px-3 py-2">{error}</p>
       )}
 
-      <SlideCard label="Welcome" position="1" theme="welcome">
+      <SlideCard
+        label="Cover"
+        position="1"
+        theme="welcome"
+        accent={getAccent("welcome")}
+        onAccent={(a) => setAccent("welcome", a)}
+      >
         <p className="text-[10px] uppercase tracking-[0.28em] text-white/55">For {firstName}</p>
         <EmojiField
           value={intro.welcome.emoji}
           onChange={(v) => patchIntro({ welcome: { ...intro.welcome, emoji: v } })}
         />
-        <h3 className="serif text-3xl text-white">{firstName}</h3>
+        <div className="serif text-3xl">
+          <InlineText
+            value={intro.welcome.title ?? ""}
+            onChange={(v) => patchIntro({ welcome: { ...intro.welcome, title: v } })}
+            placeholder={firstName}
+            maxLength={40}
+            tone="dark"
+            className="serif text-3xl"
+            ariaLabel="Cover title"
+          />
+        </div>
         <InlineSlideText
           value={intro.welcome.subtext}
           onChange={(v) => patchIntro({ welcome: { ...intro.welcome, subtext: v } })}
@@ -116,7 +148,13 @@ export function IntroSlidesEditor({
         />
       </SlideCard>
 
-      <SlideCard label="Occasion" position="2" theme="occasion">
+      <SlideCard
+        label="Occasion"
+        position="2"
+        theme="occasion"
+        accent={getAccent("occasion")}
+        onAccent={(a) => setAccent("occasion", a)}
+      >
         <EmojiField
           value={intro.occasion.emoji}
           onChange={(v) => patchIntro({ occasion: { ...intro.occasion, emoji: v } })}
@@ -138,7 +176,13 @@ export function IntroSlidesEditor({
         />
       </SlideCard>
 
-      <SlideCard label="Together" position="3" theme="together">
+      <SlideCard
+        label="Together"
+        position="3"
+        theme="together"
+        accent={getAccent("together")}
+        onAccent={(a) => setAccent("together", a)}
+      >
         <InlineSlideText
           value={intro.together.headline}
           onChange={(v) => patchIntro({ together: { ...intro.together, headline: v } })}
@@ -161,6 +205,8 @@ export function IntroSlidesEditor({
           label="About them"
           position="4"
           theme="about"
+          accent={getAccent("about")}
+          onAccent={(a) => setAccent("about", a)}
           onRemove={() => patchIntro({ about: undefined })}
         >
           <InlineSlideText
@@ -233,6 +279,8 @@ export function IntroSlidesEditor({
           label={`Chapter ${i + 1}`}
           position={`${(intro.about ? 5 : 4) + i}`}
           theme="chapter"
+          accent={getAccent(`chapter-${i}`)}
+          onAccent={(a) => setAccent(`chapter-${i}`, a)}
           onRemove={() => {
             const next = (intro.chapters ?? []).filter((_, j) => j !== i);
             setChapters(next);
@@ -288,7 +336,13 @@ export function IntroSlidesEditor({
         </button>
       )}
 
-      <SlideCard label="Ready" position={`${countBefore(intro, "ready")}`} theme="ready">
+      <SlideCard
+        label="Ready"
+        position={`${countBefore(intro, "ready")}`}
+        theme="ready"
+        accent={getAccent("ready")}
+        onAccent={(a) => setAccent("ready", a)}
+      >
         <InlineSlideText
           value={intro.ready.headline}
           onChange={(v) => patchIntro({ ready: { ...intro.ready, headline: v } })}
@@ -306,7 +360,13 @@ export function IntroSlidesEditor({
         />
       </SlideCard>
 
-      <SlideCard label="Final" position={`${countBefore(intro, "final")}`} theme="final">
+      <SlideCard
+        label="Final"
+        position={`${countBefore(intro, "final")}`}
+        theme="final"
+        accent={getAccent("final")}
+        onAccent={(a) => setAccent("final", a)}
+      >
         <EmojiField
           value={intro.final.emoji ?? ""}
           onChange={(v) => patchIntro({ final: { ...intro.final, emoji: v } })}
@@ -347,12 +407,16 @@ function SlideCard({
   label,
   position,
   theme,
+  accent,
+  onAccent,
   onRemove,
   children,
 }: {
   label: string;
   position: string;
   theme: "welcome" | "occasion" | "together" | "about" | "chapter" | "ready" | "final";
+  accent: SlideAccent;
+  onAccent: (a: SlideAccent) => void;
   onRemove?: () => void;
   children: React.ReactNode;
 }) {
@@ -372,9 +436,10 @@ function SlideCard({
     final:
       "conic-gradient(from 200deg at 50% 50%, var(--mesh-b), var(--mesh-d), var(--mesh-c), var(--mesh-b))",
   };
+  const bg = slideAccentBg(accent) ?? tints[theme];
   return (
     <div className="relative rounded-3xl2 overflow-hidden shadow-card">
-      <div className="absolute inset-0" style={{ background: tints[theme] }} aria-hidden />
+      <div className="absolute inset-0" style={{ background: bg }} aria-hidden />
       <div className="absolute inset-0 bg-black/35 pointer-events-none" aria-hidden />
       <div className="relative p-5 space-y-3 text-white">
         <div className="flex items-center justify-between">
@@ -392,7 +457,45 @@ function SlideCard({
           )}
         </div>
         {children}
+        <AccentRow accent={accent} onAccent={onAccent} />
       </div>
+    </div>
+  );
+}
+
+function AccentRow({
+  accent,
+  onAccent,
+}: {
+  accent: SlideAccent;
+  onAccent: (a: SlideAccent) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 pt-2 mt-1 border-t border-white/15">
+      <span className="text-[10px] uppercase tracking-widest text-white/50 mr-0.5">Colour</span>
+      {SLIDE_ACCENTS.map((a) => {
+        const isSel = a.id === accent;
+        return (
+          <button
+            key={a.id}
+            type="button"
+            onClick={() => onAccent(a.id)}
+            title={a.label}
+            aria-label={a.label}
+            aria-pressed={isSel}
+            className={`size-6 rounded-full transition grid place-items-center ${
+              isSel ? "ring-2 ring-white ring-offset-1 ring-offset-black/30" : "ring-1 ring-white/30 hover:ring-white/60"
+            }`}
+            style={{
+              background: a.cssVar ?? "transparent",
+            }}
+          >
+            {a.id === "default" && (
+              <span className="text-[9px] font-medium text-white/80">A</span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

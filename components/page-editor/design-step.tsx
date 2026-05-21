@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Layout, Sparkles } from "lucide-react";
+import { ArrowLeft, Eye, Layout, Sparkles } from "lucide-react";
 import { MusicPicker } from "@/components/music-picker";
 import type { MusicTrack } from "@/lib/music";
 import { LandingPreview } from "./landing-preview";
+import { PreviewModal } from "./preview-modal";
 import { SlideshowPreview } from "./slideshow-preview";
 import { ThemePickerButton } from "./theme-picker-button";
 import type { PageDraft } from "./types";
@@ -54,9 +55,13 @@ export function DesignStep({
   onAddTrack: (track: MusicTrack) => void;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
+  const [previewing, setPreviewing] = useState(false);
 
   return (
     <div className="min-h-[100dvh] bg-white">
+      {previewing && (
+        <PreviewModal draft={draft} tracks={tracks} onClose={() => setPreviewing(false)} />
+      )}
       {/* Top bar */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-ink/8">
         <div className="mx-auto max-w-6xl px-4 md:px-10 py-3 flex items-center gap-3">
@@ -83,6 +88,14 @@ export function DesignStep({
             </TabButton>
           </div>
 
+          <button
+            type="button"
+            onClick={() => setPreviewing(true)}
+            className="btn-outline text-sm py-2.5 px-3 inline-flex items-center gap-1.5"
+          >
+            <Eye className="size-4" />
+            <span className="hidden sm:inline">Preview</span>
+          </button>
           <button
             type="button"
             onClick={primary.onClick}
