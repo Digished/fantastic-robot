@@ -66,11 +66,15 @@ function FailureView({ slug, reason }: { slug: string; reason: string }) {
       <div className="card text-center max-w-sm">
         <h1 className="serif text-3xl text-ink">Payment incomplete</h1>
         <p className="text-ink/60 mt-2 text-sm">{reason}</p>
-        <Link href={`/c/${slug}/post-payment`} className="btn-outline w-full mt-6 inline-flex">
-          Try verifying again
-        </Link>
-        <Link href="/dashboard" className="text-sm text-ink/55 hover:opacity-70 mt-4 inline-block">
+        <p className="text-xs text-ink/45 mt-4">
+          Don&apos;t worry — your page is saved. You&apos;ll find it on your dashboard and can
+          finish payment whenever you&apos;re ready.
+        </p>
+        <Link href="/dashboard" className="btn-accent w-full mt-6 inline-flex justify-center">
           Back to dashboard
+        </Link>
+        <Link href={`/c/${slug}`} className="text-sm text-ink/55 hover:opacity-70 mt-4 inline-block">
+          Go to the page instead
         </Link>
       </div>
     </main>

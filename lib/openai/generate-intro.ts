@@ -6,10 +6,16 @@ export type IntroChapter = {
   emoji?: string;
 };
 
+// Optional creator-set styling, layered on top of the AI copy. These are not
+// produced by the model — they're set in the WYSIWYG editor and stored in the
+// same intro_content JSONB.
+export type SlideStyleMap = Record<string, { accent?: string }>;
+
 export type IntroContent = {
   welcome: {
     subtext: string;
     emoji: string;
+    title?: string; // creator override for the cover headline (defaults to name)
   };
   occasion: {
     title: string;
@@ -34,6 +40,7 @@ export type IntroContent = {
     subtext: string;
     emoji?: string;
   };
+  slideStyles?: SlideStyleMap;
 };
 
 const SYSTEM_PROMPT = `You write short, warm, personalised copy for a digital celebration surprise page.
@@ -69,8 +76,8 @@ Output ONLY valid JSON with this exact structure:
     }
   ],
   "ready": {
-    "headline": "string (≤55 chars) — the anticipation before they dive in",
-    "subtext": "string (≤80 chars) — a warm, personal send-off"
+    "headline": "string (≤55 chars) — name what they're about to relive, tied to THIS occasion (e.g. their birthday / graduation / send-off). Never a generic 'get ready to celebrate'.",
+    "subtext": "string (≤80 chars) — a warm, personal send-off into the memories that follow"
   },
   "final": {
     "headline": "string (≤55 chars) — the closing statement after every memory has been seen",
@@ -85,6 +92,7 @@ Rules:
 - "chapters" should have 0–4 items. Include chapters ONLY if you can draw them from the description (specific passions, qualities, memorable details). Skip if generic.
 - Together with the fixed slides, total slide count must stay at or under 10.
 - The "final" slide ALWAYS appears — it is the parting statement after the recipient has seen everything.
+- The "ready" slide must feel specific to the occasion and to what plays next (their photos and memories). It is NOT a hype line — never write "get ready for the celebration" or anything that asks "what celebration?". Anchor it to the event type and the person.
 - Never use the words: wonderful, amazing, truly, really, special, tapestry, symphony, mosaic, kaleidoscope, journey, testament, chapter, narrative (find fresher, more specific words).
 - Never reference other people sending messages or friends gathering — keep it between this page and the recipient.
 - Avoid heart emojis (❤️, 💕, 💖) and generic party emojis. Choose emojis that feel specific to this person.

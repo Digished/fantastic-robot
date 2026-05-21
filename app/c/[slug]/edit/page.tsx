@@ -1,10 +1,11 @@
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { EditForm } from "./form";
 import { MessagesManager } from "./messages-manager";
 import { isTheme, type Theme } from "@/lib/themes";
-import { isMusicTrack } from "@/lib/music";
+import { getEffectiveTracks } from "@/lib/music/server";
+import { findTrack } from "@/lib/music";
+import type { IntroContent } from "@/lib/openai/generate-intro";
 
 export default async function EditPage({
   params,
@@ -16,7 +17,7 @@ export default async function EditPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, title, recipient_name, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, creator_id, theme, background_music, gallery_images")
+    .select("id, slug, title, recipient_name, event_type, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, creator_id, theme, background_music, gallery_images, intro_content")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) notFound();
@@ -30,37 +31,43 @@ export default async function EditPage({
     .order("created_at", { ascending: false });
 
   const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
+  const tracks = await getEffectiveTracks();
+  // background_music may carry an `#clip=` suffix and/or be an uploaded track
+  // that isn't in the library — keep the full stored value if it resolves.
+  const savedMusic = findTrack(page.background_music, tracks)
+    ? page.background_music
+    : null;
 
   return (
-    <main className="min-h-[100dvh] bg-white pb-32">
-      <div className="mx-auto w-full max-w-2xl px-5 pt-6">
-        <Link href={`/c/${slug}`} className="text-ink/55 text-sm hover:text-ink transition">← Back to page</Link>
-        <h1 className="serif text-5xl text-ink mt-6">Edit page</h1>
-        <p className="text-ink/60 mt-3 text-sm">
-          For {page.recipient_name}. Recipient bank details are locked.
-        </p>
+    <>
+      <EditForm
+        slug={slug}
+        tracks={tracks}
+        initial={{
+          title: page.title,
+          messageFromCreator: page.message_from_creator ?? "",
+          tagline: page.tagline ?? "",
+          celebrantDescription: page.celebrant_description ?? "",
+          coverPhotoPath: page.cover_photo_path ?? null,
+          theme,
+          backgroundMusic: savedMusic,
+          recipientName: page.recipient_name,
+          eventType: page.event_type,
+          celebrationDate: page.celebration_date,
+          introContent: (page.intro_content as IntroContent | null) ?? null,
+          galleryImages: (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [],
+        }}
+      />
 
-        <EditForm
-          slug={slug}
-          initial={{
-            title: page.title,
-            messageFromCreator: page.message_from_creator ?? "",
-            tagline: page.tagline ?? "",
-            celebrantDescription: page.celebrant_description ?? "",
-            coverPhotoPath: page.cover_photo_path ?? null,
-            theme,
-            backgroundMusic: isMusicTrack(page.background_music) ? page.background_music : null,
-            recipientName: page.recipient_name,
-            galleryImages: (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [],
-          }}
-        />
-
-        <section className="mt-12">
+      <section className="bg-white border-t border-ink/8 py-12">
+        <div className="mx-auto w-full max-w-3xl px-5">
           <h2 className="serif text-3xl text-ink">Wall posts</h2>
-          <p className="text-ink/55 text-sm mt-1">{messages?.length ?? 0} cards.</p>
+          <p className="text-ink/55 text-sm mt-1">
+            {messages?.length ?? 0} cards · remove anything that doesn&apos;t fit.
+          </p>
           <MessagesManager slug={slug} messages={messages ?? []} />
-        </section>
-      </div>
-    </main>
+        </div>
+      </section>
+    </>
   );
 }
