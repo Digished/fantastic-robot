@@ -17,6 +17,7 @@ export function BankCombobox({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [viewport, setViewport] = useState<{ top: number; height: number } | null>(null);
 
   const selected = banks.find((b) => b.code === value) ?? null;
 
@@ -25,6 +26,23 @@ export function BankCombobox({
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  // Keep the overlay aligned with the visual viewport so the modal stays
+  // above the on-screen keyboard on mobile.
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setViewport({ top: vv.offsetTop, height: vv.height });
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      setViewport(null);
+    };
   }, [open]);
 
   function close() {
@@ -60,10 +78,15 @@ export function BankCombobox({
       {open && (
         <Portal>
           <div
-            className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-ink/50 backdrop-blur-sm"
+            className="fixed left-0 right-0 z-[60] flex items-end sm:items-center justify-center bg-ink/50 backdrop-blur-sm"
+            style={
+              viewport
+                ? { top: viewport.top, height: viewport.height }
+                : { top: 0, bottom: 0 }
+            }
             onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}
           >
-            <div className="w-full sm:max-w-md bg-[#FDFCFB] rounded-t-[28px] sm:rounded-[28px] shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[75vh]">
+            <div className="w-full sm:max-w-md bg-[#FDFCFB] rounded-t-[28px] sm:rounded-[28px] shadow-2xl flex flex-col max-h-[85%] sm:max-h-[75vh]">
               <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
                 <div className="w-10 h-1 rounded-full bg-ink/15" />
               </div>
