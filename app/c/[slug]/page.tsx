@@ -17,6 +17,7 @@ import { contentWindowOpen, contentWindowClosesAt } from "@/lib/celebration-wind
 import { NavLoadingLink } from "@/components/nav-loading-link";
 import { CompletePaymentBanner } from "./complete-payment-banner";
 import { AudienceActions } from "@/components/page-editor/audience-actions";
+import { InfoButton } from "@/components/page-editor/info-button";
 import { getCreatorLabel } from "@/lib/creator";
 
 export const dynamic = "force-dynamic";
@@ -196,9 +197,26 @@ export default async function WallPage({
                 )}
               </div>
               <div className="text-right">
-                <p className="text-[10px] uppercase tracking-widest text-ink/50">
-                  {closed ? (claimable ? "Celebration" : "Closing") : "Closes in"}
-                </p>
+                <div className="flex items-center justify-end gap-1.5">
+                  <p className="text-[10px] uppercase tracking-widest text-ink/50">
+                    {closed ? (claimable ? "Celebration" : "Closing") : "Closes in"}
+                  </p>
+                  {!isCreator && !closed && (
+                    <InfoButton title="Why contributions close early" label="Why?">
+                      <p>
+                        Contributions close <strong>72 hours before</strong> {firstName}&apos;s
+                        celebration. That window gives time to settle the cash gift
+                        cleanly and to curate the wall of messages and photos so
+                        nothing arrives mid-celebration.
+                      </p>
+                      <p>
+                        Wall messages and photos stay open longer — until about an
+                        hour before — so you can keep sending love right up to the
+                        day.
+                      </p>
+                    </InfoButton>
+                  )}
+                </div>
                 <p className="serif text-3xl text-ink mt-1.5">
                   {closed && claimable ? "today" : timeUntil(page.deadline_at)}
                 </p>

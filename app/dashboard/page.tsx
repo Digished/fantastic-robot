@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { logout } from "@/app/login/actions";
 import { formatNaira } from "@/lib/utils";
 import { formatDate } from "@/lib/time";
 import { DraftCard, EmptyState } from "./draft-card";
+import { DeleteUnpaidButton } from "./delete-unpaid-button";
 import { rehydrateDraft, type SavedDraft } from "@/lib/draft/draft";
 
 function coverUrl(path: string | null | undefined) {
@@ -50,6 +51,14 @@ export default async function Dashboard() {
             <Link href="/create" className="btn-accent shadow-soft hidden md:inline-flex gap-2">
               <Plus className="size-4" /> New celebration
             </Link>
+            <Link
+              href="/dashboard/settings"
+              className="text-sm text-ink/55 hover:text-ink transition inline-flex items-center gap-1.5"
+              title="Profile settings"
+            >
+              <Settings className="size-4" />
+              <span className="hidden md:inline">Settings</span>
+            </Link>
             <form action={logout}>
               <button className="text-sm text-ink/55 hover:text-ink transition">Sign out</button>
             </form>
@@ -84,9 +93,12 @@ export default async function Dashboard() {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
                     {p.is_paid_for_creation === false ? (
-                      <span className="absolute top-3 right-3 bg-amber-500 text-white rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest">
-                        Awaiting payment
-                      </span>
+                      <>
+                        <span className="absolute top-3 right-3 bg-amber-500 text-white rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest">
+                          Awaiting payment
+                        </span>
+                        <DeleteUnpaidButton slug={p.slug} title={p.title} />
+                      </>
                     ) : p.status !== "active" && (
                       <span className="absolute top-3 right-3 glass-dark text-white rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest">
                         {p.status}
