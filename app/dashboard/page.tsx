@@ -6,6 +6,7 @@ import { logout } from "@/app/login/actions";
 import { formatNaira } from "@/lib/utils";
 import { formatDate } from "@/lib/time";
 import { DraftCard, EmptyState } from "./draft-card";
+import { rehydrateDraft, type SavedDraft } from "@/lib/draft/draft";
 
 function coverUrl(path: string | null | undefined) {
   if (!path) return null;
@@ -17,11 +18,26 @@ export default async function Dashboard() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/dashboard");
 
-  const { data: pages } = await supabase
-    .from("celebrations")
-    .select("id, slug, title, recipient_name, event_type, celebration_date, status, total_raised_kobo, contributor_count, theme, cover_photo_path, is_paid_for_creation")
-    .eq("creator_id", user.id)
-    .order("created_at", { ascending: false });
+  const [pagesQ, draftQ] = await Promise.all([
+    supabase
+      .from("celebrations")
+      .select("id, slug, title, recipient_name, event_type, celebration_date, status, total_raised_kobo, contributor_count, theme, cover_photo_path, is_paid_for_creation")
+      .eq("creator_id", user.id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("page_drafts")
+      .select("data, updated_at")
+      .eq("creator_id", user.id)
+      .maybeSingle(),
+  ]);
+  const pages = pagesQ.data;
+  let draft: SavedDraft | null = null;
+  if (draftQ.data?.data) {
+    draft = rehydrateDraft({
+      ...(draftQ.data.data as Omit<SavedDraft, "updatedAt">),
+      updatedAt: new Date(draftQ.data.updated_at).getTime(),
+    });
+  }
 
   return (
     <main className="min-h-[100dvh] bg-white pb-28">
@@ -46,8 +62,8 @@ export default async function Dashboard() {
           </h1>
 
           <div className="mt-7 md:mt-8 grid sm:grid-cols-2 gap-4">
-            <DraftCard />
-            <EmptyState hasPages={!!pages?.length} />
+            {draft && <DraftCard draft={draft.draft} updatedAt={draft.updatedAt} />}
+            <EmptyState hasPages={!!pages?.length} hasDraft={!!draft} />
             {pages?.map((p, i) => {
               const cover = coverUrl(p.cover_photo_path);
               return (

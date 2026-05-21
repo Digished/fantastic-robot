@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Pencil, Plus, X } from "lucide-react";
-import { clearLocalDraft, loadLocalDraft, type SavedDraft } from "@/lib/draft/local-draft";
-import { eventLabel } from "@/components/page-editor/types";
+import { eventLabel, type PageDraft } from "@/components/page-editor/types";
 
 function coverUrl(path: string | null | undefined) {
   if (!path) return null;
@@ -22,56 +21,31 @@ function relativeTime(ms: number) {
   return `${days}d ago`;
 }
 
-export function DraftCard() {
-  const [saved, setSaved] = useState<SavedDraft | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    setSaved(loadLocalDraft());
-    setHydrated(true);
-  }, []);
-
-  if (!hydrated || !saved) return null;
-  return <DraftCardInner saved={saved} setSaved={setSaved} />;
-}
-
-/** Empty state shown only when the user has no published pages AND no draft.
- *  Lives here so it can read localStorage alongside the draft card. */
-export function EmptyState({ hasPages }: { hasPages: boolean }) {
-  const [hasDraft, setHasDraft] = useState<boolean | null>(null);
-  useEffect(() => {
-    setHasDraft(!!loadLocalDraft());
-  }, []);
-  if (hasPages) return null;
-  if (hasDraft === null || hasDraft) return null;
-  return (
-    <div className="sm:col-span-2 card text-center py-12">
-      <p className="serif text-3xl text-ink">Nothing here yet.</p>
-      <p className="text-ink/55 mt-3 text-sm">Build a beautiful page in two minutes.</p>
-      <Link href="/create" className="btn-accent mt-6 inline-flex">
-        <Plus className="size-4 mr-1" /> Create your first page
-      </Link>
-    </div>
-  );
-}
-
-function DraftCardInner({
-  saved,
-  setSaved,
+export function DraftCard({
+  draft,
+  updatedAt,
 }: {
-  saved: SavedDraft;
-  setSaved: (v: SavedDraft | null) => void;
+  draft: PageDraft;
+  updatedAt: number;
 }) {
-  const { draft, updatedAt } = saved;
+  const [discarded, setDiscarded] = useState(false);
+  const [pending, setPending] = useState(false);
+  if (discarded) return null;
+
   const cover = coverUrl(draft.coverPath);
   const title = draft.title?.trim() || draft.recipientName?.trim() || "Untitled draft";
 
-  function discard(e: React.MouseEvent) {
+  async function discard(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
     if (!window.confirm("Discard this draft? This can't be undone.")) return;
-    clearLocalDraft();
-    setSaved(null);
+    setPending(true);
+    try {
+      await fetch("/api/draft", { method: "DELETE" });
+      setDiscarded(true);
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -94,7 +68,8 @@ function DraftCardInner({
         <button
           type="button"
           onClick={discard}
-          className="absolute top-3 left-3 grid size-7 place-items-center rounded-full bg-white/85 text-ink/60 hover:bg-white hover:text-ink transition"
+          disabled={pending}
+          className="absolute top-3 left-3 grid size-7 place-items-center rounded-full bg-white/85 text-ink/60 hover:bg-white hover:text-ink transition disabled:opacity-50"
           aria-label="Discard draft"
         >
           <X className="size-3.5" />
@@ -116,5 +91,19 @@ function DraftCardInner({
         <p className="text-xs text-ink/45">Saved {relativeTime(updatedAt)}</p>
       </div>
     </Link>
+  );
+}
+
+/** Shown only when the user has no published pages AND no saved draft. */
+export function EmptyState({ hasPages, hasDraft }: { hasPages: boolean; hasDraft: boolean }) {
+  if (hasPages || hasDraft) return null;
+  return (
+    <div className="sm:col-span-2 card text-center py-12">
+      <p className="serif text-3xl text-ink">Nothing here yet.</p>
+      <p className="text-ink/55 mt-3 text-sm">Build a beautiful page in two minutes.</p>
+      <Link href="/create" className="btn-accent mt-6 inline-flex">
+        <Plus className="size-4 mr-1" /> Create your first page
+      </Link>
+    </div>
   );
 }
