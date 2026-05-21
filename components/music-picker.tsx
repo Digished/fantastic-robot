@@ -1,23 +1,83 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Music, Pause, Play, VolumeX, X } from "lucide-react";
-import type { MusicTrack } from "@/lib/music";
+import { ChevronDown, Loader2, Music, Pause, Play, Upload, VolumeX, X } from "lucide-react";
+import {
+  makeUploadedTrack,
+  uploadedTrackId,
+  type MusicTrack,
+} from "@/lib/music";
+import { uploadWithProgress } from "@/lib/upload";
+
+const AUDIO_EXTS = ["mp3", "m4a", "aac", "ogg", "wav"];
 
 export function MusicPicker({
   name = "backgroundMusic",
   value,
   onChange,
   tracks,
+  allowUpload = false,
+  onAddTrack,
+  compact = false,
 }: {
   name?: string;
   value: string | null;
   onChange: (v: string | null) => void;
   tracks: ReadonlyArray<MusicTrack>;
+  /** When true, shows an "Upload your own song" control inside the picker. */
+  allowUpload?: boolean;
+  /** Called with the uploaded track so the parent can add it to its list. */
+  onAddTrack?: (track: MusicTrack) => void;
+  /** Renders just the trigger pill (no "Background music" label above). */
+  compact?: boolean;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const uploadRef = useRef<HTMLInputElement | null>(null);
   const [previewing, setPreviewing] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadPct, setUploadPct] = useState(0);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  async function onUploadFile(file: File) {
+    setUploadError(null);
+    if (!file.type.startsWith("audio/")) {
+      setUploadError("Please choose an audio file.");
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setUploadError("Song must be under 15 MB.");
+      return;
+    }
+    const rawExt = (file.name.split(".").pop() ?? "mp3").toLowerCase();
+    const ext = AUDIO_EXTS.includes(rawExt) ? rawExt : "mp3";
+    setUploading(true);
+    setUploadPct(0);
+    try {
+      const signRes = await fetch("/api/media/sign-music", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ext }),
+      });
+      const sign = await signRes.json();
+      if (!signRes.ok) throw new Error(sign.error ?? "Upload failed");
+      await uploadWithProgress({
+        url: sign.signedUrl,
+        file,
+        contentType: file.type,
+        onProgress: setUploadPct,
+      });
+      const label = file.name.replace(/\.[^.]+$/, "").slice(0, 60);
+      const track = makeUploadedTrack(uploadedTrackId(sign.path), label);
+      onAddTrack?.(track);
+      onChange(track.id);
+      setUploadPct(100);
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   useEffect(() => {
     return () => { audioRef.current?.pause(); };
@@ -59,28 +119,50 @@ export function MusicPicker({
       {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
       <audio ref={audioRef} onEnded={() => setPreviewing(null)} className="hidden" />
 
-      <div className="space-y-1.5">
-        <p className="label">Background music</p>
+      {compact ? (
         <button
           type="button"
           data-no-loading="true"
           onClick={() => setOpen(true)}
-          className="w-full flex items-center gap-3 rounded-2xl border border-ink/15 bg-white px-3.5 py-3 hover:border-ink/30 transition text-left"
+          className="w-full flex items-center gap-2.5 rounded-2xl border border-ink/15 bg-white px-3 py-2.5 hover:border-ink/30 transition text-left"
         >
-          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink/6 text-ink/50">
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-ink/6 text-ink/50">
             {selected ? <Music className="size-3.5" /> : <VolumeX className="size-3.5" />}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-medium text-ink leading-tight">
-              {selected ? selected.label : "No music"}
+            <span className="flex items-center gap-1 text-[10px] uppercase tracking-widest text-ink/45 leading-none">
+              Music
             </span>
-            <span className="block truncate text-xs text-ink/45 mt-0.5">
-              {selected ? selected.mood : "Silent slideshow"}
+            <span className="block truncate text-sm font-medium text-ink leading-tight mt-0.5">
+              {selected ? selected.label : "No music"}
             </span>
           </span>
           <ChevronDown className="size-4 shrink-0 text-ink/30" />
         </button>
-      </div>
+      ) : (
+        <div className="space-y-1.5">
+          <p className="label">Background music</p>
+          <button
+            type="button"
+            data-no-loading="true"
+            onClick={() => setOpen(true)}
+            className="w-full flex items-center gap-3 rounded-2xl border border-ink/15 bg-white px-3.5 py-3 hover:border-ink/30 transition text-left"
+          >
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink/6 text-ink/50">
+              {selected ? <Music className="size-3.5" /> : <VolumeX className="size-3.5" />}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-ink leading-tight">
+                {selected ? selected.label : "No music"}
+              </span>
+              <span className="block truncate text-xs text-ink/45 mt-0.5">
+                {selected ? selected.mood : "Silent slideshow"}
+              </span>
+            </span>
+            <ChevronDown className="size-4 shrink-0 text-ink/30" />
+          </button>
+        </div>
+      )}
 
       {open && (
         <div
@@ -108,6 +190,38 @@ export function MusicPicker({
             </div>
 
             <div className="h-px bg-ink/8 mx-5 shrink-0" />
+
+            {allowUpload && (
+              <div className="px-5 pt-4 shrink-0">
+                <input
+                  ref={uploadRef}
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && onUploadFile(e.target.files[0])}
+                />
+                <button
+                  type="button"
+                  data-no-loading="true"
+                  onClick={() => uploadRef.current?.click()}
+                  disabled={uploading}
+                  className="w-full flex items-center gap-3 rounded-2xl border-2 border-dashed border-[var(--accent)]/35 bg-[var(--accent-soft)]/40 px-3.5 py-3 text-left hover:bg-[var(--accent-soft)]/70 transition disabled:opacity-60"
+                >
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[var(--accent)]/15 text-[var(--accent)]">
+                    {uploading ? <Loader2 className="size-3.5 animate-spin" /> : <Upload className="size-3.5" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-ink leading-tight">
+                      {uploading ? `Uploading… ${uploadPct}%` : "Upload your own song"}
+                    </span>
+                    <span className="block truncate text-xs text-ink/45 mt-0.5">
+                      MP3, M4A, OGG or WAV · up to 15 MB
+                    </span>
+                  </span>
+                </button>
+                {uploadError && <p className="text-xs text-red-600 mt-2">{uploadError}</p>}
+              </div>
+            )}
 
             <div className="overflow-y-auto px-5 py-4 space-y-1.5">
               <button

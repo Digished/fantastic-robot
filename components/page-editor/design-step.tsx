@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { ArrowLeft, Layout, Sparkles } from "lucide-react";
-import { ThemePicker } from "@/components/theme-picker";
 import { MusicPicker } from "@/components/music-picker";
 import type { MusicTrack } from "@/lib/music";
 import { LandingPreview } from "./landing-preview";
 import { SlideshowPreview } from "./slideshow-preview";
+import { ThemePickerButton } from "./theme-picker-button";
 import type { PageDraft } from "./types";
 
 type Tab = "landing" | "slideshow";
@@ -30,6 +30,7 @@ export function DesignStep({
   onGenerateIntro,
   generatingIntro,
   introError,
+  onAddTrack,
 }: {
   draft: PageDraft;
   update: (patch: Partial<PageDraft>) => void;
@@ -50,6 +51,7 @@ export function DesignStep({
   onGenerateIntro: () => Promise<void>;
   generatingIntro: boolean;
   introError: string | null;
+  onAddTrack: (track: MusicTrack) => void;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
 
@@ -91,15 +93,20 @@ export function DesignStep({
           </button>
         </div>
 
-        {/* Style toolbar */}
+        {/* Style toolbar — compact pills that open popups */}
         <div className="border-t border-ink/8 bg-white/95">
-          <div className="mx-auto max-w-6xl px-4 md:px-10 py-3 grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-3 items-end">
-            <ThemePicker value={draft.theme} onChange={(v) => update({ theme: v })} />
-            <MusicPicker
-              value={draft.backgroundMusic}
-              onChange={(v) => update({ backgroundMusic: v })}
-              tracks={tracks}
-            />
+          <div className="mx-auto max-w-6xl px-4 md:px-10 py-2.5 flex flex-wrap items-center gap-2.5">
+            <ThemePickerButton value={draft.theme} onChange={(v) => update({ theme: v })} />
+            <div className="flex-1 min-w-[180px] max-w-xs">
+              <MusicPicker
+                compact
+                allowUpload
+                value={draft.backgroundMusic}
+                onChange={(v) => update({ backgroundMusic: v })}
+                onAddTrack={onAddTrack}
+                tracks={tracks}
+              />
+            </div>
           </div>
         </div>
 

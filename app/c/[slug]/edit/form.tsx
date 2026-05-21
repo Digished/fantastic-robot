@@ -4,7 +4,11 @@ import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { editCelebration, type EditState } from "./actions";
 import { DesignStep } from "@/components/page-editor/design-step";
-import type { MusicTrack } from "@/lib/music";
+import {
+  isValidUploadedTrackId,
+  makeUploadedTrack,
+  type MusicTrack,
+} from "@/lib/music";
 import type { Theme } from "@/lib/themes";
 import type { IntroContent, PageDraft } from "@/components/page-editor/types";
 
@@ -15,7 +19,7 @@ function publicUrl(path: string) {
 export function EditForm({
   slug,
   initial,
-  tracks,
+  tracks: initialTracks,
 }: {
   slug: string;
   tracks: MusicTrack[];
@@ -37,6 +41,22 @@ export function EditForm({
   const router = useRouter();
   const action = editCelebration.bind(null, slug);
   const [state, dispatch, pending] = useActionState<EditState, FormData>(action, {});
+
+  // A previously uploaded song lives only in background_music; surface it in
+  // the picker list so it shows as selected and can be previewed.
+  const [tracks, setTracks] = useState<MusicTrack[]>(() => {
+    const id = initial.backgroundMusic;
+    if (id && isValidUploadedTrackId(id) && !initialTracks.some((t) => t.id === id)) {
+      return [...initialTracks, makeUploadedTrack(id)];
+    }
+    return initialTracks;
+  });
+
+  function addTrack(track: MusicTrack) {
+    setTracks((prev) =>
+      prev.some((t) => t.id === track.id) ? prev : [...prev, track],
+    );
+  }
 
   const [draft, setDraft] = useState<PageDraft>({
     title: initial.title,
@@ -135,6 +155,7 @@ export function EditForm({
       onGenerateIntro={generateIntro}
       generatingIntro={generatingIntro}
       introError={introError}
+      onAddTrack={addTrack}
       extrasBelow={
         <div className="rounded-3xl2 bg-white shadow-ring p-5 space-y-3">
           <div>

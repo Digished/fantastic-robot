@@ -8,6 +8,9 @@ import {
   BUILTIN_TRACKS,
   builtinSrc,
   customSrc,
+  isUploadedTrackId,
+  isValidUploadedTrackId,
+  makeUploadedTrack,
   type MusicTrack,
 } from "@/lib/music";
 
@@ -50,6 +53,8 @@ export async function resolveSavedTrackId(
   id: string | null | undefined,
 ): Promise<string | null> {
   if (!id) return null;
+  // Per-page uploaded songs aren't in the library; validate the path shape.
+  if (isUploadedTrackId(id)) return isValidUploadedTrackId(id) ? id : null;
   const tracks = await getEffectiveTracks();
   return tracks.some((t) => t.id === id) ? id : null;
 }
@@ -63,6 +68,9 @@ export async function resolveSavedTrack(
   id: string | null | undefined,
 ): Promise<MusicTrack | null> {
   if (!id) return null;
+  if (isUploadedTrackId(id)) {
+    return isValidUploadedTrackId(id) ? makeUploadedTrack(id) : null;
+  }
   const tracks = await getEffectiveTracks();
   return tracks.find((t) => t.id === id) ?? null;
 }

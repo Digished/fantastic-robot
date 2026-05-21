@@ -13,7 +13,7 @@ type Step = "details" | "design";
 
 export function CreateForm({
   banks,
-  tracks,
+  tracks: initialTracks,
 }: {
   banks: Bank[];
   tracks: MusicTrack[];
@@ -21,6 +21,13 @@ export function CreateForm({
   const [step, setStep] = useState<Step>("details");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [tracks, setTracks] = useState<MusicTrack[]>(initialTracks);
+
+  function addTrack(track: MusicTrack) {
+    setTracks((prev) =>
+      prev.some((t) => t.id === track.id) ? prev : [...prev, track],
+    );
+  }
 
   const [draft, setDraft] = useState<PageDraft>({
     title: "",
@@ -164,6 +171,7 @@ export function CreateForm({
       onGenerateIntro={generateIntro}
       generatingIntro={generatingIntro}
       introError={introError}
+      onAddTrack={addTrack}
     />
   );
 }

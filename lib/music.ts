@@ -54,10 +54,51 @@ export function customSrc(storagePath: string): string {
   return `${env.supabaseUrl()}/storage/v1/object/public/celebrations/${storagePath}`;
 }
 
+// ── Per-page uploaded songs ───────────────────────────────────────────────
+// A creator can upload their own track for a single celebration. Rather than
+// adding it to the shared library, we store it inline in `background_music`
+// as `upload:<storage_path>`. This keeps the song scoped to that one page and
+// avoids a schema change.
+export const UPLOAD_PREFIX = "upload:";
+// Storage path is constrained to the music/custom/ prefix so a tampered value
+// can't point the player at an arbitrary object.
+const SAFE_UPLOAD_PATH = /^music\/custom\/[A-Za-z0-9][A-Za-z0-9/_-]*\.[A-Za-z0-9]+$/;
+
+export function isUploadedTrackId(id: string | null | undefined): id is string {
+  return !!id && id.startsWith(UPLOAD_PREFIX);
+}
+
+export function uploadedTrackPath(id: string): string {
+  return id.slice(UPLOAD_PREFIX.length);
+}
+
+export function uploadedTrackId(storagePath: string): string {
+  return `${UPLOAD_PREFIX}${storagePath}`;
+}
+
+export function isValidUploadedTrackId(id: string): boolean {
+  return isUploadedTrackId(id) && SAFE_UPLOAD_PATH.test(uploadedTrackPath(id));
+}
+
+export function makeUploadedTrack(id: string, label?: string): MusicTrack {
+  return {
+    id,
+    label: label && label.trim() ? label.trim() : "Your uploaded song",
+    mood: "Your upload",
+    src: customSrc(uploadedTrackPath(id)),
+    source: "custom",
+  };
+}
+
 export function findTrack(
   id: string | null | undefined,
   tracks: ReadonlyArray<MusicTrack>,
 ): MusicTrack | null {
   if (!id) return null;
-  return tracks.find((t) => t.id === id) ?? null;
+  const found = tracks.find((t) => t.id === id);
+  if (found) return found;
+  // An uploaded track may not be in the passed list (e.g. fresh page load
+  // before it's merged in) — synthesise it from the id.
+  if (isValidUploadedTrackId(id)) return makeUploadedTrack(id);
+  return null;
 }
