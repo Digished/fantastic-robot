@@ -56,7 +56,7 @@ export function AudienceActions({
         <Portal>
           <div
             data-theme={theme}
-            className="fixed inset-0 z-[65] flex items-end sm:items-center justify-center bg-ink/55 backdrop-blur-sm backdrop-in"
+            className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-ink/55 backdrop-blur-sm backdrop-in"
             onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(null); }}
           >
             <div
