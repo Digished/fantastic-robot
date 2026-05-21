@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Search } from "lucide-react";
 
-export type Bank = { name: string; code: string };
+export type Bank = { name: string; code: string; slug?: string };
 
 export function BankCombobox({
   banks,
@@ -29,7 +29,16 @@ export function BankCombobox({
   }, []);
 
   const q = query.trim().toLowerCase();
-  const filtered = q ? banks.filter((b) => b.name.toLowerCase().includes(q)) : banks;
+  const filtered = q
+    ? banks
+        .filter((b) => b.name.toLowerCase().includes(q))
+        // Surface prefix matches ("gtb…") above mid-string matches.
+        .sort((a, b) => {
+          const ap = a.name.toLowerCase().startsWith(q) ? 0 : 1;
+          const bp = b.name.toLowerCase().startsWith(q) ? 0 : 1;
+          return ap - bp || a.name.localeCompare(b.name);
+        })
+    : banks;
 
   return (
     <div ref={wrapRef} className="relative">
@@ -64,7 +73,7 @@ export function BankCombobox({
               </li>
             )}
             {filtered.map((b) => (
-              <li key={b.code}>
+              <li key={b.slug ?? b.code}>
                 <button
                   type="button"
                   onClick={() => {

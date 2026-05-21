@@ -2,7 +2,12 @@ import { env } from "@/lib/env";
 
 const BASE = "https://api.paystack.co";
 
-type PaystackResponse<T> = { status: boolean; message: string; data: T };
+type PaystackResponse<T> = {
+  status: boolean;
+  message: string;
+  data: T;
+  meta?: { next?: string | null; previous?: string | null; perPage?: number };
+};
 
 async function paystackFetch<T>(
   path: string,
@@ -31,11 +36,28 @@ export class PaystackError extends Error {
 }
 
 export const paystack = {
+  // Paystack's Nigerian list runs to 200+ entries, so a single page silently
+  // drops most banks. Follow the cursor until exhausted and de-dupe by slug.
   async listBanks(country = "nigeria") {
-    return paystackFetch<Array<{ name: string; code: string; slug: string }>>(
-      `/bank?country=${country}&perPage=100`,
-      { method: "GET" },
-    );
+    type Row = { name: string; code: string; slug: string };
+    const banks: Row[] = [];
+    const seen = new Set<string>();
+    let next: string | null = null;
+    let guard = 0;
+
+    do {
+      const qs = new URLSearchParams({ country, perPage: "100" });
+      if (next) qs.set("next", next);
+      const json = await paystackFetch<Row[]>(`/bank?${qs.toString()}`, { method: "GET" });
+      for (const b of json.data) {
+        const key = b.slug || `${b.name}|${b.code}`;
+        if (!seen.has(key)) { seen.add(key); banks.push(b); }
+      }
+      next = json.meta?.next ?? null;
+      guard += 1;
+    } while (next && guard < 15);
+
+    return { status: true, message: "ok", data: banks } satisfies PaystackResponse<Row[]>;
   },
 
   async resolveAccount(account_number: string, bank_code: string) {

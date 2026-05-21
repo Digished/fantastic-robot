@@ -39,22 +39,23 @@ export function IntroSlidesEditor({
   const [history, setHistory] = useState<IntroContent[]>([]);
   const lastPushRef = useRef(0);
 
-  function commit(next: IntroContent) {
+  // `coalesce` groups a burst of typing into one undo step; discrete actions
+  // (accent swaps, add/remove) pass false so each is its own step.
+  function commit(next: IntroContent, coalesce = true) {
     const now = Date.now();
-    if (intro && now - lastPushRef.current > 700) {
+    if (intro && (!coalesce || now - lastPushRef.current > 700)) {
       setHistory((h) => [...h.slice(-49), intro]);
     }
-    lastPushRef.current = now;
+    lastPushRef.current = coalesce ? now : 0;
     update({ introContent: next });
   }
 
   function undo() {
-    setHistory((h) => {
-      if (h.length === 0) return h;
-      update({ introContent: h[h.length - 1] });
-      lastPushRef.current = 0; // next edit starts a fresh undo step
-      return h.slice(0, -1);
-    });
+    if (history.length === 0) return;
+    const prev = history[history.length - 1];
+    setHistory((h) => h.slice(0, -1));
+    update({ introContent: prev });
+    lastPushRef.current = 0; // next edit starts a fresh undo step
   }
 
   function patchIntro(patch: Partial<IntroContent>) {
@@ -62,15 +63,15 @@ export function IntroSlidesEditor({
     commit({ ...intro, ...patch } as IntroContent);
   }
 
-  function patchAbout(patch: Partial<NonNullable<IntroContent["about"]>>) {
+  function patchAbout(patch: Partial<NonNullable<IntroContent["about"]>>, coalesce = true) {
     if (!intro) return;
     const next = { ...(intro.about ?? { headline: "", lines: [] }), ...patch };
-    commit({ ...intro, about: next } as IntroContent);
+    commit({ ...intro, about: next } as IntroContent, coalesce);
   }
 
-  function setChapters(next: IntroChapter[]) {
+  function setChapters(next: IntroChapter[], coalesce = true) {
     if (!intro) return;
-    commit({ ...intro, chapters: next } as IntroContent);
+    commit({ ...intro, chapters: next } as IntroContent, coalesce);
   }
 
   function getAccent(key: string): SlideAccent {
@@ -81,7 +82,7 @@ export function IntroSlidesEditor({
     const next = { ...(intro.slideStyles ?? {}) };
     if (accent === "default") delete next[key];
     else next[key] = { ...(next[key] ?? {}), accent };
-    commit({ ...intro, slideStyles: next } as IntroContent);
+    commit({ ...intro, slideStyles: next } as IntroContent, false);
   }
 
   if (!intro) {
@@ -274,7 +275,7 @@ export function IntroSlidesEditor({
                     type="button"
                     onClick={() => {
                       if (!intro.about) return;
-                      patchAbout({ lines: intro.about.lines.filter((_, j) => j !== i) });
+                      patchAbout({ lines: intro.about.lines.filter((_, j) => j !== i) }, false);
                     }}
                     className="text-white/40 hover:text-white/80"
                     aria-label="Remove line"
@@ -290,7 +291,7 @@ export function IntroSlidesEditor({
               type="button"
               onClick={() => {
                 if (!intro.about) return;
-                patchAbout({ lines: [...intro.about.lines, ""] });
+                patchAbout({ lines: [...intro.about.lines, ""] }, false);
               }}
               className="inline-flex items-center gap-1.5 text-xs text-white/70 hover:text-white"
             >
@@ -318,7 +319,7 @@ export function IntroSlidesEditor({
           onAccent={(a) => setAccent(`chapter-${i}`, a)}
           onRemove={() => {
             const next = (intro.chapters ?? []).filter((_, j) => j !== i);
-            setChapters(next);
+            setChapters(next, false);
           }}
         >
           <EmojiField
@@ -363,7 +364,7 @@ export function IntroSlidesEditor({
               ...(intro.chapters ?? []),
               { headline: "", body: "", emoji: "✨" },
             ];
-            setChapters(next);
+            setChapters(next, false);
           }}
           className="w-full rounded-3xl2 border-2 border-dashed border-ink/15 py-4 text-sm text-ink/55 hover:bg-ink/5 transition"
         >
