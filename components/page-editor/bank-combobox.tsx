@@ -17,6 +17,11 @@ export function BankCombobox({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  // Visible viewport box. The on-screen keyboard shrinks the visual viewport
+  // (not the layout viewport), so a plain `fixed inset-0` overlay keeps full
+  // height and the bottom sheet hides behind the keyboard. Tracking it keeps
+  // the sheet pinned to the visible area, just above the keyboard.
+  const [vv, setVv] = useState<{ top: number; height: number } | null>(null);
 
   const selected = banks.find((b) => b.code === value) ?? null;
 
@@ -24,7 +29,20 @@ export function BankCombobox({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+
+    const view = window.visualViewport;
+    const sync = () => {
+      if (view) setVv({ top: view.offsetTop, height: view.height });
+    };
+    sync();
+    view?.addEventListener("resize", sync);
+    view?.addEventListener("scroll", sync);
+
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      view?.removeEventListener("resize", sync);
+      view?.removeEventListener("scroll", sync);
+    };
   }, [open]);
 
   function close() {
@@ -60,10 +78,11 @@ export function BankCombobox({
       {open && (
         <Portal>
           <div
-            className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-ink/50 backdrop-blur-sm"
+            className="fixed inset-x-0 z-[60] flex items-end sm:items-center justify-center bg-ink/50 backdrop-blur-sm"
+            style={vv ? { top: vv.top, height: vv.height } : { top: 0, bottom: 0 }}
             onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}
           >
-            <div className="w-full sm:max-w-md bg-[#FDFCFB] rounded-t-[28px] sm:rounded-[28px] shadow-2xl flex flex-col max-h-[85vh] sm:max-h-[75vh]">
+            <div className="w-full sm:max-w-md bg-[#FDFCFB] rounded-t-[28px] sm:rounded-[28px] shadow-2xl flex flex-col max-h-full sm:max-h-[75vh]">
               <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
                 <div className="w-10 h-1 rounded-full bg-ink/15" />
               </div>
