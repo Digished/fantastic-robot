@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createCelebration } from "./actions";
 import type { MusicTrack } from "@/lib/music";
 import type { Theme } from "@/lib/themes";
@@ -8,6 +8,12 @@ import { DesignStep } from "@/components/page-editor/design-step";
 import { DetailsStep } from "@/components/page-editor/details-step";
 import type { Bank } from "@/components/page-editor/bank-combobox";
 import type { PageDraft } from "@/components/page-editor/types";
+import {
+  clearLocalDraft,
+  isDraftPristine,
+  loadLocalDraft,
+  saveLocalDraft,
+} from "@/lib/draft/local-draft";
 
 type Step = "details" | "design";
 
@@ -50,6 +56,27 @@ export function CreateForm({
   const [resolvedAccountName, setResolvedAccountName] = useState<string | null>(null);
   const [generatingIntro, setGeneratingIntro] = useState(false);
   const [introError, setIntroError] = useState<string | null>(null);
+
+  // Restore any in-progress draft from a previous session so the dashboard's
+  // "Continue editing" path lands on the user's actual progress.
+  const hydrated = useRef(false);
+  useEffect(() => {
+    if (hydrated.current) return;
+    hydrated.current = true;
+    const saved = loadLocalDraft();
+    if (!saved) return;
+    setDraft(saved.draft);
+    setBankCode(saved.bankCode);
+    setAccountNumber(saved.accountNumber);
+  }, []);
+
+  // Auto-save while the user fills the form. Skipped while pristine so a user
+  // who lands on /create and bounces doesn't leave an empty draft behind.
+  useEffect(() => {
+    if (!hydrated.current) return;
+    if (isDraftPristine(draft, bankCode, accountNumber)) return;
+    saveLocalDraft({ draft, bankCode, accountNumber });
+  }, [draft, bankCode, accountNumber]);
 
   function update(
     patch: Partial<PageDraft> | ((prev: PageDraft) => Partial<PageDraft>),
@@ -130,6 +157,9 @@ export function CreateForm({
 
     const result = await createCelebration({}, fd);
     if (result?.authorizationUrl) {
+      // The page is now persisted server-side — drop the local draft so the
+      // dashboard doesn't show a stale "Continue editing" card alongside it.
+      clearLocalDraft();
       // The unpaid page is already saved and listed on the dashboard. Point the
       // browser's back/return target there so cancelling at Paystack doesn't
       // drop the user back onto a blank "new celebration" form.

@@ -5,6 +5,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { logout } from "@/app/login/actions";
 import { formatNaira } from "@/lib/utils";
 import { formatDate } from "@/lib/time";
+import { DraftCard, EmptyState } from "./draft-card";
 
 function coverUrl(path: string | null | undefined) {
   if (!path) return null;
@@ -45,13 +46,8 @@ export default async function Dashboard() {
           </h1>
 
           <div className="mt-7 md:mt-8 grid sm:grid-cols-2 gap-4">
-            {!pages?.length && (
-              <div className="sm:col-span-2 card text-center py-12">
-                <p className="serif text-3xl text-ink">Nothing here yet.</p>
-                <p className="text-ink/55 mt-3 text-sm">Build a beautiful page in two minutes.</p>
-                <Link href="/create" className="btn-accent mt-6 inline-flex">+ Create your first page</Link>
-              </div>
-            )}
+            <DraftCard />
+            <EmptyState hasPages={!!pages?.length} />
             {pages?.map((p, i) => {
               const cover = coverUrl(p.cover_photo_path);
               return (

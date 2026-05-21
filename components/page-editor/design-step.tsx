@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, Eye, Layout, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Check, Eye, Home, Layout, Sparkles } from "lucide-react";
 import { MusicPicker } from "@/components/music-picker";
 import type { MusicTrack } from "@/lib/music";
 import { LandingPreview } from "./landing-preview";
@@ -113,6 +114,17 @@ export function DesignStep({
               </button>
             ) : (
               <span className="serif text-lg text-ink shrink-0">Spendbox</span>
+            )}
+
+            {mode === "create" && (
+              <Link
+                href="/dashboard"
+                title="Saves your progress as a draft"
+                className="text-sm text-ink/55 hover:text-ink inline-flex items-center gap-1 shrink-0"
+              >
+                <Home className="size-4" />
+                <span className="hidden sm:inline">Save &amp; exit</span>
+              </Link>
             )}
 
             {/* Tabs — inline on desktop, dropped to their own row on mobile */}
