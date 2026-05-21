@@ -149,8 +149,20 @@ export function GalleryEditor({
               className="relative rounded-2xl overflow-hidden shadow-ring bg-ink/5"
             >
               {img.kind === "video" ? (
-                <div className="w-full aspect-[4/3] bg-ink/80 grid place-items-center">
-                  <Video className="size-8 text-white/60" />
+                <div className="relative w-full aspect-[4/3] bg-ink/80">
+                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                  <video
+                    src={`${img.preview}#t=0.1`}
+                    className="w-full h-full object-cover"
+                    muted
+                    playsInline
+                    preload="metadata"
+                  />
+                  <span className="absolute inset-0 grid place-items-center pointer-events-none">
+                    <span className="grid size-9 place-items-center rounded-full bg-black/45 text-white">
+                      <Video className="size-4" />
+                    </span>
+                  </span>
                 </div>
               ) : (
                 /* eslint-disable-next-line @next/next/no-img-element */

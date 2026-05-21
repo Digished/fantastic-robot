@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowLeft, Check } from "lucide-react";
 import { BankCombobox, type Bank } from "./bank-combobox";
@@ -9,10 +9,19 @@ import { EVENT_OPTIONS, type PageDraft } from "./types";
 
 const LEAD_HOURS = 96;
 
-/** Reveals its children with a soft fade once `show` flips true. */
+/** Brings a focused field to the centre of the screen, clear of the sticky bar. */
+function focusScroll(e: React.FocusEvent<HTMLElement>) {
+  e.currentTarget.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+/** Reveals its children with a soft fade and eases them into view once shown. */
 function Reveal({ show, children }: { show: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (show) ref.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [show]);
   if (!show) return null;
-  return <div className="fade-up">{children}</div>;
+  return <div ref={ref} className="fade-up">{children}</div>;
 }
 
 /**
@@ -108,6 +117,7 @@ export function DetailsStep({
               className="field"
               value={draft.recipientName}
               onChange={(e) => update({ recipientName: e.target.value })}
+              onFocus={focusScroll}
               placeholder="Tunde Bakare"
               maxLength={60}
               autoFocus
@@ -124,6 +134,7 @@ export function DetailsStep({
                     className="field"
                     value={draft.eventType}
                     onChange={(e) => update({ eventType: e.target.value })}
+                    onFocus={focusScroll}
                   >
                     {EVENT_OPTIONS.map(([v, l]) => (
                       <option key={v} value={v}>{l}</option>
@@ -151,6 +162,7 @@ export function DetailsStep({
                     min={minDate()}
                     value={draft.celebrationDate}
                     onChange={(e) => update({ celebrationDate: e.target.value })}
+                    onFocus={focusScroll}
                   />
                 </div>
               </div>
@@ -173,6 +185,7 @@ export function DetailsStep({
                 className="field min-h-[160px] resize-none"
                 value={draft.celebrantDescription}
                 onChange={(e) => update({ celebrantDescription: e.target.value })}
+                onFocus={focusScroll}
                 placeholder="Their personality, what they love, what makes them who they are — the more you share, the richer the experience."
                 maxLength={1500}
               />
@@ -226,6 +239,7 @@ export function DetailsStep({
                 maxLength={10}
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
+                onFocus={focusScroll}
                 placeholder="0123456789"
               />
               <div className="min-h-[44px]" aria-live="polite">

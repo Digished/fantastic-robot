@@ -1,18 +1,25 @@
 "use client";
 
+import { useState, type ReactNode } from "react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { formatDate } from "@/lib/time";
 import { AiSuggestButton } from "./ai-suggest-button";
 import { CoverEditor } from "./cover-editor";
-import { EditHint } from "./edit-hint";
 import { GalleryEditor } from "./gallery-editor";
 import { InlineText } from "./inline-text";
 import { eventLabel, type PageDraft } from "./types";
 
+const STEPS = [
+  { key: "cover", label: "Cover" },
+  { key: "title", label: "Title" },
+  { key: "note", label: "Note" },
+  { key: "gallery", label: "Gallery" },
+] as const;
+
 /**
- * Editable preview of the public landing page. Editable surfaces (title,
- * tagline, message, cover, gallery) sit at full opacity; mock/preview
- * surfaces (date badge, stats card, CTAs, footer notes) sit at low opacity
- * so it's obvious what's editable and what's just illustration.
+ * Editable landing page, walked through one section at a time. A sub-step bar
+ * keeps the creator focused on a single part (cover → title → note → gallery)
+ * instead of one long form. Each section still edits the real page values.
  */
 export function LandingPreview({
   draft,
@@ -23,52 +30,93 @@ export function LandingPreview({
   update: (patch: Partial<PageDraft>) => void;
   mode: "create" | "edit";
 }) {
+  const [sub, setSub] = useState(0);
   const firstName = draft.recipientName.split(" ")[0] || "them";
   const eventName = eventLabel(draft.eventType || "birthday");
   const niceDate = draft.celebrationDate
     ? formatDate(new Date(draft.celebrationDate).toISOString())
     : "—";
 
-  return (
-    <main className="min-h-full bg-white pb-6" data-theme={draft.theme}>
-      <div className="mx-auto w-full max-w-6xl px-4 md:px-10 pt-2">
-        <div className="md:grid md:grid-cols-[2fr_3fr] md:gap-10 md:items-start">
-          {/* LEFT: cover + edit-it hint */}
-          <div className="md:sticky md:top-4 md:self-start space-y-3">
-            <CoverEditor
-              src={draft.coverPreview}
-              onUploaded={({ path, previewUrl }) =>
-                update({ coverPath: path, coverPreview: previewUrl })
-              }
-              aspectClass="aspect-[4/5]"
-              className="rounded-3xl2 shadow-card"
-              emptyLabel={`Add a photo of ${firstName}`}
-            />
-            {!draft.coverPath && (
-              <p className="text-xs text-ink/40 text-center">
-                Tap the photo above to upload {firstName}&apos;s cover.
-              </p>
-            )}
-          </div>
+  const coverDone = !!draft.coverPath;
+  const titleDone = draft.title.trim().length >= 2;
+  const stepDone = [coverDone, titleDone, true, true];
 
-          {/* RIGHT: editable content */}
-          <div className="space-y-5 mt-4 md:mt-0">
-            <div>
-              {/* Date / event — display only */}
-              <p className="text-[10px] uppercase tracking-[0.3em] text-ink/35 font-medium">
-                {eventName} · {niceDate}
-              </p>
-              <div className="flex items-center justify-between gap-2 mt-3">
-                <h1 className="serif text-4xl md:text-5xl text-ink leading-[0.95] flex-1 min-w-0">
-                  <InlineText
-                    value={draft.title}
-                    onChange={(v) => update({ title: v })}
-                    placeholder="A title for the page"
-                    maxLength={80}
-                    ariaLabel="Page title"
-                  />
-                </h1>
-                <div className="flex items-center gap-1.5 shrink-0">
+  return (
+    <main className="min-h-full bg-white pb-10" data-theme={draft.theme}>
+      <div className="mx-auto w-full max-w-xl px-4 md:px-6 pt-3">
+        {/* Sub-step bar */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+          {STEPS.map((s, i) => {
+            const active = i === sub;
+            return (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setSub(i)}
+                className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  active
+                    ? "bg-ink text-white"
+                    : "bg-ink/6 text-ink/60 hover:bg-ink/10"
+                }`}
+              >
+                <span
+                  className={`grid size-4 place-items-center rounded-full text-[10px] ${
+                    active ? "bg-white/25" : stepDone[i] ? "bg-[var(--accent)] text-white" : "bg-ink/15 text-ink/60"
+                  }`}
+                >
+                  {stepDone[i] && !active ? <Check className="size-2.5" /> : i + 1}
+                </span>
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="h-1 rounded-full bg-ink/8 mt-2 overflow-hidden">
+          <div
+            className="h-full bg-[var(--accent)] transition-[width] duration-500 ease-out"
+            style={{ width: `${((sub + 1) / STEPS.length) * 100}%` }}
+          />
+        </div>
+
+        {/* Active section — keyed so it re-animates each step */}
+        <div key={sub} className="mt-6 fade-up">
+          {sub === 0 && (
+            <Section title="Cover photo" hint={`The first thing guests see on ${firstName}'s page.`}>
+              <div className="mx-auto max-w-xs">
+                <CoverEditor
+                  src={draft.coverPreview}
+                  onUploaded={({ path, previewUrl }) =>
+                    update({ coverPath: path, coverPreview: previewUrl })
+                  }
+                  aspectClass="aspect-[4/5]"
+                  className="rounded-3xl2 shadow-card"
+                  emptyLabel={`Add a photo of ${firstName}`}
+                />
+              </div>
+              {!coverDone && (
+                <p className="text-xs text-ink/40 text-center mt-2">
+                  Tap the photo to upload {firstName}&apos;s cover.
+                </p>
+              )}
+            </Section>
+          )}
+
+          {sub === 1 && (
+            <Section title="Title & tagline" hint="Name the celebration and add a short line under it.">
+              <div className="rounded-3xl2 bg-white shadow-ring p-5">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-ink/35 font-medium">
+                  {eventName} · {niceDate}
+                </p>
+                <div className="flex items-start justify-between gap-2 mt-3">
+                  <h1 className="serif text-4xl text-ink leading-[0.95] flex-1 min-w-0">
+                    <InlineText
+                      value={draft.title}
+                      onChange={(v) => update({ title: v })}
+                      placeholder="A title for the page"
+                      maxLength={80}
+                      ariaLabel="Page title"
+                    />
+                  </h1>
                   <AiSuggestButton
                     field="title"
                     recipientName={draft.recipientName}
@@ -77,65 +125,39 @@ export function LandingPreview({
                     current={draft.title}
                     onPick={(v) => update({ title: v })}
                   />
-                  <EditHint label="Title" />
+                </div>
+                <p className="text-ink/40 mt-2 text-sm">For {draft.recipientName || firstName}</p>
+
+                <div className="border-t border-ink/8 mt-5 pt-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] uppercase tracking-widest text-ink/40">Tagline</p>
+                    <AiSuggestButton
+                      field="tagline"
+                      recipientName={draft.recipientName}
+                      eventType={draft.eventType}
+                      celebrantDescription={draft.celebrantDescription}
+                      current={draft.tagline}
+                      onPick={(v) => update({ tagline: v })}
+                    />
+                  </div>
+                  <p className="serif italic text-ink/80 text-lg leading-snug">
+                    <InlineText
+                      value={draft.tagline}
+                      onChange={(v) => update({ tagline: v })}
+                      placeholder={`e.g. "We got you, queen ✨"`}
+                      maxLength={140}
+                      ariaLabel="Tagline"
+                    />
+                  </p>
                 </div>
               </div>
-              <p className="text-ink/35 mt-2 text-sm">
-                For {draft.recipientName || firstName}
-              </p>
-            </div>
+            </Section>
+          )}
 
-            {/* Stats — mock, faded out */}
-            <div className="relative">
-              <div className="rounded-3xl2 bg-white shadow-ring p-5 grid grid-cols-2 gap-5 opacity-35 pointer-events-none select-none">
-                <div>
-                  <p className="text-[10px] uppercase tracking-widest text-ink/50">Raised</p>
-                  <p className="serif text-3xl text-[var(--accent)] mt-1.5">₦0</p>
-                  <p className="text-xs text-ink/50 mt-1">0 contributors yet</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-widest text-ink/50">Closes in</p>
-                  <p className="serif text-3xl text-ink mt-1.5">—</p>
-                  <p className="text-xs text-ink/50 mt-1 truncate">once published</p>
-                </div>
-              </div>
-              <span className="absolute top-2 right-3 text-[9px] uppercase tracking-[0.28em] text-ink/40">
-                Preview
-              </span>
-            </div>
-
-            {/* Tagline — italic, inline */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-[10px] uppercase tracking-widest text-ink/40">Tagline</p>
-                <div className="flex items-center gap-1.5">
-                  <AiSuggestButton
-                    field="tagline"
-                    recipientName={draft.recipientName}
-                    eventType={draft.eventType}
-                    celebrantDescription={draft.celebrantDescription}
-                    current={draft.tagline}
-                    onPick={(v) => update({ tagline: v })}
-                  />
-                  <EditHint />
-                </div>
-              </div>
-              <p className="serif italic text-ink/80 text-lg leading-snug">
-                <InlineText
-                  value={draft.tagline}
-                  onChange={(v) => update({ tagline: v })}
-                  placeholder={`e.g. "We got you, queen ✨"`}
-                  maxLength={140}
-                  ariaLabel="Tagline"
-                />
-              </p>
-            </div>
-
-            {/* Message from creator — blockquote-style */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <p className="text-[10px] uppercase tracking-widest text-ink/40">A note from you</p>
-                <div className="flex items-center gap-1.5">
+          {sub === 2 && (
+            <Section title="A note from you" hint="A personal message shown near the top of the page.">
+              <div className="rounded-3xl2 bg-white shadow-ring p-5">
+                <div className="flex justify-end mb-1">
                   <AiSuggestButton
                     field="message"
                     recipientName={draft.recipientName}
@@ -144,36 +166,22 @@ export function LandingPreview({
                     current={draft.messageFromCreator}
                     onPick={(v) => update({ messageFromCreator: v })}
                   />
-                  <EditHint />
                 </div>
+                <blockquote className="serif text-ink text-2xl leading-tight italic">
+                  <InlineText
+                    value={draft.messageFromCreator}
+                    onChange={(v) => update({ messageFromCreator: v })}
+                    placeholder={`Let's spoil ${firstName} this year ❤️`}
+                    maxLength={280}
+                    multiline
+                    ariaLabel="Message from you"
+                  />
+                </blockquote>
               </div>
-              <blockquote className="serif text-ink text-2xl leading-tight italic">
-                <InlineText
-                  value={draft.messageFromCreator}
-                  onChange={(v) => update({ messageFromCreator: v })}
-                  placeholder={`Let's spoil ${firstName} this year ❤️`}
-                  maxLength={280}
-                  multiline
-                  ariaLabel="Message from you"
-                />
-              </blockquote>
-            </div>
+            </Section>
+          )}
 
-            {/* Mock CTAs — faded */}
-            <div className="flex gap-3 opacity-25 pointer-events-none select-none">
-              <span className="btn-accent flex-1 shadow-soft inline-flex items-center justify-center gap-2">
-                Leave a message
-              </span>
-              <span className="btn-outline flex-1 inline-flex items-center justify-center gap-2">
-                Contribute
-              </span>
-            </div>
-
-            <p className="text-[10px] uppercase tracking-[0.28em] text-ink/35 text-center">
-              {mode === "create" ? "Preview · live once published" : "Preview · visitor view"}
-            </p>
-
-            {/* Gallery — editable, full opacity */}
+          {sub === 3 && (
             <div className="rounded-3xl2 bg-white shadow-ring p-5">
               <GalleryEditor
                 items={draft.gallery}
@@ -181,9 +189,54 @@ export function LandingPreview({
                 recipientFirstName={firstName}
               />
             </div>
-          </div>
+          )}
+        </div>
+
+        {/* Footer nav */}
+        <div className="flex items-center justify-between mt-8">
+          <button
+            type="button"
+            onClick={() => setSub((s) => Math.max(0, s - 1))}
+            disabled={sub === 0}
+            className="btn-outline text-sm inline-flex items-center gap-1.5 disabled:opacity-40"
+          >
+            <ArrowLeft className="size-4" /> Back
+          </button>
+          {sub < STEPS.length - 1 ? (
+            <button
+              type="button"
+              onClick={() => setSub((s) => Math.min(STEPS.length - 1, s + 1))}
+              className="btn-accent shadow-soft text-sm inline-flex items-center gap-1.5"
+            >
+              Next: {STEPS[sub + 1].label} <ArrowRight className="size-4" />
+            </button>
+          ) : (
+            <span className="text-xs text-ink/45 text-right">
+              {mode === "create" ? "Preview & publish up top." : "Save changes up top."}
+            </span>
+          )}
         </div>
       </div>
     </main>
+  );
+}
+
+function Section({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  hint: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-3">
+      <div>
+        <h2 className="serif text-2xl text-ink">{title}</h2>
+        <p className="text-sm text-ink/50 mt-0.5">{hint}</p>
+      </div>
+      {children}
+    </div>
   );
 }

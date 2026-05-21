@@ -50,6 +50,13 @@ export function IntroSlidesEditor({
     update({ introContent: next });
   }
 
+  // Snapshot the current deck before regenerating so it can be undone.
+  async function handleGenerate() {
+    if (intro) setHistory((h) => [...h.slice(-49), intro]);
+    lastPushRef.current = 0;
+    await onGenerate();
+  }
+
   function undo() {
     if (history.length === 0) return;
     const prev = history[history.length - 1];
@@ -97,7 +104,7 @@ export function IntroSlidesEditor({
         </p>
         <button
           type="button"
-          onClick={onGenerate}
+          onClick={handleGenerate}
           disabled={generating || draft.celebrantDescription.trim().length < 20}
           className="btn-accent inline-flex mt-5 shadow-soft text-sm disabled:opacity-50"
         >
@@ -134,7 +141,7 @@ export function IntroSlidesEditor({
           </button>
           <button
             type="button"
-            onClick={onGenerate}
+            onClick={handleGenerate}
             disabled={generating}
             className="btn-outline inline-flex text-sm disabled:opacity-50"
           >

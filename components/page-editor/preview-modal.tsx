@@ -243,7 +243,8 @@ function ContributorView({ draft }: { draft: PageDraft }) {
                 {draft.gallery.slice(0, 6).map((g, idx) => (
                   <div key={`${g.path}-${idx}`} className="aspect-square rounded-2xl overflow-hidden bg-ink/5">
                     {g.kind === "video" ? (
-                      <div className="size-full bg-ink/80" />
+                      // eslint-disable-next-line jsx-a11y/media-has-caption
+                      <video src={`${g.preview}#t=0.1`} className="size-full object-cover" muted playsInline preload="metadata" />
                     ) : (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={g.preview} alt="" className="size-full object-cover" />
