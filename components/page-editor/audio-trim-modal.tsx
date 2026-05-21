@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, Scissors, X } from "lucide-react";
 import type { MusicTrack, TrackClip } from "@/lib/music";
+import { Portal } from "@/components/portal";
 
 function fmt(sec: number): string {
   if (!Number.isFinite(sec) || sec < 0) return "0:00";
@@ -100,6 +101,7 @@ export function AudioTrimModal({
   const isFull = !duration || (start <= 0.1 && end >= duration - 0.1);
 
   return (
+    <Portal>
     <div
       className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-ink/60 backdrop-blur-sm"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -221,5 +223,6 @@ export function AudioTrimModal({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

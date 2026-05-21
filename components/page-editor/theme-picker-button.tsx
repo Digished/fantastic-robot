@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, ChevronDown, Palette, X } from "lucide-react";
 import { THEMES, type Theme } from "@/lib/themes";
+import { Portal } from "@/components/portal";
 
 /**
  * Compact theme control: a single pill that shows the current theme and
@@ -51,6 +52,7 @@ export function ThemePickerButton({
       </button>
 
       {open && (
+        <Portal>
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/50 backdrop-blur-sm"
           onMouseDown={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
@@ -115,6 +117,7 @@ export function ThemePickerButton({
             <div className="h-safe-b sm:hidden shrink-0" />
           </div>
         </div>
+        </Portal>
       )}
     </>
   );

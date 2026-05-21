@@ -11,6 +11,7 @@ import {
   type TrackClip,
 } from "@/lib/music";
 import { uploadWithProgress } from "@/lib/upload";
+import { Portal } from "./portal";
 import { AudioTrimModal } from "./page-editor/audio-trim-modal";
 
 function fmtClip(clip: TrackClip): string {
@@ -191,6 +192,7 @@ export function MusicPicker({
       )}
 
       {open && (
+        <Portal>
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-ink/50 backdrop-blur-sm"
           onMouseDown={(e) => { if (e.target === e.currentTarget) close(); }}
@@ -327,6 +329,7 @@ export function MusicPicker({
             <div className="h-safe-b sm:hidden shrink-0" />
           </div>
         </div>
+        </Portal>
       )}
     </>
   );
