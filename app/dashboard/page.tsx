@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Settings, Cake, Lock } from "lucide-react";
+import { Plus, Settings, Cake, Lock, MessageCircle, Gift } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { logout } from "@/app/login/actions";
 import { formatNaira } from "@/lib/utils";
 import { formatDate } from "@/lib/time";
@@ -22,7 +23,7 @@ export default async function Dashboard() {
   const [pagesQ, draftQ] = await Promise.all([
     supabase
       .from("celebrations")
-      .select("id, slug, title, recipient_name, event_type, celebration_date, status, total_raised_kobo, contributor_count, theme, cover_photo_path, is_paid_for_creation, is_self, is_sealed, claimable_at")
+      .select("id, slug, title, recipient_name, event_type, celebration_date, status, total_raised_kobo, contributor_count, theme, cover_photo_path, is_paid_for_creation, is_self, is_sealed, claimable_at, current_cycle")
       .eq("creator_id", user.id)
       .order("created_at", { ascending: false }),
     supabase
@@ -32,6 +33,30 @@ export default async function Dashboard() {
       .maybeSingle(),
   ]);
   const pages = pagesQ.data;
+
+  // Sealed pages hide their wall — even from the owner. But the owner can still
+  // see how many messages/gifts have landed (counts only, no content/amount).
+  // Counting needs the service role since the wall-read policy hides the rows.
+  const now = Date.now();
+  const isSealedNow = (p: { is_self: boolean; is_sealed: boolean; claimable_at: string }) =>
+    (p.is_self || p.is_sealed) && new Date(p.claimable_at).getTime() > now;
+  const messageCounts = new Map<string, number>();
+  const sealedPages = (pages ?? []).filter(isSealedNow);
+  if (sealedPages.length) {
+    const admin = supabaseAdmin();
+    await Promise.all(
+      sealedPages.map(async (p) => {
+        const { count } = await admin
+          .from("messages")
+          .select("*", { count: "exact", head: true })
+          .eq("celebration_id", p.id)
+          .eq("cycle", p.current_cycle)
+          .is("deleted_at", null);
+        messageCounts.set(p.id, count ?? 0);
+      }),
+    );
+  }
+
   let draft: SavedDraft | null = null;
   if (draftQ.data?.data) {
     draft = rehydrateDraft({
@@ -78,8 +103,7 @@ export default async function Dashboard() {
             <EmptyState hasPages={!!pages?.length} hasDraft={!!draft} />
             {pages?.map((p, i) => {
               const cover = coverUrl(p.cover_photo_path);
-              const sealed =
-                p.is_self && p.is_sealed && new Date(p.claimable_at).getTime() > Date.now();
+              const sealed = isSealedNow(p);
               return (
                 <Link
                   key={p.id}
@@ -121,9 +145,17 @@ export default async function Dashboard() {
                   {/* Stats */}
                   <div className="flex items-center justify-between px-4 py-3">
                     {sealed ? (
-                      <p className="text-sm text-ink/55 inline-flex items-center gap-1.5">
-                        <Lock className="size-3.5 text-[var(--accent)]" /> Sealed surprise
-                      </p>
+                      <div className="flex items-center gap-3 text-sm text-ink/60">
+                        <span className="inline-flex items-center gap-1.5 text-ink/45">
+                          <Lock className="size-3.5 text-[var(--accent)]" /> Sealed
+                        </span>
+                        <span className="inline-flex items-center gap-1" title="Messages waiting">
+                          <MessageCircle className="size-3.5 text-ink/40" /> {messageCounts.get(p.id) ?? 0}
+                        </span>
+                        <span className="inline-flex items-center gap-1" title="Gifts waiting">
+                          <Gift className="size-3.5 text-ink/40" /> {p.contributor_count ?? 0}
+                        </span>
+                      </div>
                     ) : (
                       <div>
                         <p className="serif text-lg text-[var(--accent)]">

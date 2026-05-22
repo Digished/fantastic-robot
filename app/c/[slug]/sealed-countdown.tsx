@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Lock, Gift, Pencil, ExternalLink } from "lucide-react";
+import { Lock, Gift, Pencil, ExternalLink, MessageCircle, Eye } from "lucide-react";
 import { formatDate } from "@/lib/time";
 import { Sparkles } from "@/components/sparkles";
 import { ShareBar } from "./share-bar";
@@ -45,6 +45,7 @@ export function SealedCountdown({
   canContribute,
   theme,
   wishlist,
+  ownerStats,
 }: {
   slug: string;
   title: string;
@@ -58,6 +59,7 @@ export function SealedCountdown({
   canContribute: boolean;
   theme: string;
   wishlist: WishlistItem[];
+  ownerStats: { messageCount: number; giftCount: number } | null;
 }) {
   const target = new Date(celebrationDate).getTime();
   const [now, setNow] = useState(() => Date.now());
@@ -114,6 +116,21 @@ export function SealedCountdown({
           <Lock className="size-4" />
           {isCreator ? "Your surprises are sealed until the day" : `Sealed until ${firstName}'s day`}
         </p>
+
+        {/* Owner-only: a private peek at the counts (never the content). */}
+        {isCreator && ownerStats && (
+          <div className="fade-up mt-3 flex items-center gap-4 glass-dark rounded-full px-4 py-2 text-sm text-white/90">
+            <span className="inline-flex items-center gap-1.5">
+              <MessageCircle className="size-4 text-white/70" /> {ownerStats.messageCount}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Gift className="size-4 text-white/70" /> {ownerStats.giftCount}
+            </span>
+            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-white/45">
+              <Eye className="size-3" /> only you
+            </span>
+          </div>
+        )}
 
         {/* Everything below shares one tidy column. */}
         <div className="w-full max-w-sm mt-7 space-y-3">

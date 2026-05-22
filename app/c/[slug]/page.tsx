@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Gift, ExternalLink } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatNaira } from "@/lib/utils";
 import { formatDate, timeUntil } from "@/lib/time";
 import { WallGrid } from "./wall-grid";
@@ -73,6 +74,21 @@ export default async function WallPage({
   // totals until the celebration date. Everyone gets a countdown plus a way to
   // contribute; the content unlocks only once the date is reached.
   if ((page.is_sealed || page.is_self) && !claimable) {
+    // The owner can see how full their page is getting — counts only, never
+    // content or amounts. Needs the service role to bypass the sealed-wall RLS.
+    let ownerStats: { messageCount: number; giftCount: number } | null = null;
+    if (isCreator) {
+      const { count } = await supabaseAdmin()
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("celebration_id", page.id)
+        .eq("cycle", page.current_cycle)
+        .is("deleted_at", null);
+      ownerStats = {
+        messageCount: count ?? 0,
+        giftCount: Number(page.contributor_count ?? 0),
+      };
+    }
     return (
       <SealedCountdown
         slug={page.slug}
@@ -87,6 +103,7 @@ export default async function WallPage({
         canContribute={!closed}
         theme={theme}
         wishlist={wishlist}
+        ownerStats={ownerStats}
       />
     );
   }
