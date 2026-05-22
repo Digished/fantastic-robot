@@ -4,7 +4,7 @@
 -- intact, which keeps that gift claimable from history (see the claim route's
 -- per-cycle path). No money moves automatically.
 
-create or replace function public.renew_recurring_celebrations() returns void as $$
+create or replace function public.renew_recurring_celebrations() returns void as $func$
 declare r record;
 begin
   for r in
@@ -34,4 +34,4 @@ begin
      where id = r.id;
   end loop;
 end;
-$$ language plpgsql;
+$func$ language plpgsql;

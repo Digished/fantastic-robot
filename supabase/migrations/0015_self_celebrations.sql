@@ -38,12 +38,12 @@ create index if not exists messages_wall_cycle_idx
 
 -- ── payouts: one per (celebration, cycle) instead of per celebration ────
 alter table public.payouts add column if not exists cycle int not null default 1;
-do $$ begin
+do $do$ begin
   alter table public.payouts drop constraint payouts_celebration_id_key;
-exception when undefined_object then null; end $$;
-do $$ begin
+exception when undefined_object then null; end $do$;
+do $do$ begin
   alter table public.payouts add constraint payouts_celebration_cycle_key unique (celebration_id, cycle);
-exception when duplicate_object then null; end $$;
+exception when duplicate_object then null; end $do$;
 
 -- ── per-cycle history snapshot ──────────────────────────────────────────
 create table if not exists public.celebration_cycles (
@@ -83,7 +83,7 @@ create policy messages_public_read on public.messages
 -- Once a recurring page's year is fully settled (paid/failed, or nothing was
 -- raised), archive it and roll the live row forward to next year. The
 -- celebration_date update fires sync_celebration_dates to recompute the gates.
-create or replace function public.renew_recurring_celebrations() returns void as $$
+create or replace function public.renew_recurring_celebrations() returns void as $func$
 declare r record;
 begin
   for r in
@@ -114,10 +114,10 @@ begin
      where id = r.id;
   end loop;
 end;
-$$ language plpgsql;
+$func$ language plpgsql;
 
 select cron.schedule(
   'spendbox-renew-recurring',
   '0 * * * *',
-  $$ select public.renew_recurring_celebrations(); $$
+  $cron$ select public.renew_recurring_celebrations(); $cron$
 );
