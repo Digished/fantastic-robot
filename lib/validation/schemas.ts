@@ -64,6 +64,29 @@ export const profileBankSchema = z.object({
   accountNumber: naijaAccountNumber,
 });
 
+// A wishlist item: a thing the celebrant would love, with an optional link.
+export const wishlistItemSchema = z.object({
+  title: z.string().min(1).max(120),
+  url: z.string().url().max(500).optional().or(z.literal("")),
+});
+export const wishlistSchema = z.array(wishlistItemSchema).max(20);
+
+// Editing a self-owned page: simpler than the full editor. The celebrant is
+// the creator, so labels are first-person and there's no AI brief/slides.
+export const editSelfCelebrationSchema = z.object({
+  title: z.string().min(2).max(80),
+  theme: z.enum(THEME_IDS).optional(),
+  messageFromCreator: z.string().max(280).optional(),
+  isRecurring: z.boolean().default(false),
+  isSealed: z.boolean().default(false),
+  wishlist: wishlistSchema.default([]),
+  // Payout bank lives on the profile; optional here so they can set it inline.
+  bankCode: z.string().min(2).max(10).optional(),
+  accountNumber: naijaAccountNumber.optional(),
+});
+
+export type WishlistItem = z.infer<typeof wishlistItemSchema>;
+
 export const messageSchema = z.object({
   body: z.string().max(500).optional(),
   mediaKind: z.enum(["none", "audio", "video", "image"]).default("none"),

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Gift } from "lucide-react";
+import { Gift, ExternalLink } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { formatNaira } from "@/lib/utils";
 import { formatDate, timeUntil } from "@/lib/time";
@@ -42,7 +42,7 @@ export default async function WallPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle, wishlist",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -119,6 +119,7 @@ export default async function WallPage({
   const unpaid = page.is_paid_for_creation === false;
   const firstName = page.recipient_name.split(" ")[0];
   const galleryImages = (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [];
+  const wishlist = (page.wishlist as { title: string; url?: string }[] | null) ?? [];
   const eventLabel = page.event_type.replace(/_/g, " ");
   const accountLabel = page.recipient_account_name ?? "your account";
 
@@ -346,6 +347,35 @@ export default async function WallPage({
               <ShareBar slug={page.slug} title={page.title} recipient={page.recipient_name} />
               {isCreator && <CelebrantLinkButton slug={page.slug} recipient={page.recipient_name} />}
             </div>
+
+            {/* Wishlist */}
+            {wishlist.length > 0 && (
+              <section className="rounded-3xl2 bg-white shadow-ring p-5 fade-up">
+                <p className="text-[10px] uppercase tracking-widest text-ink/40 mb-3">
+                  {firstName}&apos;s wishlist
+                </p>
+                <ul className="space-y-2">
+                  {wishlist.map((item, i) => (
+                    <li key={i} className="flex items-center gap-2 text-ink">
+                      <Gift className="size-4 text-[var(--accent)] shrink-0" />
+                      {item.url ? (
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                          className="inline-flex items-center gap-1 hover:text-[var(--accent)] transition"
+                        >
+                          {item.title}
+                          <ExternalLink className="size-3.5 text-ink/40" />
+                        </a>
+                      ) : (
+                        <span>{item.title}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             {/* Wall */}
             <section className="mt-4">
