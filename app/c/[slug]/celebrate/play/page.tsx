@@ -17,14 +17,15 @@ export default async function PlayPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, recipient_name, event_type, celebration_date, title, tagline, celebrant_description, intro_content, gallery_images, theme, background_music, creator_id, total_raised_kobo, claimable_at, payout_status, is_sealed, current_cycle")
+    .select("id, slug, recipient_name, event_type, celebration_date, title, tagline, celebrant_description, intro_content, gallery_images, theme, background_music, creator_id, total_raised_kobo, claimable_at, payout_status, is_sealed, is_self, current_cycle")
     .eq("slug", slug)
     .maybeSingle();
 
   if (!page) notFound();
 
   // Sealed pages stay a surprise — even from the owner — until the date.
-  if (page.is_sealed && new Date(page.claimable_at).getTime() > Date.now()) {
+  // Personal pages are always sealed regardless of the stored flag.
+  if ((page.is_sealed || page.is_self) && new Date(page.claimable_at).getTime() > Date.now()) {
     redirect(`/c/${slug}`);
   }
 
@@ -38,7 +39,8 @@ export default async function PlayPage({
 
   const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
   const galleryImages = (page.gallery_images as GalleryImage[]) ?? [];
-  const createdBy = await getCreatorLabel(page.creator_id);
+  // Personal pages are the celebrant's own — no "put together by" credit.
+  const createdBy = page.is_self ? null : await getCreatorLabel(page.creator_id);
   const musicTrack = await resolveSavedTrack(page.background_music);
 
   return (

@@ -26,7 +26,7 @@ export default async function CelebrantPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, tagline, total_raised_kobo, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, is_sealed, current_cycle",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, tagline, total_raised_kobo, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, is_sealed, is_self, current_cycle",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -38,7 +38,8 @@ export default async function CelebrantPage({
   }
 
   // Sealed pages stay a surprise — even from the owner — until the date.
-  if (page.is_sealed && new Date(page.claimable_at).getTime() > Date.now()) {
+  // Personal pages are always sealed regardless of the stored flag.
+  if ((page.is_sealed || page.is_self) && new Date(page.claimable_at).getTime() > Date.now()) {
     redirect(`/c/${slug}`);
   }
 
@@ -58,7 +59,7 @@ export default async function CelebrantPage({
   const eventLabel = !["other", "surprise_gift"].includes(page.event_type)
     ? page.event_type.replace(/_/g, " ")
     : "";
-  const createdBy = await getCreatorLabel(page.creator_id);
+  const createdBy = page.is_self ? null : await getCreatorLabel(page.creator_id);
 
   return (
     <main className="min-h-[100dvh] bg-white pb-20" data-theme={theme}>

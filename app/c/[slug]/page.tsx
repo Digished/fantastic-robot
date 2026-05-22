@@ -64,14 +64,15 @@ export default async function WallPage({
   const contentOpen =
     page.status === "active" && contentWindowOpen(page.celebration_date, now);
   const profile = await getCreatorProfile(page.creator_id);
-  const createdBy = profile.label;
+  // Personal pages are the celebrant's own — don't credit them as the "maker".
+  const createdBy = page.is_self ? null : profile.label;
 
   const wishlist = (page.wishlist as { title: string; url?: string }[] | null) ?? [];
 
   // Sealed surprise: nobody — not even the owner — sees the wall, messages or
   // totals until the celebration date. Everyone gets a countdown plus a way to
   // contribute; the content unlocks only once the date is reached.
-  if (page.is_sealed && !claimable) {
+  if ((page.is_sealed || page.is_self) && !claimable) {
     return (
       <SealedCountdown
         slug={page.slug}
