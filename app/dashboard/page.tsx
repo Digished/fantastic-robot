@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Settings } from "lucide-react";
+import { Plus, Settings, Cake, Lock } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { logout } from "@/app/login/actions";
 import { formatNaira } from "@/lib/utils";
@@ -22,7 +22,7 @@ export default async function Dashboard() {
   const [pagesQ, draftQ] = await Promise.all([
     supabase
       .from("celebrations")
-      .select("id, slug, title, recipient_name, event_type, celebration_date, status, total_raised_kobo, contributor_count, theme, cover_photo_path, is_paid_for_creation")
+      .select("id, slug, title, recipient_name, event_type, celebration_date, status, total_raised_kobo, contributor_count, theme, cover_photo_path, is_paid_for_creation, is_self, is_sealed, claimable_at")
       .eq("creator_id", user.id)
       .order("created_at", { ascending: false }),
     supabase
@@ -48,6 +48,9 @@ export default async function Dashboard() {
         <header className="py-5 md:py-7 flex items-center justify-between border-b border-ink/8">
           <Link href="/" className="serif text-xl md:text-2xl text-ink">Spendbox</Link>
           <div className="flex items-center gap-4">
+            <Link href="/create/me" className="btn-outline text-sm inline-flex items-center gap-2">
+              <Cake className="size-4" /> <span className="hidden sm:inline">My page</span>
+            </Link>
             <Link href="/create" className="btn-accent shadow-soft hidden md:inline-flex gap-2">
               <Plus className="size-4" /> New celebration
             </Link>
@@ -75,6 +78,8 @@ export default async function Dashboard() {
             <EmptyState hasPages={!!pages?.length} hasDraft={!!draft} />
             {pages?.map((p, i) => {
               const cover = coverUrl(p.cover_photo_path);
+              const sealed =
+                p.is_self && p.is_sealed && new Date(p.claimable_at).getTime() > Date.now();
               return (
                 <Link
                   key={p.id}
@@ -115,12 +120,18 @@ export default async function Dashboard() {
 
                   {/* Stats */}
                   <div className="flex items-center justify-between px-4 py-3">
-                    <div>
-                      <p className="serif text-lg text-[var(--accent)]">
-                        {formatNaira(Number(p.total_raised_kobo ?? 0))}
+                    {sealed ? (
+                      <p className="text-sm text-ink/55 inline-flex items-center gap-1.5">
+                        <Lock className="size-3.5 text-[var(--accent)]" /> Sealed surprise
                       </p>
-                      <p className="text-[11px] text-ink/45">{p.contributor_count ?? 0} contributors</p>
-                    </div>
+                    ) : (
+                      <div>
+                        <p className="serif text-lg text-[var(--accent)]">
+                          {formatNaira(Number(p.total_raised_kobo ?? 0))}
+                        </p>
+                        <p className="text-[11px] text-ink/45">{p.contributor_count ?? 0} contributors</p>
+                      </div>
+                    )}
                     <p className="text-xs text-ink/45">{formatDate(p.celebration_date)}</p>
                   </div>
                 </Link>

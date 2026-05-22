@@ -45,7 +45,7 @@ export async function postMessage(
   const admin = supabaseAdmin();
   const { data: page } = await admin
     .from("celebrations")
-    .select("id, status, celebration_date")
+    .select("id, status, celebration_date, current_cycle")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) return { error: "Page not found." };
@@ -55,6 +55,7 @@ export async function postMessage(
 
   const { error } = await admin.from("messages").insert({
     celebration_id: page.id,
+    cycle: page.current_cycle,
     contributor_name: parsed.data.isAnonymous ? "Someone special" : parsed.data.contributorName,
     contributor_email: parsed.data.contributorEmail ?? null,
     contributor_phone: parsed.data.contributorPhone ?? null,

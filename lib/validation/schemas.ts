@@ -47,6 +47,23 @@ export const createCelebrationSchema = z.object({
   introContent: z.string().optional(),
 });
 
+// A self-owned page: the creator IS the celebrant. No recipient bank (it
+// comes from their profile) and no "about you" description.
+export const createSelfCelebrationSchema = z.object({
+  title: z.string().min(2).max(80),
+  eventType: z.enum([
+    "birthday", "graduation", "wedding", "appreciation",
+    "farewell", "baby_shower", "surprise_gift", "other",
+  ]),
+  theme: z.enum(THEME_IDS).default("ivory"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date"),
+});
+
+export const profileBankSchema = z.object({
+  bankCode: z.string().min(2).max(10),
+  accountNumber: naijaAccountNumber,
+});
+
 export const messageSchema = z.object({
   body: z.string().max(500).optional(),
   mediaKind: z.enum(["none", "audio", "video", "image"]).default("none"),

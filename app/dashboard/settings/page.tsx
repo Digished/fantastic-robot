@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
+import { getBanks } from "@/lib/paystack/banks";
 import { ProfileForm } from "./form";
 
 export default async function SettingsPage() {
@@ -9,11 +10,14 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/dashboard/settings");
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("display_name, email")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: profile }, banks] = await Promise.all([
+    supabase
+      .from("users")
+      .select("display_name, email, bank_code, account_number, account_name, avatar_path")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getBanks(),
+  ]);
 
   return (
     <main className="min-h-[100dvh] bg-white pb-28">
@@ -34,6 +38,11 @@ export default async function SettingsPage() {
           <ProfileForm
             initialDisplayName={profile?.display_name ?? ""}
             email={profile?.email ?? user.email ?? ""}
+            banks={banks}
+            initialBankCode={profile?.bank_code ?? ""}
+            initialAccountNumber={profile?.account_number ?? ""}
+            initialAccountName={profile?.account_name ?? ""}
+            initialAvatarPath={profile?.avatar_path ?? null}
           />
         </div>
       </div>

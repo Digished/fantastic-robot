@@ -16,3 +16,20 @@ export async function getCreatorLabel(creatorId: string): Promise<string | null>
   if (data.email) return data.email.split("@")[0];
   return null;
 }
+
+// Label + optional profile picture for the page owner. Same RLS rationale as
+// getCreatorLabel — read via the service-role client, return only safe fields.
+export async function getCreatorProfile(
+  creatorId: string,
+): Promise<{ label: string | null; avatarPath: string | null }> {
+  const admin = supabaseAdmin();
+  const { data } = await admin
+    .from("users")
+    .select("display_name, email, avatar_path")
+    .eq("id", creatorId)
+    .maybeSingle();
+  if (!data) return { label: null, avatarPath: null };
+  const name = data.display_name?.trim();
+  const label = name || (data.email ? data.email.split("@")[0] : null);
+  return { label, avatarPath: data.avatar_path ?? null };
+}
