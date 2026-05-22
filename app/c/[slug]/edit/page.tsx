@@ -47,7 +47,6 @@ export default async function EditPage({
           theme: selfTheme,
           messageFromCreator: page.message_from_creator ?? "",
           isRecurring: !!page.is_recurring,
-          isSealed: !!page.is_sealed,
           wishlist: (page.wishlist as WishlistItem[] | null) ?? [],
           bankCode: profile?.bank_code ?? "",
           accountNumber: profile?.account_number ?? "",

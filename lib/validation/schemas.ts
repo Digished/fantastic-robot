@@ -73,12 +73,12 @@ export const wishlistSchema = z.array(wishlistItemSchema).max(20);
 
 // Editing a self-owned page: simpler than the full editor. The celebrant is
 // the creator, so labels are first-person and there's no AI brief/slides.
+// Self pages are always sealed — the surprise is the whole point.
 export const editSelfCelebrationSchema = z.object({
   title: z.string().min(2).max(80),
   theme: z.enum(THEME_IDS).optional(),
   messageFromCreator: z.string().max(280).optional(),
   isRecurring: z.boolean().default(false),
-  isSealed: z.boolean().default(false),
   wishlist: wishlistSchema.default([]),
   // Payout bank lives on the profile; optional here so they can set it inline.
   bankCode: z.string().min(2).max(10).optional(),

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Gift, ExternalLink } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatNaira } from "@/lib/utils";
 import { formatDate, timeUntil } from "@/lib/time";
 import { WallGrid } from "./wall-grid";
@@ -66,9 +67,27 @@ export default async function WallPage({
   const profile = await getCreatorProfile(page.creator_id);
   const createdBy = profile.label;
 
+  const wishlist = (page.wishlist as { title: string; url?: string }[] | null) ?? [];
+
   // Sealed surprise: nobody — not even the owner — sees the wall or totals
-  // until the celebration date. Everyone gets a countdown instead.
+  // until the celebration date. Everyone gets a countdown instead, with blurred
+  // counts so guests can feel the page filling up without spoiling it.
   if (page.is_sealed && !claimable) {
+    const admin = supabaseAdmin();
+    const [{ count: messageCount }, { count: giftCount }] = await Promise.all([
+      admin
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("celebration_id", page.id)
+        .eq("cycle", page.current_cycle)
+        .is("deleted_at", null),
+      admin
+        .from("contributions")
+        .select("*", { count: "exact", head: true })
+        .eq("celebration_id", page.id)
+        .eq("cycle", page.current_cycle)
+        .eq("status", "paid"),
+    ]);
     return (
       <SealedCountdown
         slug={page.slug}
@@ -82,6 +101,9 @@ export default async function WallPage({
         canMessage={contentOpen}
         canContribute={!closed}
         theme={theme}
+        wishlist={wishlist}
+        messageCount={messageCount ?? 0}
+        giftCount={giftCount ?? 0}
       />
     );
   }
@@ -119,7 +141,6 @@ export default async function WallPage({
   const unpaid = page.is_paid_for_creation === false;
   const firstName = page.recipient_name.split(" ")[0];
   const galleryImages = (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [];
-  const wishlist = (page.wishlist as { title: string; url?: string }[] | null) ?? [];
   const eventLabel = page.event_type.replace(/_/g, " ");
   const accountLabel = page.recipient_account_name ?? "your account";
 

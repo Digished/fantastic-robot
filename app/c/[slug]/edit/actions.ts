@@ -110,7 +110,6 @@ export async function editSelfCelebration(
     theme: (formData.get("theme") as string) || undefined,
     messageFromCreator: (formData.get("messageFromCreator") as string) || undefined,
     isRecurring: formData.get("isRecurring") === "on",
-    isSealed: formData.get("isSealed") === "on",
     wishlist,
     bankCode: (formData.get("bankCode") as string) || undefined,
     accountNumber: (formData.get("accountNumber") as string) || undefined,
@@ -137,7 +136,7 @@ export async function editSelfCelebration(
       title: parsed.data.title,
       message_from_creator: parsed.data.messageFromCreator ?? null,
       is_recurring: parsed.data.isRecurring,
-      is_sealed: parsed.data.isSealed,
+      is_sealed: true, // personal pages are always a surprise
       wishlist: cleanWishlist,
       ...(parsed.data.theme ? { theme: parsed.data.theme } : {}),
     })

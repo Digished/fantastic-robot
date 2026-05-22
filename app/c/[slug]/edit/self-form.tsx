@@ -2,16 +2,12 @@
 
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Check, Loader2, Plus, Trash2, ArrowLeft, Lock } from "lucide-react";
 import { editSelfCelebration, type SelfEditState } from "./actions";
-import { THEME_IDS } from "@/lib/themes";
+import { isTheme, type Theme } from "@/lib/themes";
+import { ThemePickerButton } from "@/components/page-editor/theme-picker-button";
+import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox";
 import type { WishlistItem } from "@/lib/validation/schemas";
-
-type Bank = { name: string; code: string };
-
-function titleCase(s: string) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 export function SelfEditForm({
   slug,
@@ -25,7 +21,6 @@ export function SelfEditForm({
     theme: string;
     messageFromCreator: string;
     isRecurring: boolean;
-    isSealed: boolean;
     wishlist: WishlistItem[];
     bankCode: string;
     accountNumber: string;
@@ -37,10 +32,9 @@ export function SelfEditForm({
   const [state, dispatch, pending] = useActionState<SelfEditState, FormData>(action, {});
 
   const [title, setTitle] = useState(initial.title);
-  const [theme, setTheme] = useState(initial.theme);
+  const [theme, setTheme] = useState<Theme>(isTheme(initial.theme) ? initial.theme : "ivory");
   const [note, setNote] = useState(initial.messageFromCreator);
   const [isRecurring, setIsRecurring] = useState(initial.isRecurring);
-  const [isSealed, setIsSealed] = useState(initial.isSealed);
   const [wishlist, setWishlist] = useState<WishlistItem[]>(
     initial.wishlist.length ? initial.wishlist : [],
   );
@@ -89,7 +83,6 @@ export function SelfEditForm({
     fd.set("theme", theme);
     if (note) fd.set("messageFromCreator", note);
     if (isRecurring) fd.set("isRecurring", "on");
-    if (isSealed) fd.set("isSealed", "on");
     fd.set(
       "wishlist",
       JSON.stringify(
@@ -143,12 +136,8 @@ export function SelfEditForm({
 
         {/* Theme */}
         <div className="space-y-1.5">
-          <label className="label" htmlFor="theme">Theme</label>
-          <select id="theme" className="field" value={theme} onChange={(e) => setTheme(e.target.value)}>
-            {THEME_IDS.map((t) => (
-              <option key={t} value={t}>{titleCase(t)}</option>
-            ))}
-          </select>
+          <label className="label">Theme</label>
+          <ThemePickerButton value={theme} onChange={setTheme} />
         </div>
 
         {/* Personal note */}
@@ -218,18 +207,12 @@ export function SelfEditForm({
             </p>
           </div>
           <div className="space-y-1.5">
-            <label className="label" htmlFor="bankCode">Bank</label>
-            <select
-              id="bankCode"
-              className="field"
+            <label className="label">Bank</label>
+            <BankCombobox
+              banks={banks}
               value={bankCode}
-              onChange={(e) => { setBankCode(e.target.value); resolveBank(e.target.value, accountNumber); }}
-            >
-              <option value="">Select your bank</option>
-              {banks.map((b) => (
-                <option key={b.code} value={b.code}>{b.name}</option>
-              ))}
-            </select>
+              onChange={(code) => { setBankCode(code); resolveBank(code, accountNumber); }}
+            />
           </div>
           <div className="space-y-1.5">
             <label className="label" htmlFor="accountNumber">Account number</label>
@@ -275,18 +258,10 @@ export function SelfEditForm({
               <span className="block text-xs text-ink/50">Rolls the page forward to next year automatically.</span>
             </span>
           </label>
-          <label className="flex items-start gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              className="mt-1 size-4 accent-[var(--accent)]"
-              checked={isSealed}
-              onChange={(e) => setIsSealed(e.target.checked)}
-            />
-            <span>
-              <span className="text-ink font-medium">Keep it a surprise</span>
-              <span className="block text-xs text-ink/50">Hide the wall and gift total — even from you — until the day.</span>
-            </span>
-          </label>
+          <p className="text-xs text-ink/50 inline-flex items-center gap-1.5">
+            <Lock className="size-3.5 text-[var(--accent)]" />
+            Messages and gifts stay sealed until the day — even from you.
+          </p>
         </div>
 
         {state.error && (
