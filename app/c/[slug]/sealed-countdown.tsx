@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Lock, Gift, Pencil, MessageCircle, ExternalLink } from "lucide-react";
+import { Lock, Gift, Pencil, ExternalLink } from "lucide-react";
 import { formatDate } from "@/lib/time";
 import { Sparkles } from "@/components/sparkles";
 import { ShareBar } from "./share-bar";
@@ -32,42 +32,6 @@ function Unit({ value, label }: { value: number; label: string }) {
   );
 }
 
-/**
- * A blurred "behind the seal" tile: shows that things are arriving (a live
- * count) while the content itself stays completely hidden until the day.
- */
-function ActivityTile({
-  count,
-  icon,
-  noun,
-}: {
-  count: number;
-  icon: React.ReactNode;
-  noun: string;
-}) {
-  const empty = count === 0;
-  return (
-    <div className="relative overflow-hidden rounded-2xl glass-dark p-4 text-center">
-      {/* Blurred faux content so guests feel the page filling up — only when
-          there's actually something sealed behind it. */}
-      {!empty && (
-        <div className="absolute inset-0 p-3.5 space-y-1.5 blur-[6px] opacity-30 select-none pointer-events-none" aria-hidden>
-          <div className="h-2 w-3/4 rounded-full bg-white" />
-          <div className="h-2 w-1/2 rounded-full bg-white" />
-          <div className="h-2 w-2/3 rounded-full bg-white" />
-        </div>
-      )}
-      <div className="relative">
-        <div className="text-white/80 grid place-items-center">{icon}</div>
-        <p className="serif text-3xl text-white tabular-nums leading-none mt-1.5">{count}</p>
-        <p className="text-[10px] uppercase tracking-widest text-white/60 mt-1">
-          {empty ? `no ${noun}s yet` : `${noun}${count === 1 ? "" : "s"} waiting`}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export function SealedCountdown({
   slug,
   title,
@@ -81,8 +45,6 @@ export function SealedCountdown({
   canContribute,
   theme,
   wishlist,
-  messageCount,
-  giftCount,
 }: {
   slug: string;
   title: string;
@@ -96,8 +58,6 @@ export function SealedCountdown({
   canContribute: boolean;
   theme: string;
   wishlist: WishlistItem[];
-  messageCount: number;
-  giftCount: number;
 }) {
   const target = new Date(celebrationDate).getTime();
   const [now, setNow] = useState(() => Date.now());
@@ -157,12 +117,6 @@ export function SealedCountdown({
 
         {/* Everything below shares one tidy column. */}
         <div className="w-full max-w-sm mt-7 space-y-3">
-          {/* Blurred activity counters */}
-          <div className="fade-up grid grid-cols-2 gap-3">
-            <ActivityTile count={messageCount} noun="message" icon={<MessageCircle className="size-5" />} />
-            <ActivityTile count={giftCount} noun="gift" icon={<Gift className="size-5" />} />
-          </div>
-
           {/* Wishlist */}
           {wishlist.length > 0 && (
             <div className="fade-up rounded-2xl glass-dark p-4 text-left">
