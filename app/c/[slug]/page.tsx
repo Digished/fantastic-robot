@@ -109,7 +109,7 @@ export default async function WallPage({
       ? (
           await supabase
             .from("celebration_cycles")
-            .select("cycle, celebration_date, total_raised_kobo, contributor_count")
+            .select("cycle, celebration_date, total_raised_kobo, contributor_count, payout_status")
             .eq("celebration_id", page.id)
             .order("cycle", { ascending: false })
         ).data ?? []
@@ -375,17 +375,32 @@ export default async function WallPage({
               <section className="mt-2 rounded-3xl2 bg-white shadow-ring p-4">
                 <p className="text-[10px] uppercase tracking-widest text-ink/40 mb-2">Past years</p>
                 <ul className="divide-y divide-ink/8">
-                  {pastCycles.map((c) => (
-                    <li key={c.cycle}>
-                      <Link
-                        href={`/c/${page.slug}?cycle=${c.cycle}`}
-                        className="flex items-center justify-between py-2.5 text-sm hover:opacity-70 transition"
-                      >
-                        <span className="text-ink/70">{formatDate(c.celebration_date)}</span>
-                        <span className="text-ink/45 text-xs">{c.contributor_count} messages</span>
-                      </Link>
-                    </li>
-                  ))}
+                  {pastCycles.map((c) => {
+                    const claimable =
+                      isCreator && c.payout_status === "pending" && Number(c.total_raised_kobo) > 0;
+                    return (
+                      <li key={c.cycle} className="flex items-center justify-between py-2.5 gap-3">
+                        <Link
+                          href={`/c/${page.slug}?cycle=${c.cycle}`}
+                          className="flex-1 flex items-center justify-between text-sm hover:opacity-70 transition"
+                        >
+                          <span className="text-ink/70">{formatDate(c.celebration_date)}</span>
+                          <span className="text-ink/45 text-xs">{c.contributor_count} messages</span>
+                        </Link>
+                        {claimable && (
+                          <ClaimButton
+                            slug={page.slug}
+                            cycle={c.cycle}
+                            amountKobo={Number(c.total_raised_kobo)}
+                            compact
+                          />
+                        )}
+                        {isCreator && c.payout_status === "paid" && (
+                          <span className="text-[11px] text-ink/40 shrink-0">✓ received</span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               </section>
             )}
