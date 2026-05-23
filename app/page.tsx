@@ -3,11 +3,20 @@ import { redirect } from "next/navigation";
 import {
   Mic, Video, Gift, Sparkles as SparklesIcon, Wand2, Palette, Music,
   Image as ImageIcon, Users, ShieldCheck, Lock, Banknote, Share2, Play,
-  Check, PartyPopper, ArrowRight,
+  Check, PartyPopper, ArrowRight, Cake, Repeat, ListChecks, CalendarClock,
 } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Sparkles } from "@/components/sparkles";
 import { Reveal } from "@/components/reveal";
+import { SealedPreview } from "@/components/sealed-preview";
+
+const SELF_HIGHLIGHTS = [
+  { icon: Lock, title: "Sealed until the day", body: "Messages and gifts stay a surprise — even from you. Nobody peeks until the date arrives." },
+  { icon: CalendarClock, title: "A countdown to the moment", body: "Friends land on a live countdown and a way to chip in, building the anticipation." },
+  { icon: ListChecks, title: "Add a wishlist", body: "Share a few things you'd love so the group gift goes toward what matters to you." },
+  { icon: Repeat, title: "Renews every year", body: "Set a birthday once and the page rolls forward automatically — every single year." },
+];
+
 
 const FEATURES = [
   {
@@ -79,8 +88,12 @@ const MESSAGES = [
 
 const FAQ = [
   {
+    q: "Can I make a page for myself?",
+    a: "Yes. Set up your own birthday or milestone page and it stays sealed — a surprise even from you — until the day. Friends leave messages and chip in to a group gift, you can add a wishlist, and birthdays renew automatically every year. It's free to create your own page.",
+  },
+  {
     q: "How much does it cost?",
-    a: "Creating a page is a one-time ₦500. Contributing is free for friends — a small 5% fee is added on top of each gift, so the celebrant always receives the full amount chosen. The minimum contribution is ₦500.",
+    a: "Creating a page for someone else is a one-time ₦500 — your own page is free. Contributing is free for friends — a small 5% fee is added on top of each gift, so the celebrant always receives the full amount chosen. The minimum contribution is ₦500.",
   },
   {
     q: "When does the recipient get the money?",
@@ -139,14 +152,14 @@ export default async function Landing() {
               <em className="shimmer-text not-italic">Perfectly</em>
             </h1>
             <p className="fade-up mt-6 text-ink/65 text-lg leading-relaxed max-w-sm" style={{ animationDelay: "120ms" }}>
-              Create a beautiful group surprise page filled with heartfelt messages, voice notes, photos, and cash gifts — delivered straight to their bank account.
+              Create a beautiful group surprise page filled with heartfelt messages, voice notes, photos, and cash gifts — delivered straight to their bank account. Or set up your own page and let everyone surprise <em className="not-italic text-[var(--accent)]">you</em>.
             </p>
             <div className="fade-up mt-9 flex flex-col sm:flex-row gap-3 max-w-sm" style={{ animationDelay: "180ms" }}>
               <Link href="/create" className="btn-accent text-base py-4 shadow-glow flex-1 text-center">
                 Start a celebration
               </Link>
-              <Link href="/login" className="btn-outline text-base py-4 flex-1 text-center">
-                Sign in
+              <Link href="/create/me" className="btn-outline text-base py-4 flex-1 text-center inline-flex items-center justify-center gap-2">
+                <Cake className="size-4" /> Make my page
               </Link>
             </div>
           </div>
@@ -253,6 +266,108 @@ export default async function Landing() {
             <span className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-[var(--accent)]" /> No account needed to contribute</span>
             <span className="inline-flex items-center gap-1.5"><Check className="size-3.5 text-[var(--accent)]" /> Funds held safely in escrow</span>
           </div>
+        </div>
+      </section>
+
+      {/* ── Two ways to celebrate ── */}
+      <section className="mx-auto max-w-6xl px-5 md:px-10 py-20 md:py-28">
+        <Reveal className="text-center max-w-xl mx-auto">
+          <p className="text-[11px] uppercase tracking-[0.3em] text-ink/45 mb-4">Two ways to celebrate</p>
+          <h2 className="serif text-ink text-[38px] md:text-[48px] leading-[0.95]">
+            For someone you love — or your own big day
+          </h2>
+          <p className="text-ink/60 mt-4 text-base leading-relaxed">
+            Plan a surprise for a friend, or make your own page and let the people who love you pile on.
+          </p>
+        </Reveal>
+
+        <div className="grid md:grid-cols-2 gap-4 mt-12">
+          <Reveal>
+            <div className="card h-full flex flex-col gap-4 hover:shadow-card transition-shadow">
+              <span className="size-12 rounded-2xl grid place-items-center" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                <PartyPopper className="size-5" />
+              </span>
+              <div>
+                <p className="serif text-2xl text-ink">Celebrate someone</p>
+                <p className="text-ink/55 text-sm mt-2 leading-relaxed">
+                  Build a surprise page for a friend. Pick a theme, gather everyone&apos;s messages, and send the pooled gift to their account on the day.
+                </p>
+              </div>
+              <ul className="space-y-2 mt-1">
+                {["Set the theme, music and cover", "Friends add messages & a cash gift", "Lands in their bank in one tap"].map((line) => (
+                  <li key={line} className="flex items-start gap-2.5 text-sm text-ink/70">
+                    <Check className="size-4 mt-0.5 shrink-0 text-[var(--accent)]" /> {line}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/create" className="btn-accent shadow-soft mt-auto inline-flex items-center justify-center gap-2">
+                Start a celebration <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          </Reveal>
+
+          <Reveal delay={120}>
+            <div className="card h-full flex flex-col gap-4 hover:shadow-card transition-shadow relative overflow-hidden">
+              <span className="absolute top-4 right-4 text-[10px] uppercase tracking-widest text-[var(--accent)] bg-[var(--accent-soft)] rounded-full px-2.5 py-1">
+                New
+              </span>
+              <span className="size-12 rounded-2xl grid place-items-center" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                <Cake className="size-5" />
+              </span>
+              <div>
+                <p className="serif text-2xl text-ink">Set up your own page</p>
+                <p className="text-ink/55 text-sm mt-2 leading-relaxed">
+                  Make your own birthday or milestone page. It stays sealed — a surprise even from you — while friends fill it with messages and gifts.
+                </p>
+              </div>
+              <ul className="space-y-2 mt-1">
+                {["Sealed until your day arrives", "Add a wishlist for the group gift", "Renews every year for birthdays"].map((line) => (
+                  <li key={line} className="flex items-start gap-2.5 text-sm text-ink/70">
+                    <Check className="size-4 mt-0.5 shrink-0 text-[var(--accent)]" /> {line}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/create/me" className="btn-accent shadow-soft mt-auto inline-flex items-center justify-center gap-2">
+                Make my page <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── Self-page spotlight ── */}
+      <section className="theme-mesh py-20 md:py-28 overflow-hidden">
+        <div className="mx-auto max-w-6xl px-5 md:px-10 md:grid md:grid-cols-2 md:gap-16 md:items-center">
+          <Reveal className="mx-auto w-full max-w-[360px] md:max-w-none order-2 md:order-1 mt-10 md:mt-0">
+            <SealedPreview />
+          </Reveal>
+
+          <Reveal delay={120} className="order-1 md:order-2">
+            <p className="text-[11px] uppercase tracking-[0.3em] text-ink/45 mb-4">Your own page</p>
+            <h2 className="serif text-ink text-[38px] md:text-[48px] leading-[0.95]">
+              Sealed until your day arrives
+            </h2>
+            <p className="text-ink/60 mt-4 text-base leading-relaxed">
+              Share the link and watch the countdown begin. Friends leave notes and chip in, but it all stays hidden —
+              even from you — until the date. Then you press play, relive every message, and the pooled gift lands in your account.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4 mt-8">
+              {SELF_HIGHLIGHTS.map(({ icon: Icon, title, body }) => (
+                <div key={title} className="flex gap-3">
+                  <span className="size-10 shrink-0 rounded-2xl grid place-items-center" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                    <Icon className="size-5" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-ink">{title}</p>
+                    <p className="text-xs text-ink/55 mt-1 leading-relaxed">{body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Link href="/create/me" className="btn-accent shadow-soft mt-9 inline-flex items-center gap-2">
+              Make my page <ArrowRight className="size-4" />
+            </Link>
+          </Reveal>
         </div>
       </section>
 
@@ -556,11 +671,16 @@ export default async function Landing() {
           </span>
           <h2 className="serif text-ink text-[44px] md:text-[60px] leading-[0.92]">Ready to celebrate?</h2>
           <p className="text-ink/60 mt-4 text-lg max-w-sm mx-auto">
-            Start a page in two minutes and gather the people who love them.
+            Start a page in two minutes — for someone you love, or your own big day.
           </p>
-          <Link href="/create" className="btn-accent text-base py-4 px-10 shadow-glow mt-8 inline-flex">
-            Start a celebration <ArrowRight className="size-4" />
-          </Link>
+          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center">
+            <Link href="/create" className="btn-accent text-base py-4 px-10 shadow-glow inline-flex items-center gap-2">
+              Start a celebration <ArrowRight className="size-4" />
+            </Link>
+            <Link href="/create/me" className="btn-outline text-base py-4 px-10 inline-flex items-center gap-2">
+              <Cake className="size-4" /> Make my page
+            </Link>
+          </div>
         </Reveal>
       </section>
 
@@ -572,6 +692,7 @@ export default async function Landing() {
           <div className="flex items-center gap-5 text-sm text-ink/60">
             <Link href="/login" className="hover:text-ink transition">Sign in</Link>
             <Link href="/create" className="hover:text-ink transition">Start a celebration</Link>
+            <Link href="/create/me" className="hover:text-ink transition">Make my page</Link>
           </div>
         </div>
       </footer>
