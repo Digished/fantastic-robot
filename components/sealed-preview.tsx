@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Lock, Cake, Gift } from "lucide-react";
+import { Lock, Cake, Gift, MessageCircle } from "lucide-react";
 
 function parts(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -61,7 +61,7 @@ export function SealedPreview() {
         <p className="serif text-3xl mt-2 leading-[0.95] drop-shadow-sm">Ada turns 25</p>
 
         {/* Live countdown */}
-        <div className="mt-5 flex items-end justify-center gap-3.5">
+        <div className="mt-4 flex items-end justify-center gap-3.5">
           {units.map(([value, label]) => (
             <div key={label} className="text-center">
               <p className="serif text-2xl tabular-nums leading-none">{value}</p>
@@ -71,12 +71,12 @@ export function SealedPreview() {
         </div>
 
         {/* Sealed pill */}
-        <p className="mt-5 inline-flex items-center gap-1.5 glass-dark rounded-full px-3.5 py-1.5 text-xs text-white/85">
+        <p className="mt-4 inline-flex items-center gap-1.5 glass-dark rounded-full px-3.5 py-1.5 text-xs text-white/85">
           <Lock className="size-3.5" /> Sealed until the day
         </p>
 
         {/* Wishlist mini */}
-        <div className="mt-4 w-full max-w-[220px] glass-dark rounded-2xl p-3 text-left">
+        <div className="mt-3 w-full max-w-[220px] glass-dark rounded-2xl p-3 text-left">
           <p className="text-[8px] uppercase tracking-[0.2em] text-white/55 inline-flex items-center gap-1 mb-1.5">
             <Gift className="size-3" /> Ada&apos;s wishlist
           </p>
@@ -88,11 +88,21 @@ export function SealedPreview() {
             ))}
           </div>
         </div>
+
+        {/* Actions — same pairing as the live page */}
+        <div className="mt-3 flex gap-2 w-full max-w-[240px]">
+          <span className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-[var(--accent)] text-white text-[11px] font-medium py-2.5 shadow-glow">
+            <MessageCircle className="size-3.5" /> Message
+          </span>
+          <span className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-white/90 text-ink text-[11px] font-medium py-2.5">
+            <Gift className="size-3.5" /> Send a gift
+          </span>
+        </div>
       </div>
 
-      {/* Floating gift pill */}
+      {/* Floating gift pill — desktop only, where there's room below the column */}
       <div
-        className="absolute left-4 bottom-4 bg-white rounded-2xl shadow-card px-3.5 py-2.5"
+        className="hidden md:block absolute left-4 bottom-4 bg-white rounded-2xl shadow-card px-3.5 py-2.5"
         style={{ animation: "floatY 7s ease-in-out infinite 1s" }}
       >
         <p className="text-[8px] uppercase tracking-[0.24em] text-ink/40">Waiting</p>
