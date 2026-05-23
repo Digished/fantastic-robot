@@ -170,6 +170,9 @@ export async function createSelfCelebration(
     eventType: formData.get("eventType"),
     theme: formData.get("theme") ?? "ivory",
     date: formData.get("date"),
+    backgroundMusic: formData.get("backgroundMusic") || null,
+    bankCode: formData.get("bankCode") || undefined,
+    accountNumber: formData.get("accountNumber") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -179,16 +182,49 @@ export async function createSelfCelebration(
     return { error: "Pick a date at least 96 hours from now." };
   }
 
+  const admin = supabaseAdmin();
+
+  // A payout bank is compulsory — there's nowhere to send the gift otherwise.
+  // Verify it with Paystack and save it to the profile so it's reused for the
+  // claim and any future pages/years.
   const { data: profile } = await supabase
     .from("users")
-    .select("display_name, email")
+    .select("display_name, email, bank_code, account_number")
     .eq("id", user.id)
     .maybeSingle();
+
+  let accountName: string;
+  try {
+    const { data } = await paystack.resolveAccount(
+      parsed.data.accountNumber,
+      parsed.data.bankCode,
+    );
+    accountName = data.account_name;
+  } catch (err) {
+    const msg = err instanceof PaystackError ? err.message : "Could not verify account";
+    return { error: `Bank account check failed: ${msg}` };
+  }
+
+  const bankChanged =
+    profile?.bank_code !== parsed.data.bankCode ||
+    profile?.account_number !== parsed.data.accountNumber;
+  const { error: bankError } = await admin
+    .from("users")
+    .update({
+      bank_code: parsed.data.bankCode,
+      account_number: parsed.data.accountNumber,
+      account_name: accountName,
+      bank_verified_at: new Date().toISOString(),
+      ...(bankChanged ? { paystack_recipient_code: null } : {}),
+    })
+    .eq("id", user.id);
+  if (bankError) return { error: bankError.message };
+
   const recipientName =
     profile?.display_name?.trim() || profile?.email?.split("@")[0] || "Me";
 
+  const resolvedMusic = await resolveSavedTrackId(parsed.data.backgroundMusic ?? null);
   const slug = slugId();
-  const admin = supabaseAdmin();
   const { error } = await admin.from("celebrations").insert({
     slug,
     creator_id: user.id,
@@ -196,6 +232,7 @@ export async function createSelfCelebration(
     recipient_name: recipientName,
     event_type: parsed.data.eventType,
     theme: parsed.data.theme,
+    background_music: resolvedMusic,
     celebration_date: celebrationDate,
     is_self: true,
     is_sealed: true,

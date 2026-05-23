@@ -47,8 +47,9 @@ export const createCelebrationSchema = z.object({
   introContent: z.string().optional(),
 });
 
-// A self-owned page: the creator IS the celebrant. No recipient bank (it
-// comes from their profile) and no "about you" description.
+// A self-owned page: the creator IS the celebrant. The payout bank is
+// captured here (compulsory) and saved to their profile, and they can pick a
+// celebration song just like the main flow.
 export const createSelfCelebrationSchema = z.object({
   title: z.string().min(2).max(80),
   eventType: z.enum([
@@ -57,6 +58,9 @@ export const createSelfCelebrationSchema = z.object({
   ]),
   theme: z.enum(THEME_IDS).default("ivory"),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date"),
+  backgroundMusic: musicTrackId.nullable().optional(),
+  bankCode: z.string({ required_error: "Choose your bank" }).min(2, "Choose your bank").max(10),
+  accountNumber: naijaAccountNumber,
 });
 
 export const profileBankSchema = z.object({

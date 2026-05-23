@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
+import { getBanks } from "@/lib/paystack/banks";
+import { getEffectiveTracks } from "@/lib/music/server";
 import { SelfCreateForm } from "./form";
 
 export default async function CreateSelfPage() {
@@ -7,11 +9,15 @@ export default async function CreateSelfPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/create/me");
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("display_name, email, account_name")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: profile }, banks, tracks] = await Promise.all([
+    supabase
+      .from("users")
+      .select("display_name, email, bank_code, account_number, account_name")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getBanks(),
+    getEffectiveTracks(),
+  ]);
 
   const name = profile?.display_name?.trim() || profile?.email?.split("@")[0] || "";
 
@@ -24,7 +30,14 @@ export default async function CreateSelfPage() {
           kept a complete surprise until the day.
         </p>
         <div className="mt-8">
-          <SelfCreateForm defaultName={name} hasBank={!!profile?.account_name} />
+          <SelfCreateForm
+            defaultName={name}
+            banks={banks}
+            tracks={tracks}
+            initialBankCode={profile?.bank_code ?? ""}
+            initialAccountNumber={profile?.account_number ?? ""}
+            initialAccountName={profile?.account_name ?? ""}
+          />
         </div>
       </div>
     </main>
