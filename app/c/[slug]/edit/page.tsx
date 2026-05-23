@@ -29,24 +29,28 @@ export default async function EditPage({
   // Personal pages get a distinct, simpler editor — first-person, wishlist,
   // payout bank, no AI slides. The owner can't peek at the sealed wall here.
   if (page.is_self) {
-    const [{ data: profile }, banks] = await Promise.all([
+    const [{ data: profile }, banks, selfTracks] = await Promise.all([
       supabase
         .from("users")
         .select("bank_code, account_number, account_name")
         .eq("id", user.id)
         .maybeSingle(),
       getBanks(),
+      getEffectiveTracks(),
     ]);
     const selfTheme: Theme = isTheme(page.theme) ? page.theme : "ivory";
+    const selfMusic = findTrack(page.background_music, selfTracks) ? page.background_music : null;
     return (
       <SelfEditForm
         slug={slug}
         banks={banks}
+        tracks={selfTracks}
         initial={{
           title: page.title,
           theme: selfTheme,
           messageFromCreator: page.message_from_creator ?? "",
           isRecurring: !!page.is_recurring,
+          backgroundMusic: selfMusic,
           wishlist: (page.wishlist as WishlistItem[] | null) ?? [],
           bankCode: profile?.bank_code ?? "",
           accountNumber: profile?.account_number ?? "",

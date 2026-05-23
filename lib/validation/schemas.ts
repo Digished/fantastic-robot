@@ -83,6 +83,7 @@ export const editSelfCelebrationSchema = z.object({
   theme: z.enum(THEME_IDS).optional(),
   messageFromCreator: z.string().max(280).optional(),
   isRecurring: z.boolean().default(false),
+  backgroundMusic: musicTrackId.nullable().optional(),
   wishlist: wishlistSchema.default([]),
   // Payout bank lives on the profile; optional here so they can set it inline.
   bankCode: z.string().min(2).max(10).optional(),

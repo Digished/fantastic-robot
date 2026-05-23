@@ -7,20 +7,25 @@ import { editSelfCelebration, type SelfEditState } from "./actions";
 import { isTheme, type Theme } from "@/lib/themes";
 import { ThemePickerButton } from "@/components/page-editor/theme-picker-button";
 import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox";
+import { MusicPicker } from "@/components/music-picker";
+import { isValidUploadedTrackId, makeUploadedTrack, parseMusicValue, type MusicTrack } from "@/lib/music";
 import type { WishlistItem } from "@/lib/validation/schemas";
 
 export function SelfEditForm({
   slug,
   banks,
+  tracks,
   initial,
 }: {
   slug: string;
   banks: Bank[];
+  tracks: MusicTrack[];
   initial: {
     title: string;
     theme: string;
     messageFromCreator: string;
     isRecurring: boolean;
+    backgroundMusic: string | null;
     wishlist: WishlistItem[];
     bankCode: string;
     accountNumber: string;
@@ -38,6 +43,17 @@ export function SelfEditForm({
   const [wishlist, setWishlist] = useState<WishlistItem[]>(
     initial.wishlist.length ? initial.wishlist : [],
   );
+
+  // Celebration song. Surface a previously uploaded track in the list so it
+  // shows as selected and can be previewed.
+  const [music, setMusic] = useState<string | null>(initial.backgroundMusic);
+  const [trackList, setTrackList] = useState<MusicTrack[]>(() => {
+    const { id } = parseMusicValue(initial.backgroundMusic);
+    if (id && isValidUploadedTrackId(id) && !tracks.some((t) => t.id === id)) {
+      return [makeUploadedTrack(id), ...tracks];
+    }
+    return tracks;
+  });
 
   // Bank (profile-level; reused across pages/years)
   const [bankCode, setBankCode] = useState(initial.bankCode);
@@ -83,6 +99,7 @@ export function SelfEditForm({
     fd.set("theme", theme);
     if (note) fd.set("messageFromCreator", note);
     if (isRecurring) fd.set("isRecurring", "on");
+    if (music) fd.set("backgroundMusic", music);
     fd.set(
       "wishlist",
       JSON.stringify(
@@ -139,6 +156,15 @@ export function SelfEditForm({
           <label className="label">Theme</label>
           <ThemePickerButton value={theme} onChange={setTheme} />
         </div>
+
+        {/* Celebration song */}
+        <MusicPicker
+          value={music}
+          onChange={setMusic}
+          tracks={trackList}
+          allowUpload
+          onAddTrack={(t) => setTrackList((prev) => (prev.some((x) => x.id === t.id) ? prev : [t, ...prev]))}
+        />
 
         {/* Personal note */}
         <div className="space-y-1.5">
