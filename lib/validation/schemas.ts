@@ -47,6 +47,51 @@ export const createCelebrationSchema = z.object({
   introContent: z.string().optional(),
 });
 
+// A self-owned page: the creator IS the celebrant. The payout bank is
+// captured here (compulsory) and saved to their profile, and they can pick a
+// celebration song just like the main flow.
+export const createSelfCelebrationSchema = z.object({
+  title: z.string().min(2).max(80),
+  eventType: z.enum([
+    "birthday", "graduation", "wedding", "appreciation",
+    "farewell", "baby_shower", "surprise_gift", "other",
+  ]),
+  theme: z.enum(THEME_IDS).default("ivory"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date"),
+  backgroundMusic: musicTrackId.nullable().optional(),
+  bankCode: z.string({ required_error: "Choose your bank" }).min(2, "Choose your bank").max(10),
+  accountNumber: naijaAccountNumber,
+});
+
+export const profileBankSchema = z.object({
+  bankCode: z.string().min(2).max(10),
+  accountNumber: naijaAccountNumber,
+});
+
+// A wishlist item: a thing the celebrant would love, with an optional link.
+export const wishlistItemSchema = z.object({
+  title: z.string().min(1).max(120),
+  url: z.string().url().max(500).optional().or(z.literal("")),
+});
+export const wishlistSchema = z.array(wishlistItemSchema).max(20);
+
+// Editing a self-owned page: simpler than the full editor. The celebrant is
+// the creator, so labels are first-person and there's no AI brief/slides.
+// Self pages are always sealed — the surprise is the whole point.
+export const editSelfCelebrationSchema = z.object({
+  title: z.string().min(2).max(80),
+  theme: z.enum(THEME_IDS).optional(),
+  messageFromCreator: z.string().max(280).optional(),
+  isRecurring: z.boolean().default(false),
+  backgroundMusic: musicTrackId.nullable().optional(),
+  wishlist: wishlistSchema.default([]),
+  // Payout bank lives on the profile; optional here so they can set it inline.
+  bankCode: z.string().min(2).max(10).optional(),
+  accountNumber: naijaAccountNumber.optional(),
+});
+
+export type WishlistItem = z.infer<typeof wishlistItemSchema>;
+
 export const messageSchema = z.object({
   body: z.string().max(500).optional(),
   mediaKind: z.enum(["none", "audio", "video", "image"]).default("none"),

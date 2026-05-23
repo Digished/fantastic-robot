@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X, Video, Gift, Lock, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play, RotateCcw, X, Video, Gift, Lock, Loader2, LayoutGrid } from "lucide-react";
 import type { Theme } from "@/lib/themes";
 import type { IntroContent } from "@/lib/openai/generate-intro";
 import { slideAccentBg, slideStyleKey } from "@/lib/slide-accents";
@@ -345,6 +345,7 @@ export function Player({
   const [done, setDone] = useState(false);
   const [progress, setProgress] = useState(0);
   const [interactiveReady, setInteractiveReady] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
   const rafRef = useRef<number | null>(null);
   const startTsRef = useRef<number>(0);
   const elapsedRef = useRef<number>(0);
@@ -449,8 +450,8 @@ export function Player({
 
   function next() { elapsedRef.current = 0; setProgress(0); if (i + 1 >= total) setDone(true); else setI(i + 1); }
   function prev() { elapsedRef.current = 0; setProgress(0); setDone(false); setI((x) => Math.max(0, x - 1)); }
-  function replay() { elapsedRef.current = 0; setProgress(0); setDone(false); setI(0); setPaused(false); }
-  function selectSlide(idx: number) { elapsedRef.current = 0; setProgress(0); setDone(false); setI(idx); setPaused(false); }
+  function replay() { elapsedRef.current = 0; setProgress(0); setShowGrid(false); setDone(false); setI(0); setPaused(false); }
+  function selectSlide(idx: number) { elapsedRef.current = 0; setProgress(0); setShowGrid(false); setDone(false); setI(idx); setPaused(false); }
 
   const firstName = recipientName.split(" ")[0];
 
@@ -458,7 +459,7 @@ export function Player({
     <main
       data-theme={theme}
       className="fixed inset-0 select-none overflow-hidden"
-      style={{ background: done ? "white" : slideBg }}
+      style={{ background: showGrid ? "white" : slideBg }}
       onClick={(e) => {
         resumeMusic();
         if (done) return;
@@ -513,49 +514,62 @@ export function Player({
       )}
 
       {/* Slide content */}
-      {!done ? (
-        current?.kind === "intro" ? (
-          <>
-            <SprinkleOverlay slideId={current.intro.id} />
-            <IntroSlideView
-              key={current.intro.id}
-              slide={current.intro}
-              firstName={firstName}
-              recipientName={recipientName}
-              eventType={eventType}
-              celebrationDate={celebrationDate}
-              celebrationTitle={celebrationTitle}
-              tagline={tagline}
-              celebrantDescription={celebrantDescription}
-              introContent={introContent}
-            />
-          </>
-        ) : currentMsg && current?.kind === "message" ? (
-          <>
-            <SprinkleOverlay slideId={`msg-${currentMsg.id}`} />
-            <MessageSlide
-              key={currentMsg.id}
-              m={currentMsg}
-              msgIdx={current.msgIdx}
-              onInteractiveReady={() => setInteractiveReady(true)}
-            />
-          </>
-        ) : null
-      ) : (
+      {showGrid ? (
         <PostPlayGallery
           allSlides={allSlides}
           firstName={firstName}
           slug={slug}
           introContent={introContent}
           celebrationTitle={celebrationTitle}
-          totalRaisedKobo={totalRaisedKobo}
-          claimableAt={claimableAt}
-          payoutStatus={payoutStatus}
           createdBy={createdBy}
           onSelectSlide={selectSlide}
           onReplay={replay}
+          onBack={() => setShowGrid(false)}
           onExit={onExit}
         />
+      ) : (
+        <>
+          {current?.kind === "intro" ? (
+            <>
+              <SprinkleOverlay slideId={current.intro.id} />
+              <IntroSlideView
+                key={current.intro.id}
+                slide={current.intro}
+                firstName={firstName}
+                recipientName={recipientName}
+                eventType={eventType}
+                celebrationDate={celebrationDate}
+                celebrationTitle={celebrationTitle}
+                tagline={tagline}
+                celebrantDescription={celebrantDescription}
+                introContent={introContent}
+              />
+            </>
+          ) : currentMsg && current?.kind === "message" ? (
+            <>
+              <SprinkleOverlay slideId={`msg-${currentMsg.id}`} />
+              <MessageSlide
+                key={currentMsg.id}
+                m={currentMsg}
+                msgIdx={current.msgIdx}
+                onInteractiveReady={() => setInteractiveReady(true)}
+              />
+            </>
+          ) : null}
+
+          {/* End state — the last slide stays on screen with the actions over it. */}
+          {done && (
+            <EndActions
+              slug={slug}
+              totalRaisedKobo={totalRaisedKobo}
+              claimableAt={claimableAt}
+              payoutStatus={payoutStatus}
+              onReplay={replay}
+              onViewAll={() => setShowGrid(true)}
+              onExit={onExit}
+            />
+          )}
+        </>
       )}
 
       {/* Desktop edge nav */}
@@ -985,13 +999,6 @@ function IntroSlideView({
       ) : tagline ? (
         <p className="serif text-2xl slide-ink-soft fade-up relative z-10">{tagline}</p>
       ) : null}
-
-      <p
-        className="mt-12 text-[10px] uppercase tracking-[0.4em] slide-ink-faint fade-up relative z-10"
-        style={{ animationDelay: "400ms" }}
-      >
-        tap to open
-      </p>
     </section>
   );
 }
@@ -1227,21 +1234,81 @@ function GiftReveal({
   );
 }
 
+// The closing state of the show: the last slide stays behind this, and the
+// celebrant chooses what to do next — claim the gift, replay, browse every
+// slide, or leave.
+function EndActions({
+  slug, totalRaisedKobo, claimableAt, payoutStatus, onReplay, onViewAll, onExit,
+}: {
+  slug: string;
+  totalRaisedKobo: number;
+  claimableAt: string;
+  payoutStatus: string;
+  onReplay: () => void;
+  onViewAll: () => void;
+  onExit?: () => void;
+}) {
+  return (
+    <div
+      className="absolute inset-0 z-40 flex flex-col justify-end"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="bg-gradient-to-t from-black/45 via-black/15 to-transparent pt-24 px-4 pb-6">
+        <div className="mx-auto w-full max-w-md rounded-3xl2 bg-white/92 backdrop-blur-md shadow-card p-5 space-y-4 fade-up">
+          {totalRaisedKobo > 0 && (
+            <GiftReveal slug={slug} claimableAt={claimableAt} payoutStatus={payoutStatus} />
+          )}
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              data-no-loading="true"
+              onClick={onReplay}
+              className="btn-outline text-xs py-2.5 px-2 inline-flex flex-col items-center gap-1"
+            >
+              <RotateCcw className="size-4" /> Replay
+            </button>
+            <button
+              data-no-loading="true"
+              onClick={onViewAll}
+              className="btn-outline text-xs py-2.5 px-2 inline-flex flex-col items-center gap-1"
+            >
+              <LayoutGrid className="size-4" /> All slides
+            </button>
+            {onExit ? (
+              <button
+                data-no-loading="true"
+                onClick={onExit}
+                className="btn-outline text-xs py-2.5 px-2 inline-flex flex-col items-center gap-1"
+              >
+                <X className="size-4" /> Close
+              </button>
+            ) : (
+              <Link
+                href={`/c/${slug}/celebrate`}
+                className="btn-outline text-xs py-2.5 px-2 inline-flex flex-col items-center gap-1"
+              >
+                <X className="size-4" /> Close
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PostPlayGallery({
   allSlides, firstName, slug, introContent, celebrationTitle,
-  totalRaisedKobo, claimableAt, payoutStatus, createdBy, onSelectSlide, onReplay, onExit,
+  createdBy, onSelectSlide, onReplay, onBack, onExit,
 }: {
   allSlides: AnySlide[];
   firstName: string;
   slug: string;
   introContent: IntroContent | null;
   celebrationTitle: string;
-  totalRaisedKobo: number;
-  claimableAt: string;
-  payoutStatus: string;
   createdBy: string | null;
   onSelectSlide: (idx: number) => void;
   onReplay: () => void;
+  onBack?: () => void;
   onExit?: () => void;
 }) {
   return (
@@ -1251,13 +1318,26 @@ function PostPlayGallery({
     >
       {/* Sticky header */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-ink/8">
-        <div className="max-w-5xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-ink/40">All memories</p>
-            <h2 className="serif text-xl text-ink leading-tight mt-0.5">{celebrationTitle}</h2>
+        <div className="max-w-5xl mx-auto px-4 md:px-8 py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {onBack && (
+              <button
+                data-no-loading="true"
+                onClick={onBack}
+                className="size-9 grid place-items-center rounded-full bg-ink/8 text-ink shrink-0"
+                aria-label="Back"
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+            )}
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-widest text-ink/40">All memories</p>
+              <h2 className="serif text-xl text-ink leading-tight mt-0.5 truncate">{celebrationTitle}</h2>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
+              data-no-loading="true"
               onClick={onReplay}
               className="btn-accent shadow-soft text-xs py-2 px-3 inline-flex gap-1.5"
             >
@@ -1284,13 +1364,6 @@ function PostPlayGallery({
       </div>
 
       <div className="max-w-5xl mx-auto px-4 md:px-8">
-        {/* Gift reveal — only when a monetary gift exists */}
-        {totalRaisedKobo > 0 && (
-          <div className="pt-6 max-w-md mx-auto">
-            <GiftReveal slug={slug} claimableAt={claimableAt} payoutStatus={payoutStatus} />
-          </div>
-        )}
-
         {/* Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 md:gap-4 py-6">
           {allSlides.map((slide, idx) => (

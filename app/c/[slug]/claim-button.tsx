@@ -4,7 +4,17 @@ import { useState } from "react";
 import { Gift, Loader2 } from "lucide-react";
 import { formatNaira } from "@/lib/utils";
 
-export function ClaimButton({ slug, amountKobo }: { slug: string; amountKobo: number }) {
+export function ClaimButton({
+  slug,
+  amountKobo,
+  cycle,
+  compact = false,
+}: {
+  slug: string;
+  amountKobo: number;
+  cycle?: number;
+  compact?: boolean;
+}) {
   const [confirm, setConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -14,7 +24,7 @@ export function ClaimButton({ slug, amountKobo }: { slug: string; amountKobo: nu
     const res = await fetch("/api/paystack/claim", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug }),
+      body: JSON.stringify(cycle ? { slug, cycle } : { slug }),
     });
     setLoading(false);
     if (!res.ok) {
@@ -26,7 +36,11 @@ export function ClaimButton({ slug, amountKobo }: { slug: string; amountKobo: nu
   }
 
   if (!confirm) {
-    return (
+    return compact ? (
+      <button className="btn-accent text-xs py-1.5 px-3 inline-flex" onClick={() => setConfirm(true)}>
+        Claim {formatNaira(amountKobo)}
+      </button>
+    ) : (
       <button className="w-full btn-accent py-5 text-base shadow-glow inline-flex" onClick={() => setConfirm(true)}>
         <Gift className="size-5" /> Receive your gift
       </button>

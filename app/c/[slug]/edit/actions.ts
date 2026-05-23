@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { paystack, PaystackError } from "@/lib/paystack/client";
 import type { IntroContent } from "@/lib/openai/generate-intro";
 import { THEME_IDS } from "@/lib/themes";
+import { editSelfCelebrationSchema } from "@/lib/validation/schemas";
 import { resolveSavedTrackId } from "@/lib/music/server";
 import { contentWindowOpen } from "@/lib/celebration-windows";
 
@@ -86,6 +88,101 @@ export async function editCelebration(
   if (error) return { error: error.message };
 
   revalidatePath(`/c/${slug}`);
+  return { ok: true };
+}
+
+export type SelfEditState = { error?: string; ok?: boolean };
+
+export async function editSelfCelebration(
+  slug: string,
+  _prev: SelfEditState,
+  formData: FormData,
+): Promise<SelfEditState> {
+  const supabase = await supabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in required." };
+
+  let wishlist: unknown = [];
+  try { wishlist = JSON.parse((formData.get("wishlist") as string) || "[]"); } catch { /* keep empty */ }
+
+  const parsed = editSelfCelebrationSchema.safeParse({
+    title: formData.get("title"),
+    theme: (formData.get("theme") as string) || undefined,
+    messageFromCreator: (formData.get("messageFromCreator") as string) || undefined,
+    isRecurring: formData.get("isRecurring") === "on",
+    backgroundMusic: formData.get("backgroundMusic") || null,
+    wishlist,
+    bankCode: (formData.get("bankCode") as string) || undefined,
+    accountNumber: (formData.get("accountNumber") as string) || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const resolvedMusic = await resolveSavedTrackId(parsed.data.backgroundMusic ?? null);
+
+  const admin = supabaseAdmin();
+  const { data: page } = await admin
+    .from("celebrations")
+    .select("id, creator_id, is_self")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!page || page.creator_id !== user.id) return { error: "Not allowed." };
+  if (!page.is_self) return { error: "Not a personal page." };
+
+  // Drop blank links so an empty url field doesn't render a dead anchor.
+  const cleanWishlist = parsed.data.wishlist
+    .map((w) => ({ title: w.title.trim(), url: w.url?.trim() || undefined }))
+    .filter((w) => w.title.length > 0);
+
+  const { error } = await admin
+    .from("celebrations")
+    .update({
+      title: parsed.data.title,
+      message_from_creator: parsed.data.messageFromCreator ?? null,
+      is_recurring: parsed.data.isRecurring,
+      is_sealed: true, // personal pages are always a surprise
+      background_music: resolvedMusic,
+      wishlist: cleanWishlist,
+      ...(parsed.data.theme ? { theme: parsed.data.theme } : {}),
+    })
+    .eq("id", page.id);
+  if (error) return { error: error.message };
+
+  // Payout bank lives on the profile and is reused across pages/years. Only
+  // re-verify with Paystack when it actually changes.
+  if (parsed.data.bankCode && parsed.data.accountNumber) {
+    const { data: current } = await admin
+      .from("users")
+      .select("bank_code, account_number")
+      .eq("id", user.id)
+      .maybeSingle();
+    const changed =
+      current?.bank_code !== parsed.data.bankCode ||
+      current?.account_number !== parsed.data.accountNumber;
+    if (changed) {
+      try {
+        const { data } = await paystack.resolveAccount(
+          parsed.data.accountNumber,
+          parsed.data.bankCode,
+        );
+        await admin
+          .from("users")
+          .update({
+            bank_code: parsed.data.bankCode,
+            account_number: parsed.data.accountNumber,
+            account_name: data.account_name,
+            bank_verified_at: new Date().toISOString(),
+            paystack_recipient_code: null,
+          })
+          .eq("id", user.id);
+      } catch (err) {
+        const msg = err instanceof PaystackError ? err.message : "Could not verify account";
+        return { error: `Bank check failed: ${msg}` };
+      }
+    }
+  }
+
+  revalidatePath(`/c/${slug}`);
+  revalidatePath(`/c/${slug}/edit`);
   return { ok: true };
 }
 

@@ -45,7 +45,7 @@ export async function postMessage(
   const admin = supabaseAdmin();
   const { data: page } = await admin
     .from("celebrations")
-    .select("id, status, celebration_date")
+    .select("id, status, celebration_date, current_cycle, is_sealed, is_self, claimable_at")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) return { error: "Page not found." };
@@ -55,6 +55,7 @@ export async function postMessage(
 
   const { error } = await admin.from("messages").insert({
     celebration_id: page.id,
+    cycle: page.current_cycle,
     contributor_name: parsed.data.isAnonymous ? "Someone special" : parsed.data.contributorName,
     contributor_email: parsed.data.contributorEmail ?? null,
     contributor_phone: parsed.data.contributorPhone ?? null,
@@ -69,7 +70,12 @@ export async function postMessage(
   });
   if (error) return { error: error.message };
 
-  redirect(`/c/${slug}?posted=1`);
+  // On a sealed page the wall is hidden, so send them back to the post page
+  // where they can still see and edit what they just sent. Otherwise land on
+  // the wall so they see their card among the rest.
+  const sealed =
+    (page.is_sealed || page.is_self) && new Date(page.claimable_at).getTime() > Date.now();
+  redirect(sealed ? `/c/${slug}/post?sent=1` : `/c/${slug}?posted=1`);
 }
 
 export type EditState = { error?: string; ok?: boolean };

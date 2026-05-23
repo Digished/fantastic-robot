@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Gift } from "lucide-react";
+import { Gift, ExternalLink } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatNaira } from "@/lib/utils";
 import { formatDate, timeUntil } from "@/lib/time";
 import { WallGrid } from "./wall-grid";
@@ -18,7 +19,8 @@ import { NavLoadingLink } from "@/components/nav-loading-link";
 import { CompletePaymentBanner } from "./complete-payment-banner";
 import { AudienceActions } from "@/components/page-editor/audience-actions";
 import { InfoButton } from "@/components/page-editor/info-button";
-import { getCreatorLabel } from "@/lib/creator";
+import { getCreatorProfile } from "@/lib/creator";
+import { SealedCountdown } from "./sealed-countdown";
 
 export const dynamic = "force-dynamic";
 
@@ -29,14 +31,19 @@ function coverUrl(path: string | null | undefined) {
 
 export default async function WallPage({
   params,
-}: { params: Promise<{ slug: string }> }) {
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ cycle?: string }>;
+}) {
   const { slug } = await params;
+  const { cycle: cycleParam } = await searchParams;
   const supabase = await supabaseServer();
 
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle, wishlist",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -50,14 +57,6 @@ export default async function WallPage({
   if (page.is_paid_for_creation === false && !isCreator) notFound();
   const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
 
-  const { data: messages } = await supabase
-    .from("messages")
-    .select("id, contributor_name, is_anonymous, body, media_kind, media_path, media_duration_ms, interactive_kind, interactive_payload, contributor_session_id, created_at")
-    .eq("celebration_id", page.id)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(200);
-
   const now = Date.now();
   const claimable = new Date(page.claimable_at).getTime() <= now;
   // Two windows: contributions close 72h before the date (deadline_at);
@@ -65,12 +64,85 @@ export default async function WallPage({
   const closed = page.status !== "active" || new Date(page.deadline_at).getTime() <= now;
   const contentOpen =
     page.status === "active" && contentWindowOpen(page.celebration_date, now);
+  const profile = await getCreatorProfile(page.creator_id);
+  // Personal pages are the celebrant's own — don't credit them as the "maker".
+  const createdBy = page.is_self ? null : profile.label;
+
+  const wishlist = (page.wishlist as { title: string; url?: string }[] | null) ?? [];
+
+  // Sealed surprise: nobody — not even the owner — sees the wall, messages or
+  // totals until the celebration date. Everyone gets a countdown plus a way to
+  // contribute; the content unlocks only once the date is reached.
+  if ((page.is_sealed || page.is_self) && !claimable) {
+    // The owner can see how full their page is getting — counts only, never
+    // content or amounts. Needs the service role to bypass the sealed-wall RLS.
+    let ownerStats: { messageCount: number; giftCount: number } | null = null;
+    if (isCreator) {
+      const { count } = await supabaseAdmin()
+        .from("messages")
+        .select("*", { count: "exact", head: true })
+        .eq("celebration_id", page.id)
+        .eq("cycle", page.current_cycle)
+        .is("deleted_at", null);
+      ownerStats = {
+        messageCount: count ?? 0,
+        giftCount: Number(page.contributor_count ?? 0),
+      };
+    }
+    return (
+      <SealedCountdown
+        slug={page.slug}
+        title={page.title}
+        recipientName={page.recipient_name}
+        eventLabel={page.event_type.replace(/_/g, " ")}
+        celebrationDate={page.celebration_date}
+        avatarUrl={profile.avatarPath ? coverUrl(profile.avatarPath) : null}
+        createdBy={createdBy}
+        isCreator={isCreator}
+        canMessage={contentOpen}
+        canContribute={!closed}
+        theme={theme}
+        wishlist={wishlist}
+        ownerStats={ownerStats}
+      />
+    );
+  }
+
+  // Recurring pages keep each year's wall separate; show the chosen cycle
+  // (defaults to the current one). ?cycle=N lets you browse past years.
+  const viewCycleNum = Number(cycleParam);
+  const viewCycle =
+    Number.isInteger(viewCycleNum) && viewCycleNum >= 1 && viewCycleNum <= page.current_cycle
+      ? viewCycleNum
+      : page.current_cycle;
+  const viewingPast = viewCycle !== page.current_cycle;
+
+  const { data: messages } = await supabase
+    .from("messages")
+    .select("id, contributor_name, is_anonymous, body, media_kind, media_path, media_duration_ms, interactive_kind, interactive_payload, contributor_session_id, created_at")
+    .eq("celebration_id", page.id)
+    .eq("cycle", viewCycle)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  const pastCycles =
+    page.is_recurring && page.current_cycle > 1
+      ? (
+          await supabase
+            .from("celebration_cycles")
+            .select("cycle, celebration_date, total_raised_kobo, contributor_count, payout_status")
+            .eq("celebration_id", page.id)
+            .order("cycle", { ascending: false })
+        ).data ?? []
+      : [];
+
   const cover = coverUrl(page.cover_photo_path);
   const unpaid = page.is_paid_for_creation === false;
   const firstName = page.recipient_name.split(" ")[0];
   const galleryImages = (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [];
   const eventLabel = page.event_type.replace(/_/g, " ");
-  const createdBy = await getCreatorLabel(page.creator_id);
+  const accountLabel = page.recipient_account_name ?? "your account";
 
   return (
     <main className="min-h-[100dvh] bg-white pb-20" data-theme={theme}>
@@ -221,7 +293,7 @@ export default async function WallPage({
                   {closed && claimable ? "today" : timeUntil(page.deadline_at)}
                 </p>
                 <p className="text-xs text-ink/50 mt-1 truncate">
-                  {isCreator ? `to ${page.recipient_account_name}` : "to send your gift"}
+                  {isCreator ? `to ${accountLabel}` : "to send your gift"}
                 </p>
               </div>
             </div>
@@ -241,7 +313,7 @@ export default async function WallPage({
             )}
             {claimable && page.payout_status === "paid" && (
               <p className="text-center text-sm text-ink/70 fade-up">
-                ✓ Gift delivered to {page.recipient_account_name}
+                ✓ Gift delivered to {accountLabel}
               </p>
             )}
 
@@ -297,16 +369,92 @@ export default async function WallPage({
               {isCreator && <CelebrantLinkButton slug={page.slug} recipient={page.recipient_name} />}
             </div>
 
+            {/* Wishlist */}
+            {wishlist.length > 0 && (
+              <section className="rounded-3xl2 bg-white shadow-ring p-5 fade-up">
+                <p className="text-[10px] uppercase tracking-widest text-ink/40 mb-3">
+                  {firstName}&apos;s wishlist
+                </p>
+                <ul className="space-y-2">
+                  {wishlist.map((item, i) => (
+                    <li key={i} className="flex items-center gap-2 text-ink">
+                      <Gift className="size-4 text-[var(--accent)] shrink-0" />
+                      {item.url ? (
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer nofollow"
+                          className="inline-flex items-center gap-1 hover:text-[var(--accent)] transition"
+                        >
+                          {item.title}
+                          <ExternalLink className="size-3.5 text-ink/40" />
+                        </a>
+                      ) : (
+                        <span>{item.title}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             {/* Wall */}
             <section className="mt-4">
-              <h2 className="serif text-3xl text-ink mb-1">The wall</h2>
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="serif text-3xl text-ink">The wall</h2>
+                {viewingPast && (
+                  <span className="text-[11px] uppercase tracking-widest text-ink/45">
+                    {formatDate(page.celebration_date).split(" ").pop()}
+                  </span>
+                )}
+              </div>
+              {viewingPast && (
+                <Link href={`/c/${page.slug}`} className="text-xs text-[var(--accent)] mb-2 inline-block">
+                  ← Back to this year
+                </Link>
+              )}
               <WallGrid
                 messages={messages ?? []}
                 celebrationId={page.id}
                 slug={page.slug}
-                isCreator={isCreator}
+                isCreator={isCreator && !viewingPast}
               />
             </section>
+
+            {/* Past celebrations (recurring pages) */}
+            {pastCycles.length > 0 && (
+              <section className="mt-2 rounded-3xl2 bg-white shadow-ring p-4">
+                <p className="text-[10px] uppercase tracking-widest text-ink/40 mb-2">Past years</p>
+                <ul className="divide-y divide-ink/8">
+                  {pastCycles.map((c) => {
+                    const claimable =
+                      isCreator && c.payout_status === "pending" && Number(c.total_raised_kobo) > 0;
+                    return (
+                      <li key={c.cycle} className="flex items-center justify-between py-2.5 gap-3">
+                        <Link
+                          href={`/c/${page.slug}?cycle=${c.cycle}`}
+                          className="flex-1 flex items-center justify-between text-sm hover:opacity-70 transition"
+                        >
+                          <span className="text-ink/70">{formatDate(c.celebration_date)}</span>
+                          <span className="text-ink/45 text-xs">{c.contributor_count} messages</span>
+                        </Link>
+                        {claimable && (
+                          <ClaimButton
+                            slug={page.slug}
+                            cycle={c.cycle}
+                            amountKobo={Number(c.total_raised_kobo)}
+                            compact
+                          />
+                        )}
+                        {isCreator && c.payout_status === "paid" && (
+                          <span className="text-[11px] text-ink/40 shrink-0">✓ received</span>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
 
             {createdBy && (
               <p className="pt-6 text-center md:text-left text-[11px] text-ink/45">

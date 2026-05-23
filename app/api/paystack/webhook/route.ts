@@ -106,16 +106,24 @@ async function handleTransfer(
       raw_response: data,
     })
     .eq("paystack_reference", data.reference)
-    .select("celebration_id")
+    .select("celebration_id, cycle")
     .maybeSingle();
 
   if (!payout) return;
 
+  const completedAt = new Date().toISOString();
+  // A payout belongs to a specific cycle. Settle the live row only if it's
+  // still on that cycle; otherwise the cycle has been archived, so settle the
+  // history snapshot instead. At most one of these matches.
   await admin
     .from("celebrations")
-    .update({
-      payout_status: finalStatus,
-      payout_completed_at: new Date().toISOString(),
-    })
-    .eq("id", payout.celebration_id);
+    .update({ payout_status: finalStatus, payout_completed_at: completedAt })
+    .eq("id", payout.celebration_id)
+    .eq("current_cycle", payout.cycle);
+
+  await admin
+    .from("celebration_cycles")
+    .update({ payout_status: finalStatus, payout_completed_at: completedAt })
+    .eq("celebration_id", payout.celebration_id)
+    .eq("cycle", payout.cycle);
 }

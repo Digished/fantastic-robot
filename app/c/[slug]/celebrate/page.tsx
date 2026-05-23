@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { Play, Gift } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -26,7 +26,7 @@ export default async function CelebrantPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, tagline, total_raised_kobo, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, tagline, total_raised_kobo, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, is_sealed, is_self, current_cycle",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -37,10 +37,17 @@ export default async function CelebrantPage({
     if (!user || user.id !== page.creator_id) notFound();
   }
 
+  // Sealed pages stay a surprise — even from the owner — until the date.
+  // Personal pages are always sealed regardless of the stored flag.
+  if ((page.is_sealed || page.is_self) && new Date(page.claimable_at).getTime() > Date.now()) {
+    redirect(`/c/${slug}`);
+  }
+
   const { data: messages } = await supabase
     .from("messages")
     .select("id, contributor_name, is_anonymous, body, media_kind, media_path, media_duration_ms, interactive_kind, interactive_payload, contributor_session_id, created_at")
     .eq("celebration_id", page.id)
+    .eq("cycle", page.current_cycle)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -52,7 +59,7 @@ export default async function CelebrantPage({
   const eventLabel = !["other", "surprise_gift"].includes(page.event_type)
     ? page.event_type.replace(/_/g, " ")
     : "";
-  const createdBy = await getCreatorLabel(page.creator_id);
+  const createdBy = page.is_self ? null : await getCreatorLabel(page.creator_id);
 
   return (
     <main className="min-h-[100dvh] bg-white pb-20" data-theme={theme}>
@@ -169,7 +176,7 @@ export default async function CelebrantPage({
             )}
             {page.payout_status === "paid" && (
               <p className="text-center text-sm text-ink/70 fade-up">
-                ✓ Gift delivered to {page.recipient_account_name}
+                ✓ Gift delivered to {page.recipient_account_name ?? "your account"}
               </p>
             )}
 

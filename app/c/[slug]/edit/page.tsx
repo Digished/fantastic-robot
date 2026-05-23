@@ -1,11 +1,14 @@
 import { notFound, redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { EditForm } from "./form";
+import { SelfEditForm } from "./self-form";
 import { MessagesManager } from "./messages-manager";
 import { isTheme, type Theme } from "@/lib/themes";
 import { getEffectiveTracks } from "@/lib/music/server";
+import { getBanks } from "@/lib/paystack/banks";
 import { findTrack } from "@/lib/music";
 import type { IntroContent } from "@/lib/openai/generate-intro";
+import type { WishlistItem } from "@/lib/validation/schemas";
 
 export default async function EditPage({
   params,
@@ -17,11 +20,45 @@ export default async function EditPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, title, recipient_name, event_type, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, creator_id, theme, background_music, gallery_images, intro_content")
+    .select("id, slug, title, recipient_name, event_type, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, claimable_at, creator_id, theme, background_music, gallery_images, intro_content, is_self, is_sealed, is_recurring, wishlist")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) notFound();
   if (page.creator_id !== user.id) redirect(`/c/${slug}`);
+
+  // Personal pages get a distinct, simpler editor — first-person, wishlist,
+  // payout bank, no AI slides. The owner can't peek at the sealed wall here.
+  if (page.is_self) {
+    const [{ data: profile }, banks, selfTracks] = await Promise.all([
+      supabase
+        .from("users")
+        .select("bank_code, account_number, account_name")
+        .eq("id", user.id)
+        .maybeSingle(),
+      getBanks(),
+      getEffectiveTracks(),
+    ]);
+    const selfTheme: Theme = isTheme(page.theme) ? page.theme : "ivory";
+    const selfMusic = findTrack(page.background_music, selfTracks) ? page.background_music : null;
+    return (
+      <SelfEditForm
+        slug={slug}
+        banks={banks}
+        tracks={selfTracks}
+        initial={{
+          title: page.title,
+          theme: selfTheme,
+          messageFromCreator: page.message_from_creator ?? "",
+          isRecurring: !!page.is_recurring,
+          backgroundMusic: selfMusic,
+          wishlist: (page.wishlist as WishlistItem[] | null) ?? [],
+          bankCode: profile?.bank_code ?? "",
+          accountNumber: profile?.account_number ?? "",
+          accountName: profile?.account_name ?? "",
+        }}
+      />
+    );
+  }
 
   const { data: messages } = await supabase
     .from("messages")

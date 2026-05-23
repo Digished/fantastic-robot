@@ -2,12 +2,14 @@
 
 import { customAlphabet } from "nanoid";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paystack, PaystackError } from "@/lib/paystack/client";
-import { createCelebrationSchema } from "@/lib/validation/schemas";
+import { createCelebrationSchema, createSelfCelebrationSchema } from "@/lib/validation/schemas";
 import { generateIntroContent } from "@/lib/openai/generate-intro";
 import { resolveSavedTrackId } from "@/lib/music/server";
+import { buildSelfCelebrationDate } from "@/lib/self-celebration";
 import { PAGE_CREATION_FEE_KOBO } from "@/lib/fees";
 import { env } from "@/lib/env";
 
@@ -147,6 +149,100 @@ export async function createCelebration(
     const message = err instanceof PaystackError ? err.message : "Could not start payment";
     return { error: `Payment setup failed: ${message}` };
   }
+}
+
+/**
+ * Create a page the user owns themselves — a birthday/self celebration.
+ * It's sealed (no one sees the wall or totals until the date), free (no
+ * creation fee), pulls the payout bank from the profile, and — for birthdays
+ * — renews every year. Redirects to the new page on success.
+ */
+export async function createSelfCelebration(
+  _prev: CreateState,
+  formData: FormData,
+): Promise<CreateState> {
+  const supabase = await supabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Please sign in again." };
+
+  const parsed = createSelfCelebrationSchema.safeParse({
+    title: formData.get("title"),
+    eventType: formData.get("eventType"),
+    theme: formData.get("theme") ?? "ivory",
+    date: formData.get("date"),
+    backgroundMusic: formData.get("backgroundMusic") || null,
+    bankCode: formData.get("bankCode") || undefined,
+    accountNumber: formData.get("accountNumber") || undefined,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const recurring = parsed.data.eventType === "birthday";
+  const celebrationDate = buildSelfCelebrationDate(parsed.data.date, recurring);
+  if (!celebrationDate) {
+    return { error: "Pick a date at least 96 hours from now." };
+  }
+
+  const admin = supabaseAdmin();
+
+  // A payout bank is compulsory — there's nowhere to send the gift otherwise.
+  // Verify it with Paystack and save it to the profile so it's reused for the
+  // claim and any future pages/years.
+  const { data: profile } = await supabase
+    .from("users")
+    .select("display_name, email, bank_code, account_number")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  let accountName: string;
+  try {
+    const { data } = await paystack.resolveAccount(
+      parsed.data.accountNumber,
+      parsed.data.bankCode,
+    );
+    accountName = data.account_name;
+  } catch (err) {
+    const msg = err instanceof PaystackError ? err.message : "Could not verify account";
+    return { error: `Bank account check failed: ${msg}` };
+  }
+
+  const bankChanged =
+    profile?.bank_code !== parsed.data.bankCode ||
+    profile?.account_number !== parsed.data.accountNumber;
+  const { error: bankError } = await admin
+    .from("users")
+    .update({
+      bank_code: parsed.data.bankCode,
+      account_number: parsed.data.accountNumber,
+      account_name: accountName,
+      bank_verified_at: new Date().toISOString(),
+      ...(bankChanged ? { paystack_recipient_code: null } : {}),
+    })
+    .eq("id", user.id);
+  if (bankError) return { error: bankError.message };
+
+  const recipientName =
+    profile?.display_name?.trim() || profile?.email?.split("@")[0] || "Me";
+
+  const resolvedMusic = await resolveSavedTrackId(parsed.data.backgroundMusic ?? null);
+  const slug = slugId();
+  const { error } = await admin.from("celebrations").insert({
+    slug,
+    creator_id: user.id,
+    title: parsed.data.title,
+    recipient_name: recipientName,
+    event_type: parsed.data.eventType,
+    theme: parsed.data.theme,
+    background_music: resolvedMusic,
+    celebration_date: celebrationDate,
+    is_self: true,
+    is_sealed: true,
+    is_recurring: recurring,
+    is_paid_for_creation: true, // self pages are free
+    gallery_images: [],
+  });
+  if (error) return { error: error.message };
+
+  redirect(`/c/${slug}`);
 }
 
 /**

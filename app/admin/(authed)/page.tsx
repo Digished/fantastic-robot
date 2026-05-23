@@ -40,7 +40,8 @@ async function loadMetrics() {
     admin
       .from("celebrations")
       .select("*", { count: "exact", head: true })
-      .eq("is_paid_for_creation", true),
+      .eq("is_paid_for_creation", true)
+      .not("creation_payment_reference", "is", null),
     admin
       .from("payouts")
       .select("id, amount_kobo, status, initiated_at, celebration_id")

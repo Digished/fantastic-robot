@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   const admin = supabaseAdmin();
   const { data: page } = await admin
     .from("celebrations")
-    .select("id, slug, status, deadline_at, title")
+    .select("id, slug, status, deadline_at, title, current_cycle")
     .eq("slug", parsed.data.slug)
     .maybeSingle();
   if (!page) return NextResponse.json({ error: "Page not found" }, { status: 404 });
@@ -46,6 +46,7 @@ export async function POST(req: Request) {
 
   const { error: insertErr } = await admin.from("contributions").insert({
     celebration_id: page.id,
+    cycle: page.current_cycle,
     contributor_name: parsed.data.contributorName,
     contributor_email: parsed.data.contributorEmail,
     contributor_phone: parsed.data.contributorPhone ?? null,
