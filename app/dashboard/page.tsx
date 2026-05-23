@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Settings, Cake, Lock, MessageCircle, Gift } from "lucide-react";
+import { Plus, Settings, Lock, MessageCircle, Gift } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { logout } from "@/app/login/actions";
@@ -73,9 +73,6 @@ export default async function Dashboard() {
         <header className="py-5 md:py-7 flex items-center justify-between border-b border-ink/8">
           <Link href="/" className="serif text-xl md:text-2xl text-ink">Spendbox</Link>
           <div className="flex items-center gap-4">
-            <Link href="/create/me" className="btn-outline text-sm inline-flex items-center gap-2">
-              <Cake className="size-4" /> <span className="hidden sm:inline">My page</span>
-            </Link>
             <Link href="/create" className="btn-accent shadow-soft hidden md:inline-flex gap-2">
               <Plus className="size-4" /> New celebration
             </Link>
