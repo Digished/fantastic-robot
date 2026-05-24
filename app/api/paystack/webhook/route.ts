@@ -68,7 +68,7 @@ async function handleChargeSuccess(data: {
   if (data.reference.startsWith("SPBC-")) {
     const { error } = await admin
       .from("celebrations")
-      .update({ is_paid_for_creation: true })
+      .update({ is_paid_for_creation: true, published_at: new Date().toISOString() })
       .eq("creation_payment_reference", data.reference)
       .eq("is_paid_for_creation", false);
     if (error) throw error;

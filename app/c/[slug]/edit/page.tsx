@@ -20,7 +20,7 @@ export default async function EditPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, title, recipient_name, event_type, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, claimable_at, creator_id, theme, background_music, gallery_images, intro_content, is_self, is_sealed, is_recurring, wishlist")
+    .select("id, slug, title, recipient_name, event_type, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, claimable_at, published_at, creator_id, theme, background_music, gallery_images, intro_content, is_self, is_sealed, is_recurring, wishlist, recipient_bank_code, recipient_account_number, recipient_account_name")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) notFound();
@@ -68,18 +68,24 @@ export default async function EditPage({
     .order("created_at", { ascending: false });
 
   const theme: Theme = isTheme(page.theme) ? page.theme : "ivory";
-  const tracks = await getEffectiveTracks();
+  const [tracks, banks] = await Promise.all([getEffectiveTracks(), getBanks()]);
   // background_music may carry an `#clip=` suffix and/or be an uploaded track
   // that isn't in the library — keep the full stored value if it resolves.
   const savedMusic = findTrack(page.background_music, tracks)
     ? page.background_music
     : null;
+  // Date & payout account stay editable for 24h after the page goes live.
+  const canEditDateBank =
+    !!page.published_at &&
+    Date.now() - new Date(page.published_at).getTime() < 24 * 3600 * 1000;
 
   return (
     <>
       <EditForm
         slug={slug}
         tracks={tracks}
+        banks={banks}
+        canEditDateBank={canEditDateBank}
         initial={{
           title: page.title,
           messageFromCreator: page.message_from_creator ?? "",
@@ -91,6 +97,9 @@ export default async function EditPage({
           recipientName: page.recipient_name,
           eventType: page.event_type,
           celebrationDate: page.celebration_date,
+          recipientBankCode: page.recipient_bank_code ?? "",
+          recipientAccountNumber: page.recipient_account_number ?? "",
+          recipientAccountName: page.recipient_account_name ?? "",
           introContent: (page.intro_content as IntroContent | null) ?? null,
           galleryImages: (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [],
         }}

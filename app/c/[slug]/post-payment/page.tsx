@@ -47,8 +47,9 @@ export default async function PostPaymentPage({
     }
     const { error } = await admin
       .from("celebrations")
-      .update({ is_paid_for_creation: true })
-      .eq("id", page.id);
+      .update({ is_paid_for_creation: true, published_at: new Date().toISOString() })
+      .eq("id", page.id)
+      .eq("is_paid_for_creation", false);
     if (error) {
       return <FailureView slug={slug} reason="We received payment but couldn't activate the page. Refresh in a moment." />;
     }
