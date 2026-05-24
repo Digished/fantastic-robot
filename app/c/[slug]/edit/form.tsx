@@ -7,6 +7,7 @@ import { editCelebration, type EditState } from "./actions";
 import { DesignStep } from "@/components/page-editor/design-step";
 import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox";
 import { SlugEditor } from "./slug-editor";
+import { PresentationToggle } from "./presentation-toggle";
 import {
   isValidUploadedTrackId,
   makeUploadedTrack,
@@ -53,6 +54,7 @@ export function EditForm({
     recipientBankCode: string;
     recipientAccountNumber: string;
     recipientAccountName: string;
+    presentation: "reel" | "book";
     introContent: IntroContent | null;
     galleryImages: { path: string; caption: string; kind?: "image" | "video" }[];
   };
@@ -60,6 +62,8 @@ export function EditForm({
   const router = useRouter();
   const action = editCelebration.bind(null, slug);
   const [state, dispatch, pending] = useActionState<EditState, FormData>(action, {});
+
+  const [presentation, setPresentation] = useState<"reel" | "book">(initial.presentation);
 
   // Date & payout account — editable only within the 24h window.
   const [celebrationDate, setCelebrationDate] = useState(toLocalInput(initial.celebrationDate));
@@ -184,6 +188,7 @@ export function EditForm({
     if (draft.introContent) {
       fd.set("introContent", JSON.stringify(draft.introContent));
     }
+    fd.set("presentation", presentation);
     if (canEditDateBank) {
       if (celebrationDate) fd.set("celebrationDate", celebrationDate);
       if (bankCode && /^\d{10}$/.test(accountNumber)) {
@@ -235,6 +240,8 @@ export function EditForm({
               {draft.celebrantDescription.length}/1500
             </p>
           </div>
+
+          <PresentationToggle value={presentation} onChange={setPresentation} />
 
           {/* Date & payout account — only within 24h of publishing */}
           <div className="rounded-3xl2 bg-white shadow-ring p-5 space-y-4">

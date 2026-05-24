@@ -21,6 +21,7 @@ const editSchema = z.object({
   backgroundMusic: z.string().min(1).max(200).nullable().optional(),
   galleryImages: z.string().optional(),
   introContent: z.string().optional(),
+  presentation: z.enum(["reel", "book"]).optional(),
   // Date & payout account — only editable within 24h of publishing.
   celebrationDate: z.string().optional(),
   recipientBankCode: z.string().min(2).max(10).optional(),
@@ -52,6 +53,7 @@ export async function editCelebration(
     backgroundMusic: (formData.get("backgroundMusic") as string) || null,
     galleryImages: (formData.get("galleryImages") as string) || undefined,
     introContent: (formData.get("introContent") as string) || undefined,
+    presentation: (formData.get("presentation") as string) || undefined,
     celebrationDate: (formData.get("celebrationDate") as string) || undefined,
     recipientBankCode: (formData.get("recipientBankCode") as string) || undefined,
     recipientAccountNumber: (formData.get("recipientAccountNumber") as string) || undefined,
@@ -136,6 +138,7 @@ export async function editCelebration(
       ...(introContent ? { intro_content: introContent } : {}),
       ...(parsed.data.coverPhotoPath ? { cover_photo_path: parsed.data.coverPhotoPath } : {}),
       ...(parsed.data.theme ? { theme: parsed.data.theme } : {}),
+      ...(parsed.data.presentation ? { presentation: parsed.data.presentation } : {}),
       ...dateBankUpdate,
     })
     .eq("id", page.id);
@@ -165,6 +168,7 @@ export async function editSelfCelebration(
     messageFromCreator: (formData.get("messageFromCreator") as string) || undefined,
     isRecurring: formData.get("isRecurring") === "on",
     backgroundMusic: formData.get("backgroundMusic") || null,
+    presentation: (formData.get("presentation") as string) || undefined,
     wishlist,
     bankCode: (formData.get("bankCode") as string) || undefined,
     accountNumber: (formData.get("accountNumber") as string) || undefined,
@@ -197,6 +201,7 @@ export async function editSelfCelebration(
       background_music: resolvedMusic,
       wishlist: cleanWishlist,
       ...(parsed.data.theme ? { theme: parsed.data.theme } : {}),
+      ...(parsed.data.presentation ? { presentation: parsed.data.presentation } : {}),
     })
     .eq("id", page.id);
   if (error) return { error: error.message };

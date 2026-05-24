@@ -307,7 +307,7 @@ function durationFor(m: Msg): number {
 // ─── Player ───────────────────────────────────────────────────────────────────
 
 export function Player({
-  slug, theme, musicUrl, musicClip, musicBpm, recipientName, eventType, celebrationDate, celebrationTitle,
+  slug, theme, musicUrl, musicClip, musicBpm, presentation = "reel", recipientName, eventType, celebrationDate, celebrationTitle,
   tagline, celebrantDescription, introContent, messages, galleryImages,
   totalRaisedKobo, claimableAt, payoutStatus, createdBy, onExit,
 }: {
@@ -316,6 +316,7 @@ export function Player({
   musicUrl: string | null;
   musicClip?: { startSec: number; endSec: number } | null;
   musicBpm?: number | null;
+  presentation?: "reel" | "book";
   recipientName: string;
   eventType: string;
   celebrationDate: string;
@@ -537,7 +538,11 @@ export function Player({
           onExit={onExit}
         />
       ) : (
-        <>
+        <div className={presentation === "book" ? "absolute inset-0 book-stage" : "contents"}>
+          <div
+            key={presentation === "book" ? i : undefined}
+            className={presentation === "book" ? "absolute inset-0 book-page-in" : "contents"}
+          >
           {current?.kind === "intro" ? (
             <>
               <SprinkleOverlay slideId={current.intro.id} />
@@ -565,6 +570,7 @@ export function Player({
               />
             </>
           ) : null}
+          </div>
 
           {/* End state — the last slide stays on screen with the actions over it. */}
           {done && (
@@ -578,7 +584,7 @@ export function Player({
               onExit={onExit}
             />
           )}
-        </>
+        </div>
       )}
 
       {/* Desktop edge nav */}

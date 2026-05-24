@@ -10,6 +10,7 @@ import { ThemePickerButton } from "@/components/page-editor/theme-picker-button"
 import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox";
 import { MusicPicker } from "@/components/music-picker";
 import { isValidUploadedTrackId, makeUploadedTrack, parseMusicValue, type MusicTrack } from "@/lib/music";
+import { PresentationToggle } from "./presentation-toggle";
 import type { WishlistItem } from "@/lib/validation/schemas";
 
 export function SelfEditForm({
@@ -27,6 +28,7 @@ export function SelfEditForm({
     messageFromCreator: string;
     isRecurring: boolean;
     backgroundMusic: string | null;
+    presentation: "reel" | "book";
     wishlist: WishlistItem[];
     bankCode: string;
     accountNumber: string;
@@ -41,6 +43,7 @@ export function SelfEditForm({
   const [theme, setTheme] = useState<Theme>(isTheme(initial.theme) ? initial.theme : "ivory");
   const [note, setNote] = useState(initial.messageFromCreator);
   const [isRecurring, setIsRecurring] = useState(initial.isRecurring);
+  const [presentation, setPresentation] = useState<"reel" | "book">(initial.presentation);
   const [wishlist, setWishlist] = useState<WishlistItem[]>(
     initial.wishlist.length ? initial.wishlist : [],
   );
@@ -101,6 +104,7 @@ export function SelfEditForm({
     if (note) fd.set("messageFromCreator", note);
     if (isRecurring) fd.set("isRecurring", "on");
     if (music) fd.set("backgroundMusic", music);
+    fd.set("presentation", presentation);
     fd.set(
       "wishlist",
       JSON.stringify(
@@ -178,6 +182,8 @@ export function SelfEditForm({
           allowUpload
           onAddTrack={(t) => setTrackList((prev) => (prev.some((x) => x.id === t.id) ? prev : [t, ...prev]))}
         />
+
+        <PresentationToggle value={presentation} onChange={setPresentation} />
 
         {/* Personal note */}
         <div className="space-y-1.5">

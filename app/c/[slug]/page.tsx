@@ -43,7 +43,7 @@ export default async function WallPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle, wishlist",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle, wishlist, presentation",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -143,12 +143,13 @@ export default async function WallPage({
   const galleryImages = (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [];
   const eventLabel = page.event_type.replace(/_/g, " ");
   const accountLabel = page.recipient_account_name ?? "your account";
+  const book = page.presentation === "book";
 
   return (
-    <main className="min-h-[100dvh] bg-white pb-20" data-theme={theme}>
+    <main className={`min-h-[100dvh] pb-20 ${book ? "bg-[#EFE4D2]" : "bg-white"}`} data-theme={theme} data-presentation={page.presentation ?? "reel"}>
 
       {/* ── Wide container ── */}
-      <div className="mx-auto w-full max-w-6xl px-4 md:px-10 pt-4">
+      <div className={`mx-auto w-full max-w-6xl px-4 md:px-10 pt-4 ${book ? "md:px-12" : ""}`}>
 
         {/* Desktop-only top header */}
         <header className="hidden md:flex items-center justify-between pb-6 mb-8 border-b border-ink/8">
@@ -165,7 +166,7 @@ export default async function WallPage({
         </header>
 
         {/* ── 2-col grid ── */}
-        <div className="md:grid md:grid-cols-[2fr_3fr] md:gap-12 md:items-start">
+        <div className={`md:grid md:grid-cols-[2fr_3fr] md:gap-12 md:items-start ${book ? "book-spread md:rounded-3xl2 md:p-6 book-sheet" : ""}`}>
 
           {/* ══ LEFT: Hero + gallery (sticky on desktop) ══ */}
           <div className="md:sticky md:top-8 md:self-start space-y-3">

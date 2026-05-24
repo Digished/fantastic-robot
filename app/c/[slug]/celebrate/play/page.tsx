@@ -17,7 +17,7 @@ export default async function PlayPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, recipient_name, event_type, celebration_date, title, tagline, celebrant_description, intro_content, gallery_images, theme, background_music, creator_id, total_raised_kobo, claimable_at, payout_status, is_sealed, is_self, current_cycle")
+    .select("id, slug, recipient_name, event_type, celebration_date, title, tagline, celebrant_description, intro_content, gallery_images, theme, background_music, creator_id, total_raised_kobo, claimable_at, payout_status, is_sealed, is_self, current_cycle, presentation")
     .eq("slug", slug)
     .maybeSingle();
 
@@ -51,6 +51,7 @@ export default async function PlayPage({
       musicUrl={musicTrack?.src ?? null}
       musicClip={musicTrack?.clip ?? null}
       musicBpm={musicTrack?.bpm ?? null}
+      presentation={page.presentation === "book" ? "book" : "reel"}
       recipientName={page.recipient_name}
       eventType={page.event_type}
       celebrationDate={page.celebration_date}

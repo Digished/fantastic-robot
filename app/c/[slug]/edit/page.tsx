@@ -20,7 +20,7 @@ export default async function EditPage({
 
   const { data: page } = await supabase
     .from("celebrations")
-    .select("id, slug, title, recipient_name, event_type, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, claimable_at, published_at, creator_id, theme, background_music, gallery_images, intro_content, is_self, is_sealed, is_recurring, wishlist, recipient_bank_code, recipient_account_number, recipient_account_name")
+    .select("id, slug, title, recipient_name, event_type, message_from_creator, tagline, celebrant_description, cover_photo_path, celebration_date, claimable_at, published_at, creator_id, theme, background_music, gallery_images, intro_content, is_self, is_sealed, is_recurring, wishlist, recipient_bank_code, recipient_account_number, recipient_account_name, presentation")
     .eq("slug", slug)
     .maybeSingle();
   if (!page) notFound();
@@ -51,6 +51,7 @@ export default async function EditPage({
           messageFromCreator: page.message_from_creator ?? "",
           isRecurring: !!page.is_recurring,
           backgroundMusic: selfMusic,
+          presentation: page.presentation === "book" ? "book" : "reel",
           wishlist: (page.wishlist as WishlistItem[] | null) ?? [],
           bankCode: profile?.bank_code ?? "",
           accountNumber: profile?.account_number ?? "",
@@ -100,6 +101,7 @@ export default async function EditPage({
           recipientBankCode: page.recipient_bank_code ?? "",
           recipientAccountNumber: page.recipient_account_number ?? "",
           recipientAccountName: page.recipient_account_name ?? "",
+          presentation: page.presentation === "book" ? "book" : "reel",
           introContent: (page.intro_content as IntroContent | null) ?? null,
           galleryImages: (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [],
         }}
