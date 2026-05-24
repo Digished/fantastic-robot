@@ -158,9 +158,14 @@ export default async function WallPage({
           </Link>
           <div className="flex items-center gap-3">
             {isCreator && (
-              <Link href={`/c/${page.slug}/edit`} className="btn-outline text-sm py-2">
-                Edit page
-              </Link>
+              <>
+                <Link href={`/blessings/new/${page.slug}`} className="btn-outline text-sm py-2">
+                  52 Weeks of Blessings
+                </Link>
+                <Link href={`/c/${page.slug}/edit`} className="btn-outline text-sm py-2">
+                  Edit page
+                </Link>
+              </>
             )}
           </div>
         </header>

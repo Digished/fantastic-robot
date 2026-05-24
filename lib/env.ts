@@ -16,4 +16,9 @@ export const env = {
     process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
   adminEmail: () => req("ADMIN_EMAIL", process.env.ADMIN_EMAIL),
   adminPassword: () => req("ADMIN_PASSWORD", process.env.ADMIN_PASSWORD),
+  resendApiKey: () => req("RESEND_API_KEY", process.env.RESEND_API_KEY),
+  // Verified sender, e.g. "Spendbox Blessings <blessings@your-domain.com>".
+  blessingsFrom: () =>
+    process.env.BLESSINGS_FROM_EMAIL ?? "Spendbox Blessings <blessings@spendbox.app>",
+  cronSecret: () => req("CRON_SECRET", process.env.CRON_SECRET),
 };

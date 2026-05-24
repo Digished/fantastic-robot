@@ -64,6 +64,19 @@ async function handleChargeSuccess(data: {
   if (data.status !== "success" || !data.reference) return;
   const admin = supabaseAdmin();
 
+  // 52 Weeks of Blessings — reference is prefixed SPB-BLESS-. Open the 72h
+  // redeem window so the celebrant can claim it with their email.
+  if (data.reference.startsWith("SPB-BLESS-")) {
+    const expires = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
+    const { error } = await admin
+      .from("blessing_plans")
+      .update({ status: "awaiting_redemption", redeem_expires_at: expires })
+      .eq("paystack_reference", data.reference)
+      .eq("status", "pending_payment");
+    if (error) throw error;
+    return;
+  }
+
   // Page-creation charge — reference is prefixed SPBC-. Activate the page.
   if (data.reference.startsWith("SPBC-")) {
     const { error } = await admin
