@@ -20,7 +20,8 @@ import { CompletePaymentBanner } from "./complete-payment-banner";
 import { AudienceActions } from "@/components/page-editor/audience-actions";
 import { InfoButton } from "@/components/page-editor/info-button";
 import { getCreatorProfile } from "@/lib/creator";
-import { blessingEntryLabel, type BlessingEntryStatus } from "@/lib/blessings/labels";
+import type { BlessingEntryStatus } from "@/lib/blessings/labels";
+import { BlessingCta } from "./blessing-cta";
 import { SealedCountdown } from "./sealed-countdown";
 
 export const dynamic = "force-dynamic";
@@ -174,14 +175,9 @@ export default async function WallPage({
           </Link>
           <div className="flex items-center gap-3">
             {isCreator && (
-              <>
-                <Link href={`/blessings/new/${page.slug}`} className="btn-outline text-sm py-2">
-                  {blessingEntryLabel(blessingStatus)}
-                </Link>
-                <Link href={`/c/${page.slug}/edit`} className="btn-outline text-sm py-2">
-                  Edit page
-                </Link>
-              </>
+              <Link href={`/c/${page.slug}/edit`} className="btn-outline text-sm py-2">
+                Edit page
+              </Link>
             )}
           </div>
         </header>
@@ -262,18 +258,6 @@ export default async function WallPage({
               <CompletePaymentBanner slug={page.slug} />
             )}
 
-            {/* Creator-only: keep the keepsake gift reachable on mobile too
-                (the desktop entry lives in the top header). */}
-            {isCreator && (
-              <Link
-                href={`/blessings/new/${page.slug}`}
-                className="md:hidden btn-outline text-sm py-2 inline-flex items-center justify-center gap-2 w-full"
-              >
-                <Gift className="size-4 text-[var(--accent)]" />
-                {blessingEntryLabel(blessingStatus)}
-              </Link>
-            )}
-
             {/* Desktop title (hidden on mobile — shown inside hero) */}
             <div className="hidden md:block">
               <p className="text-[10px] uppercase tracking-[0.3em] text-ink/50 font-medium">
@@ -282,6 +266,13 @@ export default async function WallPage({
               <h1 className="serif text-5xl text-ink mt-3 leading-[0.92]">{page.title}</h1>
               <p className="text-ink/55 mt-2">For {page.recipient_name}</p>
             </div>
+
+            {/* Creator-only: the keepsake gift, front and centre on every screen. */}
+            {isCreator && (
+              <div className="fade-up">
+                <BlessingCta slug={page.slug} status={blessingStatus} surface="light" />
+              </div>
+            )}
 
             {/* Stats — raised amount is creator-only */}
             <div className="rounded-3xl2 bg-white shadow-ring p-5 grid grid-cols-2 gap-5 fade-up">

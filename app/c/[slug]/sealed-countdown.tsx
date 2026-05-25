@@ -7,7 +7,8 @@ import { formatDate } from "@/lib/time";
 import { Sparkles } from "@/components/sparkles";
 import { ShareBar } from "./share-bar";
 import { NavLoadingLink } from "@/components/nav-loading-link";
-import { blessingEntryLabel, type BlessingEntryStatus } from "@/lib/blessings/labels";
+import type { BlessingEntryStatus } from "@/lib/blessings/labels";
+import { BlessingCta } from "./blessing-cta";
 
 type WishlistItem = { title: string; url?: string };
 
@@ -138,13 +139,8 @@ export function SealedCountdown({
         {/* Owner-only: gift a year of weekly blessings, even while sealed.
             Once bought it stays reachable here with its current status. */}
         {isCreator && (
-          <div className="fade-up mt-3">
-            <Link
-              href={`/blessings/new/${slug}`}
-              className="glass-dark rounded-full px-4 py-2 text-sm text-white inline-flex items-center gap-1.5"
-            >
-              <Gift className="size-4" /> {blessingEntryLabel(blessingStatus)}
-            </Link>
+          <div className="fade-up mt-4 w-full max-w-sm">
+            <BlessingCta slug={slug} status={blessingStatus} surface="dark" />
           </div>
         )}
 
