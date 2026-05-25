@@ -136,13 +136,11 @@ export function SealedCountdown({
           </div>
         )}
 
-        {/* Owner-only: gift a year of weekly blessings, even while sealed.
-            Once bought it stays reachable here with its current status. */}
-        {isCreator && (
-          <div className="fade-up mt-4 w-full max-w-sm">
-            <BlessingCta slug={slug} status={blessingStatus} surface="dark" />
-          </div>
-        )}
+        {/* Anyone can gift a year of weekly blessings, even while sealed.
+            Once bought it stays here showing its current status. */}
+        <div className="fade-up mt-4 w-full max-w-sm">
+          <BlessingCta slug={slug} status={blessingStatus} surface="dark" />
+        </div>
 
         {/* Everything below shares one tidy column. */}
         <div className="w-full max-w-sm mt-7 space-y-3">

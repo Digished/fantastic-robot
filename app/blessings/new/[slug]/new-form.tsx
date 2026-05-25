@@ -18,19 +18,26 @@ export function NewBlessingForm({ slug, firstName }: { slug: string; firstName: 
   const [step, setStep] = useState(0);
   const [tone, setTone] = useState<Tone>("prayer");
   const [senderName, setSenderName] = useState("");
+  const [gifterEmail, setGifterEmail] = useState("");
   const [email, setEmail] = useState("");
   const [confirmEmail, setConfirmEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const trimmedGifter = gifterEmail.trim();
   const trimmedEmail = email.trim();
   const trimmedConfirm = confirmEmail.trim();
+  const gifterValid = EMAIL_RE.test(trimmedGifter);
   const emailsMatch = trimmedEmail.toLowerCase() === trimmedConfirm.toLowerCase();
   const emailValid = EMAIL_RE.test(trimmedEmail);
   const showMismatch = trimmedConfirm.length > 0 && !emailsMatch;
-  const canPay = emailValid && emailsMatch && !busy;
+  const canPay = gifterValid && emailValid && emailsMatch && !busy;
 
   async function pay() {
+    if (!gifterValid) {
+      setError("Enter your email for the receipt.");
+      return;
+    }
     if (!emailValid) {
       setError(`Enter ${firstName}'s email address.`);
       return;
@@ -49,6 +56,7 @@ export function NewBlessingForm({ slug, firstName }: { slug: string; firstName: 
           slug,
           tone,
           senderName: senderName.trim() || undefined,
+          gifterEmail: trimmedGifter,
           recipientEmail: trimmedEmail,
           recipientEmailConfirm: trimmedConfirm,
         }),
@@ -145,8 +153,24 @@ export function NewBlessingForm({ slug, firstName }: { slug: string; firstName: 
             <div>
               <h2 className="serif text-2xl text-ink">Send it to {firstName}</h2>
               <p className="text-sm text-ink/55 mt-1">
-                Their blessings go straight to this inbox. Enter it twice so it&apos;s right.
+                Their blessings go straight to their inbox. We&apos;ll email your receipt to you.
               </p>
+            </div>
+
+            <div>
+              <label htmlFor="gifter-email" className="text-sm font-medium text-ink">
+                Your email <span className="text-ink/45">(for the receipt)</span>
+              </label>
+              <input
+                id="gifter-email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={gifterEmail}
+                onChange={(e) => setGifterEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="mt-1 w-full rounded-2xl border border-ink/15 px-4 py-3 outline-none focus:border-[var(--accent)]"
+              />
             </div>
 
             <div>
@@ -163,6 +187,7 @@ export function NewBlessingForm({ slug, firstName }: { slug: string; firstName: 
                 placeholder="name@example.com"
                 className="mt-1 w-full rounded-2xl border border-ink/15 px-4 py-3 outline-none focus:border-[var(--accent)]"
               />
+              <p className="text-xs text-ink/45 mt-1">Where their year of blessings will arrive. Ask them if you&apos;re not sure.</p>
             </div>
 
             <div>

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { customAlphabet } from "nanoid";
 import { paystack, PaystackError } from "@/lib/paystack/client";
-import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { BLESSINGS_FEE_KOBO } from "@/lib/fees";
 import { env } from "@/lib/env";
@@ -17,6 +16,7 @@ const schema = z
     slug: z.string().min(6),
     tone: z.enum(["prayer", "affirmation", "scripture"]).default("prayer"),
     senderName: z.string().max(60).optional(),
+    gifterEmail: z.string().email(),
     recipientEmail: z.string().email(),
     recipientEmailConfirm: z.string().email(),
   })
@@ -36,19 +36,18 @@ export async function POST(req: Request) {
     );
   }
 
-  const supa = await supabaseServer();
-  const { data: { user } } = await supa.auth.getUser();
-  if (!user?.email) return NextResponse.json({ error: "Sign in first" }, { status: 401 });
-
+  // Anyone can gift it — like a contribution, no account needed. The gifter's
+  // own email is for the receipt; the recipient's is where the year of blessings
+  // is delivered.
   const admin = supabaseAdmin();
   const { data: cel } = await admin
     .from("celebrations")
-    .select("id, slug, recipient_name, creator_id")
+    .select("id, slug, recipient_name, is_paid_for_creation")
     .eq("slug", parsed.data.slug)
     .maybeSingle();
   if (!cel) return NextResponse.json({ error: "Page not found" }, { status: 404 });
-  if (cel.creator_id !== user.id) {
-    return NextResponse.json({ error: "Only the page creator can do this" }, { status: 403 });
+  if (!cel.is_paid_for_creation) {
+    return NextResponse.json({ error: "This page isn't live yet." }, { status: 409 });
   }
 
   // One paid gift per page — it's a keepsake, not a subscription. If it's
@@ -62,7 +61,7 @@ export async function POST(req: Request) {
   if (existingPaid) {
     return NextResponse.json(
       {
-        error: "This page already has 52 Weeks of Blessings — it's been paid for and saved as a gift.",
+        error: "This page already has 52 Weeks of Blessings — it's been gifted.",
         alreadyPaid: true,
       },
       { status: 409 },
@@ -71,10 +70,11 @@ export async function POST(req: Request) {
 
   const reference = `SPB-BLESS-${ref()}`;
   const redeemToken = token();
+  const gifterEmail = parsed.data.gifterEmail.trim().toLowerCase();
 
   const { error: insertErr } = await admin.from("blessing_plans").insert({
     celebration_id: cel.id,
-    creator_id: cel.creator_id,
+    creator_id: null, // gifts are anonymous; the page creator isn't the gifter
     recipient_name: cel.recipient_name,
     sender_name: parsed.data.senderName || null,
     tone: parsed.data.tone,
@@ -84,6 +84,7 @@ export async function POST(req: Request) {
     // Recipient's address is captured here so the gift starts the moment payment
     // settles — no claim step. redeem_token now serves only as the unsubscribe key.
     recipient_email: parsed.data.recipientEmail.trim().toLowerCase(),
+    purchaser_email: gifterEmail,
     opted_in: true,
     redeem_token: redeemToken,
   });
@@ -91,7 +92,7 @@ export async function POST(req: Request) {
 
   try {
     const { data } = await paystack.initTransaction({
-      email: user.email,
+      email: gifterEmail,
       amount: Number(BLESSINGS_FEE_KOBO),
       reference,
       callback_url: `${env.appUrl()}/blessings/done?ref=${reference}`,

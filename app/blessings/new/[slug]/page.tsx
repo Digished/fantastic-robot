@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
-import { supabaseServer } from "@/lib/supabase/server";
+import { notFound } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { NewBlessingForm } from "./new-form";
 
@@ -12,17 +11,16 @@ export default async function NewBlessingPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supa = await supabaseServer();
-  const { data: { user } } = await supa.auth.getUser();
-  if (!user) redirect(`/login?next=/blessings/new/${slug}`);
 
+  // Anyone can gift it (no account needed), so this page is public — it just
+  // needs to point at a live celebration.
   const admin = supabaseAdmin();
   const { data: cel } = await admin
     .from("celebrations")
-    .select("id, slug, recipient_name, creator_id")
+    .select("id, slug, recipient_name, is_paid_for_creation")
     .eq("slug", slug)
     .maybeSingle();
-  if (!cel || cel.creator_id !== user.id) notFound();
+  if (!cel || !cel.is_paid_for_creation) notFound();
 
   const firstName = cel.recipient_name.split(" ")[0];
 

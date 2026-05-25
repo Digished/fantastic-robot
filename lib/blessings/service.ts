@@ -69,6 +69,7 @@ type PaidPlan = {
   creator_id: string | null;
   recipient_name: string;
   recipient_email: string | null;
+  purchaser_email: string | null;
   sender_name: string | null;
   tone: string | null;
   weeks_total: number;
@@ -103,7 +104,7 @@ export async function activatePaidBlessing(
 
   const { data: plan, error } = await claim
     .select(
-      "id, celebration_id, creator_id, recipient_name, recipient_email, sender_name, tone, weeks_total, redeem_token",
+      "id, celebration_id, creator_id, recipient_name, recipient_email, purchaser_email, sender_name, tone, weeks_total, redeem_token",
     )
     .maybeSingle();
 
@@ -123,8 +124,8 @@ export async function activatePaidBlessing(
 
   await scheduleAndSend(plan as PaidPlan, cel as CelInfo, now);
   await postBlessingGiftCard(plan as PaidPlan, cel?.current_cycle ?? 1);
-  await sendCreatorGiftStartedEmail({
-    creator_id: plan.creator_id,
+  await sendGifterStartedEmail({
+    to: plan.purchaser_email,
     recipient_name: plan.recipient_name,
     sender_name: plan.sender_name,
     weeks_total: plan.weeks_total,
@@ -214,32 +215,24 @@ async function postBlessingGiftCard(plan: PaidPlan, cycle: number): Promise<void
   });
 }
 
-// Confirm to the creator that their gift has started and the first blessing is
+// Confirm to the gifter that their gift has started and the first blessing is
 // on its way. Best-effort: a delivery hiccup never blocks the purchase.
-export async function sendCreatorGiftStartedEmail(plan: {
-  creator_id: string | null;
+export async function sendGifterStartedEmail(plan: {
+  to: string | null;
   recipient_name: string;
   sender_name: string | null;
   weeks_total: number;
   celebration_slug?: string | null;
 }): Promise<void> {
-  if (!plan.creator_id) return;
+  if (!plan.to) return;
   try {
-    const admin = supabaseAdmin();
-    const { data: creator } = await admin
-      .from("users")
-      .select("email")
-      .eq("id", plan.creator_id)
-      .maybeSingle();
-    if (!creator?.email) return;
-
     const firstName = plan.recipient_name.split(" ")[0] || plan.recipient_name;
     const pageUrl = plan.celebration_slug
       ? `${env.appUrl()}/c/${plan.celebration_slug}`
       : `${env.appUrl()}/dashboard`;
 
     await sendEmail({
-      to: creator.email,
+      to: plan.to,
       subject: `🕊️ ${firstName}'s year of blessings has begun`,
       html: creatorGiftStartedEmailHtml({
         recipientName: plan.recipient_name,
@@ -249,6 +242,6 @@ export async function sendCreatorGiftStartedEmail(plan: {
       }),
     });
   } catch {
-    /* confirming to the creator is best-effort — never fail the purchase */
+    /* confirming to the gifter is best-effort — never fail the purchase */
   }
 }
