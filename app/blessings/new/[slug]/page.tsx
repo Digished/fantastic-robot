@@ -2,8 +2,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { env } from "@/lib/env";
-import { ShareLink } from "@/app/blessings/done/share-link";
 import { NewBlessingForm } from "./new-form";
 
 export const dynamic = "force-dynamic";
@@ -31,14 +29,12 @@ export default async function NewBlessingPage({
   // Already bought? It's a one-time keepsake — show its status, not the pay form.
   const { data: paid } = await admin
     .from("blessing_plans")
-    .select("status, redeem_token")
+    .select("status")
     .eq("celebration_id", cel.id)
     .in("status", ["awaiting_redemption", "active", "completed"])
     .maybeSingle();
 
   if (paid) {
-    const awaiting = paid.status === "awaiting_redemption";
-    const shareUrl = `${env.appUrl()}/blessings/redeem/${paid.redeem_token}`;
     return (
       <main className="min-h-[100dvh] bg-[#F4EDE1] px-5 py-12">
         <div className="mx-auto w-full max-w-lg text-center">
@@ -48,21 +44,9 @@ export default async function NewBlessingPage({
             This page already has 52 Weeks of Blessings — it&apos;s been paid for and saved as a
             gift for {firstName}. You only ever buy it once.
           </p>
-          {awaiting ? (
-            <>
-              <p className="text-ink/55 mt-4 text-sm">
-                {firstName} hasn&apos;t claimed it yet. Share this link so they can add their email
-                and begin:
-              </p>
-              <div className="mt-4 text-left">
-                <ShareLink url={shareUrl} />
-              </div>
-            </>
-          ) : (
-            <p className="text-ink/55 mt-4 text-sm">
-              {firstName} has claimed it — a blessing is on its way every week.
-            </p>
-          )}
+          <p className="text-ink/55 mt-4 text-sm">
+            A blessing reaches {firstName} every week — straight to their inbox.
+          </p>
           <Link href={`/c/${cel.slug}`} className="btn-outline mt-6 inline-block">
             Back to the page
           </Link>
@@ -82,7 +66,8 @@ export default async function NewBlessingPage({
             lands in their inbox — some written for them, some pulled from the notes left on their page.
           </p>
           <p className="text-ink/55 mt-2 text-sm">
-            You&apos;ll get a private link to share. {firstName} adds their email within 72 hours to begin.
+            Add {firstName}&apos;s email below and the first blessing goes out the moment you pay — no
+            link to forward, nothing for them to claim.
           </p>
         </div>
         <div className="mt-7">

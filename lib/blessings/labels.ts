@@ -9,8 +9,7 @@ export type BlessingEntryStatus =
 
 export function blessingEntryLabel(status: BlessingEntryStatus): string {
   switch (status) {
-    case "awaiting_redemption":
-      return "52 Weeks of Blessings · share link";
+    case "awaiting_redemption": // legacy plans bought under the old claim flow
     case "active":
       return "52 Weeks of Blessings · active";
     case "completed":

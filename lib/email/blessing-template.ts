@@ -43,9 +43,9 @@ export function blessingEmailHtml(params: {
 </html>`;
 }
 
-// Sent to the creator the moment the recipient claims the gift — the point at
-// which the year of blessings actually starts being delivered.
-export function creatorClaimedEmailHtml(params: {
+// Sent to the creator the moment payment settles — the point at which the year
+// of blessings starts being delivered to the recipient.
+export function creatorGiftStartedEmailHtml(params: {
   recipientName: string;
   senderName: string | null;
   weeksTotal: number;
@@ -59,11 +59,11 @@ export function creatorClaimedEmailHtml(params: {
     <div style="max-width:560px;margin:0 auto;padding:32px 20px;">
       <div style="text-align:center;font-size:34px;margin-bottom:6px;">🕊️</div>
       <div style="background:#FFFDF8;border-radius:20px;padding:34px 30px;box-shadow:0 18px 50px -24px rgba(90,60,20,.4);border:1px solid rgba(160,124,74,.18);text-align:center;">
-        <h1 style="margin:0 0 10px;font-size:24px;line-height:1.25;color:#3a2c1a;">${escapeHtml(firstName)} opened your gift</h1>
+        <h1 style="margin:0 0 10px;font-size:24px;line-height:1.25;color:#3a2c1a;">${escapeHtml(firstName)}'s year of blessings has begun</h1>
         <div style="font-size:17px;line-height:1.7;color:#423423;">
-          Their first of ${params.weeksTotal} weekly blessings is on its way right now, and a new one will
-          reach ${escapeHtml(firstName)} every week for the year ahead. Nothing more to do — your gift is
-          unfolding${signoff}.
+          The first of ${params.weeksTotal} weekly blessings is on its way to ${escapeHtml(firstName)} right
+          now, and a new one will reach them every week for the year ahead. Nothing more to do — your gift
+          is unfolding${signoff}.
         </div>
         <a href="${params.pageUrl}" style="display:inline-block;margin-top:24px;padding:12px 22px;border-radius:999px;background:#D9613C;color:#fff;text-decoration:none;font-size:15px;">View the celebration</a>
       </div>

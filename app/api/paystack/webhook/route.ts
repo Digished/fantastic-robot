@@ -5,6 +5,8 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { activatePaidBlessing } from "@/lib/blessings/service";
 
 export const runtime = "nodejs";
+// A blessings charge builds the year (incl. an AI schedule) before returning.
+export const maxDuration = 60;
 
 // Paystack signs webhooks with HMAC-SHA512 using your SECRET KEY (not a
 // separate webhook secret). https://paystack.com/docs/payments/webhooks/
@@ -65,8 +67,8 @@ async function handleChargeSuccess(data: {
   if (data.status !== "success" || !data.reference) return;
   const admin = supabaseAdmin();
 
-  // 52 Weeks of Blessings — reference is prefixed SPB-BLESS-. Open the 72h
-  // redeem window so the celebrant can claim it, and drop the gift on the wall.
+  // 52 Weeks of Blessings — reference is prefixed SPB-BLESS-. Build the year,
+  // send week 1 to the recipient, and drop the gift on the wall.
   if (data.reference.startsWith("SPB-BLESS-")) {
     await activatePaidBlessing({ reference: data.reference });
     return;

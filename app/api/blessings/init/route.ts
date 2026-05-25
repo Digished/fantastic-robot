@@ -12,16 +12,29 @@ export const runtime = "nodejs";
 const ref = customAlphabet("ABCDEFGHJKLMNPQRSTUVWXYZ23456789", 18);
 const token = customAlphabet("abcdefghijkmnpqrstuvwxyz23456789", 24);
 
-const schema = z.object({
-  slug: z.string().min(6),
-  tone: z.enum(["prayer", "affirmation", "scripture"]).default("prayer"),
-  senderName: z.string().max(60).optional(),
-});
+const schema = z
+  .object({
+    slug: z.string().min(6),
+    tone: z.enum(["prayer", "affirmation", "scripture"]).default("prayer"),
+    senderName: z.string().max(60).optional(),
+    recipientEmail: z.string().email(),
+    recipientEmailConfirm: z.string().email(),
+  })
+  .refine(
+    (d) =>
+      d.recipientEmail.trim().toLowerCase() === d.recipientEmailConfirm.trim().toLowerCase(),
+    { message: "The two email addresses don't match.", path: ["recipientEmailConfirm"] },
+  );
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
+      { status: 400 },
+    );
+  }
 
   const supa = await supabaseServer();
   const { data: { user } } = await supa.auth.getUser();
@@ -68,6 +81,10 @@ export async function POST(req: Request) {
     status: "pending_payment",
     amount_kobo: BLESSINGS_FEE_KOBO.toString(),
     paystack_reference: reference,
+    // Recipient's address is captured here so the gift starts the moment payment
+    // settles — no claim step. redeem_token now serves only as the unsubscribe key.
+    recipient_email: parsed.data.recipientEmail.trim().toLowerCase(),
+    opted_in: true,
     redeem_token: redeemToken,
   });
   if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 });
