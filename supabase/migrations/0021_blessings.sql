@@ -33,6 +33,13 @@ create table if not exists public.blessing_plans (
 );
 create index if not exists blessing_plans_celebration_idx on public.blessing_plans(celebration_id);
 
+-- A celebration can hold only one *paid* blessing plan — it's a one-time
+-- keepsake gift, not a subscription. Abandoned 'pending_payment' attempts may
+-- stack harmlessly; the moment one is paid, no second payment can settle.
+create unique index if not exists blessing_plans_one_paid_per_celebration
+  on public.blessing_plans(celebration_id)
+  where status in ('awaiting_redemption', 'active', 'completed');
+
 create table if not exists public.blessing_messages (
   id uuid primary key default extensions.gen_random_uuid(),
   plan_id uuid not null references public.blessing_plans(id) on delete cascade,

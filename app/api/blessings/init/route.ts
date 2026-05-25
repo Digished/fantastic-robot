@@ -38,6 +38,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Only the page creator can do this" }, { status: 403 });
   }
 
+  // One paid gift per page — it's a keepsake, not a subscription. If it's
+  // already been bought, don't let a second payment start.
+  const { data: existingPaid } = await admin
+    .from("blessing_plans")
+    .select("id, status")
+    .eq("celebration_id", cel.id)
+    .in("status", ["awaiting_redemption", "active", "completed"])
+    .maybeSingle();
+  if (existingPaid) {
+    return NextResponse.json(
+      {
+        error: "This page already has 52 Weeks of Blessings — it's been paid for and saved as a gift.",
+        alreadyPaid: true,
+      },
+      { status: 409 },
+    );
+  }
+
   const reference = `SPB-BLESS-${ref()}`;
   const redeemToken = token();
 

@@ -73,7 +73,9 @@ async function handleChargeSuccess(data: {
       .update({ status: "awaiting_redemption", redeem_expires_at: expires })
       .eq("paystack_reference", data.reference)
       .eq("status", "pending_payment");
-    if (error) throw error;
+    // 23505 = the one-paid-per-celebration index rejected this; another plan is
+    // already paid. Acknowledge so Paystack stops retrying.
+    if (error && (error as { code?: string }).code !== "23505") throw error;
     return;
   }
 

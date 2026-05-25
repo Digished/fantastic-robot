@@ -132,6 +132,18 @@ export function SealedCountdown({
           </div>
         )}
 
+        {/* Owner-only: gift a year of weekly blessings, even while sealed. */}
+        {isCreator && (
+          <div className="fade-up mt-3">
+            <Link
+              href={`/blessings/new/${slug}`}
+              className="glass-dark rounded-full px-4 py-2 text-sm text-white inline-flex items-center gap-1.5"
+            >
+              <Gift className="size-4" /> Add 52 Weeks of Blessings
+            </Link>
+          </div>
+        )}
+
         {/* Everything below shares one tidy column. */}
         <div className="w-full max-w-sm mt-7 space-y-3">
           {/* Wishlist */}
