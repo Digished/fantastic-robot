@@ -29,6 +29,7 @@ async function loadMetrics() {
   const [
     paidContribs,
     paidPagesCount,
+    paidBlessings,
     pendingPayouts,
     pendingClaims,
     celebrationsCount,
@@ -42,6 +43,10 @@ async function loadMetrics() {
       .select("*", { count: "exact", head: true })
       .eq("is_paid_for_creation", true)
       .not("creation_payment_reference", "is", null),
+    admin
+      .from("blessing_plans")
+      .select("amount_kobo")
+      .in("status", ["awaiting_redemption", "active", "completed"]),
     admin
       .from("payouts")
       .select("id, amount_kobo, status, initiated_at, celebration_id")
@@ -69,7 +74,12 @@ async function loadMetrics() {
   );
   const paidPages = paidPagesCount.count ?? 0;
   const creationRevenue = paidPages * Number(PAGE_CREATION_FEE_KOBO);
-  const totalRevenue = platformFees + creationRevenue;
+  const blessingsRevenue = (paidBlessings.data ?? []).reduce(
+    (acc, r) => acc + Number(r.amount_kobo ?? 0),
+    0,
+  );
+  const blessingsCount = paidBlessings.data?.length ?? 0;
+  const totalRevenue = platformFees + creationRevenue + blessingsRevenue;
 
   const pendingPayoutRows = pendingPayouts.data ?? [];
   const pendingPayoutTotal = pendingPayoutRows.reduce(
@@ -81,6 +91,8 @@ async function loadMetrics() {
     totalRevenue,
     platformFees,
     creationRevenue,
+    blessingsRevenue,
+    blessingsCount,
     paidPages,
     grossProcessed,
     pendingPayoutRows,
@@ -111,7 +123,7 @@ export default async function AdminOverviewPage() {
           icon={<TrendingUp className="size-4" />}
           label="Total revenue"
           value={formatNaira(m.totalRevenue)}
-          sub={`Fees ${formatNaira(m.platformFees)} · Creation ${formatNaira(m.creationRevenue)}`}
+          sub={`Fees ${formatNaira(m.platformFees)} · Creation ${formatNaira(m.creationRevenue)} · Blessings ${formatNaira(m.blessingsRevenue)}`}
         />
         <Stat
           icon={<Hourglass className="size-4" />}

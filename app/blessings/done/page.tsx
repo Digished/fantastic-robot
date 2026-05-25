@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paystack } from "@/lib/paystack/client";
+import { activatePaidBlessing } from "@/lib/blessings/service";
 import { env } from "@/lib/env";
 import { ShareLink } from "./share-link";
 
@@ -30,13 +31,13 @@ export default async function BlessingsDonePage({
     try {
       const { data: tx } = await paystack.verifyTransaction(ref);
       if (tx.status === "success") {
-        const expires = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
-        await admin
+        await activatePaidBlessing({ id: plan.id });
+        const { data: fresh } = await admin
           .from("blessing_plans")
-          .update({ status: "awaiting_redemption", redeem_expires_at: expires })
+          .select("status")
           .eq("id", plan.id)
-          .eq("status", "pending_payment");
-        plan = { ...plan, status: "awaiting_redemption" };
+          .maybeSingle();
+        if (fresh) plan = { ...plan, status: fresh.status };
       }
     } catch {
       /* fall through to the pending message */

@@ -7,6 +7,7 @@ import { formatDate } from "@/lib/time";
 import { Sparkles } from "@/components/sparkles";
 import { ShareBar } from "./share-bar";
 import { NavLoadingLink } from "@/components/nav-loading-link";
+import { blessingEntryLabel, type BlessingEntryStatus } from "@/lib/blessings/labels";
 
 type WishlistItem = { title: string; url?: string };
 
@@ -46,6 +47,7 @@ export function SealedCountdown({
   theme,
   wishlist,
   ownerStats,
+  blessingStatus,
 }: {
   slug: string;
   title: string;
@@ -60,6 +62,7 @@ export function SealedCountdown({
   theme: string;
   wishlist: WishlistItem[];
   ownerStats: { messageCount: number; giftCount: number } | null;
+  blessingStatus?: BlessingEntryStatus;
 }) {
   const target = new Date(celebrationDate).getTime();
   const [now, setNow] = useState(() => Date.now());
@@ -132,14 +135,15 @@ export function SealedCountdown({
           </div>
         )}
 
-        {/* Owner-only: gift a year of weekly blessings, even while sealed. */}
+        {/* Owner-only: gift a year of weekly blessings, even while sealed.
+            Once bought it stays reachable here with its current status. */}
         {isCreator && (
           <div className="fade-up mt-3">
             <Link
               href={`/blessings/new/${slug}`}
               className="glass-dark rounded-full px-4 py-2 text-sm text-white inline-flex items-center gap-1.5"
             >
-              <Gift className="size-4" /> Add 52 Weeks of Blessings
+              <Gift className="size-4" /> {blessingEntryLabel(blessingStatus)}
             </Link>
           </div>
         )}

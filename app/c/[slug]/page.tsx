@@ -20,6 +20,7 @@ import { CompletePaymentBanner } from "./complete-payment-banner";
 import { AudienceActions } from "@/components/page-editor/audience-actions";
 import { InfoButton } from "@/components/page-editor/info-button";
 import { getCreatorProfile } from "@/lib/creator";
+import { blessingEntryLabel, type BlessingEntryStatus } from "@/lib/blessings/labels";
 import { SealedCountdown } from "./sealed-countdown";
 
 export const dynamic = "force-dynamic";
@@ -70,6 +71,19 @@ export default async function WallPage({
 
   const wishlist = (page.wishlist as { title: string; url?: string }[] | null) ?? [];
 
+  // Creator-only: this page's keepsake gift (one paid plan per celebration).
+  // Kept reachable from the page on every screen; null = none bought yet.
+  let blessingStatus: BlessingEntryStatus = null;
+  if (isCreator) {
+    const { data: bp } = await supabaseAdmin()
+      .from("blessing_plans")
+      .select("status")
+      .eq("celebration_id", page.id)
+      .in("status", ["awaiting_redemption", "active", "completed"])
+      .maybeSingle();
+    blessingStatus = (bp?.status as BlessingEntryStatus) ?? null;
+  }
+
   // Sealed surprise: nobody — not even the owner — sees the wall, messages or
   // totals until the celebration date. Everyone gets a countdown plus a way to
   // contribute; the content unlocks only once the date is reached.
@@ -86,7 +100,8 @@ export default async function WallPage({
         .is("deleted_at", null);
       ownerStats = {
         messageCount: count ?? 0,
-        giftCount: Number(page.contributor_count ?? 0),
+        // The keepsake blessing counts as a sealed gift alongside cash gifts.
+        giftCount: Number(page.contributor_count ?? 0) + (blessingStatus ? 1 : 0),
       };
     }
     return (
@@ -104,6 +119,7 @@ export default async function WallPage({
         theme={theme}
         wishlist={wishlist}
         ownerStats={ownerStats}
+        blessingStatus={blessingStatus}
       />
     );
   }
@@ -160,7 +176,7 @@ export default async function WallPage({
             {isCreator && (
               <>
                 <Link href={`/blessings/new/${page.slug}`} className="btn-outline text-sm py-2">
-                  52 Weeks of Blessings
+                  {blessingEntryLabel(blessingStatus)}
                 </Link>
                 <Link href={`/c/${page.slug}/edit`} className="btn-outline text-sm py-2">
                   Edit page
@@ -244,6 +260,18 @@ export default async function WallPage({
 
             {isCreator && page.is_paid_for_creation === false && (
               <CompletePaymentBanner slug={page.slug} />
+            )}
+
+            {/* Creator-only: keep the keepsake gift reachable on mobile too
+                (the desktop entry lives in the top header). */}
+            {isCreator && (
+              <Link
+                href={`/blessings/new/${page.slug}`}
+                className="md:hidden btn-outline text-sm py-2 inline-flex items-center justify-center gap-2 w-full"
+              >
+                <Gift className="size-4 text-[var(--accent)]" />
+                {blessingEntryLabel(blessingStatus)}
+              </Link>
             )}
 
             {/* Desktop title (hidden on mobile — shown inside hero) */}

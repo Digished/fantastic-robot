@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { buildBlessingSchedule, type Tone, type WallMessage } from "@/lib/blessings/generate";
-import { sendBlessing } from "@/lib/blessings/service";
+import { sendBlessing, sendCreatorClaimedEmail } from "@/lib/blessings/service";
 
 export const runtime = "nodejs";
 
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const admin = supabaseAdmin();
   const { data: plan } = await admin
     .from("blessing_plans")
-    .select("id, celebration_id, recipient_name, sender_name, tone, weeks_total, status, redeem_expires_at, redeem_token")
+    .select("id, celebration_id, creator_id, recipient_name, sender_name, tone, weeks_total, status, redeem_expires_at, redeem_token")
     .eq("redeem_token", parsed.data.token)
     .maybeSingle();
 
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
 
   const { data: cel } = await admin
     .from("celebrations")
-    .select("event_type")
+    .select("event_type, slug")
     .eq("id", plan.celebration_id)
     .maybeSingle();
 
@@ -116,6 +116,15 @@ export async function POST(req: Request) {
       first,
     );
   }
+
+  // Tell the creator their gift just landed and the year has begun.
+  await sendCreatorClaimedEmail({
+    creator_id: plan.creator_id,
+    recipient_name: plan.recipient_name,
+    sender_name: plan.sender_name,
+    weeks_total: plan.weeks_total,
+    celebration_slug: cel?.slug ?? null,
+  });
 
   return NextResponse.json({ ok: true });
 }

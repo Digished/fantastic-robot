@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { env } from "@/lib/env";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { activatePaidBlessing } from "@/lib/blessings/service";
 
 export const runtime = "nodejs";
 
@@ -65,17 +66,9 @@ async function handleChargeSuccess(data: {
   const admin = supabaseAdmin();
 
   // 52 Weeks of Blessings — reference is prefixed SPB-BLESS-. Open the 72h
-  // redeem window so the celebrant can claim it with their email.
+  // redeem window so the celebrant can claim it, and drop the gift on the wall.
   if (data.reference.startsWith("SPB-BLESS-")) {
-    const expires = new Date(Date.now() + 72 * 3600 * 1000).toISOString();
-    const { error } = await admin
-      .from("blessing_plans")
-      .update({ status: "awaiting_redemption", redeem_expires_at: expires })
-      .eq("paystack_reference", data.reference)
-      .eq("status", "pending_payment");
-    // 23505 = the one-paid-per-celebration index rejected this; another plan is
-    // already paid. Acknowledge so Paystack stops retrying.
-    if (error && (error as { code?: string }).code !== "23505") throw error;
+    await activatePaidBlessing({ reference: data.reference });
     return;
   }
 
