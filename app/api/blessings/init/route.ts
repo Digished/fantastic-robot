@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     .from("blessing_plans")
     .select("id, status")
     .eq("celebration_id", cel.id)
-    .in("status", ["awaiting_redemption", "active", "completed"])
+    .in("status", ["active", "completed"])
     .maybeSingle();
   if (existingPaid) {
     return NextResponse.json(

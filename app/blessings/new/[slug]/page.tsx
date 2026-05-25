@@ -31,7 +31,7 @@ export default async function NewBlessingPage({
     .from("blessing_plans")
     .select("status")
     .eq("celebration_id", cel.id)
-    .in("status", ["awaiting_redemption", "active", "completed"])
+    .in("status", ["active", "completed"])
     .maybeSingle();
 
   if (paid) {

@@ -1,15 +1,9 @@
 // Label for the creator-only "52 Weeks of Blessings" entry on a celebration
 // page. A paid plan stays reachable per celebration; null means none bought yet.
-export type BlessingEntryStatus =
-  | "awaiting_redemption"
-  | "active"
-  | "completed"
-  | null
-  | undefined;
+export type BlessingEntryStatus = "active" | "completed" | null | undefined;
 
 export function blessingEntryLabel(status: BlessingEntryStatus): string {
   switch (status) {
-    case "awaiting_redemption": // legacy plans bought under the old claim flow
     case "active":
       return "52 Weeks of Blessings · active";
     case "completed":

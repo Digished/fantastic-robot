@@ -46,7 +46,7 @@ async function loadMetrics() {
     admin
       .from("blessing_plans")
       .select("amount_kobo")
-      .in("status", ["awaiting_redemption", "active", "completed"]),
+      .in("status", ["active", "completed"]),
     admin
       .from("payouts")
       .select("id, amount_kobo, status, initiated_at, celebration_id")

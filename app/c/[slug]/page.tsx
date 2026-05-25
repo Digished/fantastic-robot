@@ -79,7 +79,7 @@ export default async function WallPage({
       .from("blessing_plans")
       .select("status")
       .eq("celebration_id", page.id)
-      .in("status", ["awaiting_redemption", "active", "completed"])
+      .in("status", ["active", "completed"])
       .maybeSingle();
     blessingStatus = (bp?.status as BlessingEntryStatus) ?? null;
   }
