@@ -1,14 +1,16 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, Plus, Trash2, ArrowLeft, Lock } from "lucide-react";
-import { editSelfCelebration, type SelfEditState } from "./actions";
+import { editSelfCelebration, deleteSealedCelebration, type SelfEditState } from "./actions";
+import { SlugEditor } from "./slug-editor";
 import { isTheme, type Theme } from "@/lib/themes";
 import { ThemePickerButton } from "@/components/page-editor/theme-picker-button";
 import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox";
 import { MusicPicker } from "@/components/music-picker";
 import { isValidUploadedTrackId, makeUploadedTrack, parseMusicValue, type MusicTrack } from "@/lib/music";
+import { PresentationToggle } from "./presentation-toggle";
 import type { WishlistItem } from "@/lib/validation/schemas";
 
 export function SelfEditForm({
@@ -26,6 +28,7 @@ export function SelfEditForm({
     messageFromCreator: string;
     isRecurring: boolean;
     backgroundMusic: string | null;
+    presentation: "reel" | "book";
     wishlist: WishlistItem[];
     bankCode: string;
     accountNumber: string;
@@ -40,6 +43,7 @@ export function SelfEditForm({
   const [theme, setTheme] = useState<Theme>(isTheme(initial.theme) ? initial.theme : "ivory");
   const [note, setNote] = useState(initial.messageFromCreator);
   const [isRecurring, setIsRecurring] = useState(initial.isRecurring);
+  const [presentation, setPresentation] = useState<"reel" | "book">(initial.presentation);
   const [wishlist, setWishlist] = useState<WishlistItem[]>(
     initial.wishlist.length ? initial.wishlist : [],
   );
@@ -100,6 +104,7 @@ export function SelfEditForm({
     if (note) fd.set("messageFromCreator", note);
     if (isRecurring) fd.set("isRecurring", "on");
     if (music) fd.set("backgroundMusic", music);
+    fd.set("presentation", presentation);
     fd.set(
       "wishlist",
       JSON.stringify(
@@ -118,6 +123,18 @@ export function SelfEditForm({
       fd.set("accountNumber", accountNumber);
     }
     dispatch(fd);
+  }
+
+  const [deleting, startDelete] = useTransition();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  function remove() {
+    if (!window.confirm("Delete this celebration for good? This can't be undone.")) return;
+    setDeleteError(null);
+    startDelete(async () => {
+      const res = await deleteSealedCelebration(slug);
+      if (res.error) { setDeleteError(res.error); return; }
+      router.push("/dashboard");
+    });
   }
 
   return (
@@ -165,6 +182,8 @@ export function SelfEditForm({
           allowUpload
           onAddTrack={(t) => setTrackList((prev) => (prev.some((x) => x.id === t.id) ? prev : [t, ...prev]))}
         />
+
+        <PresentationToggle value={presentation} onChange={setPresentation} />
 
         {/* Personal note */}
         <div className="space-y-1.5">
@@ -302,6 +321,28 @@ export function SelfEditForm({
         <button onClick={save} disabled={pending} className="btn-accent shadow-soft w-full py-4 disabled:opacity-60">
           {pending ? "Saving…" : "Save changes"}
         </button>
+
+        <SlugEditor slug={slug} />
+
+        {/* Danger zone */}
+        <div className="rounded-3xl2 border border-red-200 bg-red-50/40 p-5 space-y-3">
+          <div>
+            <p className="font-medium text-ink">Delete this celebration</p>
+            <p className="text-xs text-ink/50 mt-0.5">
+              Removes the page and everything on it. This can&apos;t be undone.
+            </p>
+          </div>
+          {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+          <button
+            type="button"
+            onClick={remove}
+            disabled={deleting}
+            className="inline-flex items-center gap-2 rounded-full border border-red-300 text-red-700 hover:bg-red-100 px-4 py-2 text-sm disabled:opacity-60"
+          >
+            {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+            {deleting ? "Deleting…" : "Delete celebration"}
+          </button>
+        </div>
       </div>
     </main>
   );

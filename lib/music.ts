@@ -21,29 +21,30 @@ export type MusicTrack = {
   mood: string;
   src: string;            // playable URL (public)
   source: MusicSource;
+  bpm?: number;           // approx tempo — paces the slideshow to the song
 };
 
 export const BUILTIN_TRACKS: ReadonlyArray<Omit<MusicTrack, "src" | "source">> = [
-  { id: "happy-birthday",   label: "Happy Birthday",     mood: "The classic birthday tune" },
-  { id: "birthday-bounce",  label: "Birthday Bounce",    mood: "Upbeat pop birthday party" },
-  { id: "celebration",      label: "Celebration",        mood: "Bright, festive party energy" },
-  { id: "warm-piano",       label: "Warm Piano",         mood: "Gentle and heartfelt" },
-  { id: "acoustic-sunshine",label: "House Party",        mood: "Feel-good piano-house groove" },
-  { id: "dreamy",           label: "Dreamy",             mood: "Soft, reflective ambience" },
-  { id: "party-pop",        label: "Party Pop",          mood: "Energetic feel-good dance-pop" },
-  { id: "soft-strings",     label: "EDM Anthem",         mood: "Big-room festival energy" },
-  { id: "lo-fi-chill",      label: "Lo-Fi Chill",        mood: "Mellow, laid-back lo-fi beats" },
-  { id: "afrobeats",        label: "Afrobeats",          mood: "Uplifting West African groove" },
-  { id: "disco-fever",      label: "Disco Fever",        mood: "Groovy 70s dancefloor energy" },
-  { id: "summer-vibes",     label: "Summer Vibes",       mood: "Bright tropical-house feel-good" },
-  { id: "jazz-club",        label: "Latin Heat",         mood: "Spicy reggaeton party groove" },
-  { id: "epic-moment",      label: "Pop Anthem",         mood: "Soaring stadium-pop singalong" },
-  { id: "retro-arcade",     label: "Retro Dance",        mood: "Neon 80s synth-pop dancefloor" },
-  { id: "reggae-chill",     label: "Dancehall",          mood: "Sunny dancehall party bounce" },
-  { id: "funky-groove",     label: "Funky Groove",       mood: "Deep bass, heavy party pocket" },
-  { id: "midnight-rnb",     label: "R&B Groove",         mood: "Smooth feel-good R&B bop" },
-  { id: "bossa-nova",       label: "Carnival",           mood: "Percussion-packed samba party" },
-  { id: "gospel-joy",       label: "Gospel Joy",         mood: "Hand-clapping gospel celebration" },
+  { id: "happy-birthday",   label: "Happy Birthday",     mood: "The classic birthday tune",        bpm: 96 },
+  { id: "birthday-bounce",  label: "Birthday Bounce",    mood: "Upbeat pop birthday party",        bpm: 124 },
+  { id: "celebration",      label: "Celebration",        mood: "Bright, festive party energy",     bpm: 116 },
+  { id: "warm-piano",       label: "Warm Piano",         mood: "Gentle and heartfelt",             bpm: 72 },
+  { id: "acoustic-sunshine",label: "House Party",        mood: "Feel-good piano-house groove",     bpm: 120 },
+  { id: "dreamy",           label: "Dreamy",             mood: "Soft, reflective ambience",        bpm: 70 },
+  { id: "party-pop",        label: "Party Pop",          mood: "Energetic feel-good dance-pop",    bpm: 128 },
+  { id: "soft-strings",     label: "EDM Anthem",         mood: "Big-room festival energy",         bpm: 128 },
+  { id: "lo-fi-chill",      label: "Lo-Fi Chill",        mood: "Mellow, laid-back lo-fi beats",    bpm: 82 },
+  { id: "afrobeats",        label: "Afrobeats",          mood: "Uplifting West African groove",    bpm: 108 },
+  { id: "disco-fever",      label: "Disco Fever",        mood: "Groovy 70s dancefloor energy",     bpm: 120 },
+  { id: "summer-vibes",     label: "Summer Vibes",       mood: "Bright tropical-house feel-good",  bpm: 112 },
+  { id: "jazz-club",        label: "Latin Heat",         mood: "Spicy reggaeton party groove",     bpm: 96 },
+  { id: "epic-moment",      label: "Pop Anthem",         mood: "Soaring stadium-pop singalong",    bpm: 120 },
+  { id: "retro-arcade",     label: "Retro Dance",        mood: "Neon 80s synth-pop dancefloor",    bpm: 118 },
+  { id: "reggae-chill",     label: "Dancehall",          mood: "Sunny dancehall party bounce",     bpm: 100 },
+  { id: "funky-groove",     label: "Funky Groove",       mood: "Deep bass, heavy party pocket",    bpm: 112 },
+  { id: "midnight-rnb",     label: "R&B Groove",         mood: "Smooth feel-good R&B bop",         bpm: 90 },
+  { id: "bossa-nova",       label: "Carnival",           mood: "Percussion-packed samba party",    bpm: 104 },
+  { id: "gospel-joy",       label: "Gospel Joy",         mood: "Hand-clapping gospel celebration", bpm: 100 },
 ];
 
 export const BUILTIN_TRACK_IDS = new Set(BUILTIN_TRACKS.map((t) => t.id));

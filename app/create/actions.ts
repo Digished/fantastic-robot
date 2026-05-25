@@ -238,6 +238,7 @@ export async function createSelfCelebration(
     is_sealed: true,
     is_recurring: recurring,
     is_paid_for_creation: true, // self pages are free
+    published_at: new Date().toISOString(),
     gallery_images: [],
   });
   if (error) return { error: error.message };
@@ -274,8 +275,9 @@ export async function restartCreationPayment(slug: string): Promise<CreateState>
       if (data.status === "success") {
         await admin
           .from("celebrations")
-          .update({ is_paid_for_creation: true })
-          .eq("id", page.id);
+          .update({ is_paid_for_creation: true, published_at: new Date().toISOString() })
+          .eq("id", page.id)
+          .eq("is_paid_for_creation", false);
         return { alreadyPaid: true };
       }
     } catch {

@@ -20,6 +20,8 @@ import { CompletePaymentBanner } from "./complete-payment-banner";
 import { AudienceActions } from "@/components/page-editor/audience-actions";
 import { InfoButton } from "@/components/page-editor/info-button";
 import { getCreatorProfile } from "@/lib/creator";
+import type { BlessingEntryStatus } from "@/lib/blessings/labels";
+import { BlessingCta } from "./blessing-cta";
 import { SealedCountdown } from "./sealed-countdown";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +45,7 @@ export default async function WallPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle, wishlist",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle, wishlist, presentation",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -70,6 +72,19 @@ export default async function WallPage({
 
   const wishlist = (page.wishlist as { title: string; url?: string }[] | null) ?? [];
 
+  // Creator-only: this page's keepsake gift (one paid plan per celebration).
+  // Kept reachable from the page on every screen; null = none bought yet.
+  let blessingStatus: BlessingEntryStatus = null;
+  if (isCreator) {
+    const { data: bp } = await supabaseAdmin()
+      .from("blessing_plans")
+      .select("status")
+      .eq("celebration_id", page.id)
+      .in("status", ["active", "completed"])
+      .maybeSingle();
+    blessingStatus = (bp?.status as BlessingEntryStatus) ?? null;
+  }
+
   // Sealed surprise: nobody — not even the owner — sees the wall, messages or
   // totals until the celebration date. Everyone gets a countdown plus a way to
   // contribute; the content unlocks only once the date is reached.
@@ -86,7 +101,8 @@ export default async function WallPage({
         .is("deleted_at", null);
       ownerStats = {
         messageCount: count ?? 0,
-        giftCount: Number(page.contributor_count ?? 0),
+        // The keepsake blessing counts as a sealed gift alongside cash gifts.
+        giftCount: Number(page.contributor_count ?? 0) + (blessingStatus ? 1 : 0),
       };
     }
     return (
@@ -104,6 +120,7 @@ export default async function WallPage({
         theme={theme}
         wishlist={wishlist}
         ownerStats={ownerStats}
+        blessingStatus={blessingStatus}
       />
     );
   }
@@ -143,12 +160,13 @@ export default async function WallPage({
   const galleryImages = (page.gallery_images as { path: string; caption: string; kind?: "image" | "video" }[]) ?? [];
   const eventLabel = page.event_type.replace(/_/g, " ");
   const accountLabel = page.recipient_account_name ?? "your account";
+  const book = page.presentation === "book";
 
   return (
-    <main className="min-h-[100dvh] bg-white pb-20" data-theme={theme}>
+    <main className={`min-h-[100dvh] pb-20 ${book ? "bg-[#EFE4D2]" : "bg-white"}`} data-theme={theme} data-presentation={page.presentation ?? "reel"}>
 
       {/* ── Wide container ── */}
-      <div className="mx-auto w-full max-w-6xl px-4 md:px-10 pt-4">
+      <div className={`mx-auto w-full max-w-6xl px-4 md:px-10 pt-4 ${book ? "md:px-12" : ""}`}>
 
         {/* Desktop-only top header */}
         <header className="hidden md:flex items-center justify-between pb-6 mb-8 border-b border-ink/8">
@@ -165,7 +183,7 @@ export default async function WallPage({
         </header>
 
         {/* ── 2-col grid ── */}
-        <div className="md:grid md:grid-cols-[2fr_3fr] md:gap-12 md:items-start">
+        <div className={`md:grid md:grid-cols-[2fr_3fr] md:gap-12 md:items-start ${book ? "book-spread md:rounded-3xl2 md:p-6 book-sheet" : ""}`}>
 
           {/* ══ LEFT: Hero + gallery (sticky on desktop) ══ */}
           <div className="md:sticky md:top-8 md:self-start space-y-3">
@@ -248,6 +266,13 @@ export default async function WallPage({
               <h1 className="serif text-5xl text-ink mt-3 leading-[0.92]">{page.title}</h1>
               <p className="text-ink/55 mt-2">For {page.recipient_name}</p>
             </div>
+
+            {/* Creator-only: the keepsake gift, front and centre on every screen. */}
+            {isCreator && (
+              <div className="fade-up">
+                <BlessingCta slug={page.slug} status={blessingStatus} surface="light" />
+              </div>
+            )}
 
             {/* Stats — raised amount is creator-only */}
             <div className="rounded-3xl2 bg-white shadow-ring p-5 grid grid-cols-2 gap-5 fade-up">

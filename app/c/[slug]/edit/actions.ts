@@ -21,7 +21,16 @@ const editSchema = z.object({
   backgroundMusic: z.string().min(1).max(200).nullable().optional(),
   galleryImages: z.string().optional(),
   introContent: z.string().optional(),
+  presentation: z.enum(["reel", "book"]).optional(),
+  // Date & payout account — only editable within 24h of publishing.
+  celebrationDate: z.string().optional(),
+  recipientBankCode: z.string().min(2).max(10).optional(),
+  recipientAccountNumber: z.string().regex(/^\d{10}$/, "10 digits").optional(),
 });
+
+// How long after publishing a creator can still fix the date / payout account.
+const EDIT_WINDOW_MS = 24 * 3600 * 1000;
+const LEAD_MS = 96 * 3600 * 1000;
 
 export type EditState = { error?: string; ok?: boolean };
 
@@ -44,18 +53,64 @@ export async function editCelebration(
     backgroundMusic: (formData.get("backgroundMusic") as string) || null,
     galleryImages: (formData.get("galleryImages") as string) || undefined,
     introContent: (formData.get("introContent") as string) || undefined,
+    presentation: (formData.get("presentation") as string) || undefined,
+    celebrationDate: (formData.get("celebrationDate") as string) || undefined,
+    recipientBankCode: (formData.get("recipientBankCode") as string) || undefined,
+    recipientAccountNumber: (formData.get("recipientAccountNumber") as string) || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const admin = supabaseAdmin();
   const { data: page } = await admin
     .from("celebrations")
-    .select("id, creator_id, recipient_name, event_type, celebration_date")
+    .select("id, creator_id, recipient_name, event_type, celebration_date, published_at, recipient_bank_code, recipient_account_number")
     .eq("slug", slug)
     .maybeSingle();
   if (!page || page.creator_id !== user.id) return { error: "Not allowed." };
   if (!contentWindowOpen(page.celebration_date)) {
     return { error: "Page edits close 1 hour before the celebration." };
+  }
+
+  // Date & payout account can only be corrected for a short window after the
+  // page goes live, then they're locked for everyone's safety.
+  const within24h =
+    !!page.published_at && Date.now() - new Date(page.published_at).getTime() < EDIT_WINDOW_MS;
+  const dateBankUpdate: Record<string, unknown> = {};
+
+  if (parsed.data.celebrationDate) {
+    const d = new Date(parsed.data.celebrationDate);
+    const changed =
+      Number.isNaN(d.getTime()) ||
+      Math.abs(d.getTime() - new Date(page.celebration_date).getTime()) > 60_000;
+    if (changed) {
+      if (!within24h) return { error: "The date can only be changed within 24 hours of publishing." };
+      if (Number.isNaN(d.getTime()) || d.getTime() < Date.now() + LEAD_MS) {
+        return { error: "Pick a date at least 96 hours from now." };
+      }
+      dateBankUpdate.celebration_date = d.toISOString();
+    }
+  }
+
+  if (parsed.data.recipientBankCode && parsed.data.recipientAccountNumber) {
+    const bankChanged =
+      parsed.data.recipientBankCode !== page.recipient_bank_code ||
+      parsed.data.recipientAccountNumber !== page.recipient_account_number;
+    if (bankChanged) {
+      if (!within24h) return { error: "Account details can only be changed within 24 hours of publishing." };
+      try {
+        const { data } = await paystack.resolveAccount(
+          parsed.data.recipientAccountNumber,
+          parsed.data.recipientBankCode,
+        );
+        dateBankUpdate.recipient_bank_code = parsed.data.recipientBankCode;
+        dateBankUpdate.recipient_account_number = parsed.data.recipientAccountNumber;
+        dateBankUpdate.recipient_account_name = data.account_name;
+        dateBankUpdate.paystack_recipient_code = null;
+      } catch (err) {
+        const msg = err instanceof PaystackError ? err.message : "Could not verify account";
+        return { error: `Bank account check failed: ${msg}` };
+      }
+    }
   }
 
   // The editor sends edited slides as JSON. Use them verbatim — we no
@@ -83,6 +138,8 @@ export async function editCelebration(
       ...(introContent ? { intro_content: introContent } : {}),
       ...(parsed.data.coverPhotoPath ? { cover_photo_path: parsed.data.coverPhotoPath } : {}),
       ...(parsed.data.theme ? { theme: parsed.data.theme } : {}),
+      ...(parsed.data.presentation ? { presentation: parsed.data.presentation } : {}),
+      ...dateBankUpdate,
     })
     .eq("id", page.id);
   if (error) return { error: error.message };
@@ -111,6 +168,7 @@ export async function editSelfCelebration(
     messageFromCreator: (formData.get("messageFromCreator") as string) || undefined,
     isRecurring: formData.get("isRecurring") === "on",
     backgroundMusic: formData.get("backgroundMusic") || null,
+    presentation: (formData.get("presentation") as string) || undefined,
     wishlist,
     bankCode: (formData.get("bankCode") as string) || undefined,
     accountNumber: (formData.get("accountNumber") as string) || undefined,
@@ -143,6 +201,7 @@ export async function editSelfCelebration(
       background_music: resolvedMusic,
       wishlist: cleanWishlist,
       ...(parsed.data.theme ? { theme: parsed.data.theme } : {}),
+      ...(parsed.data.presentation ? { presentation: parsed.data.presentation } : {}),
     })
     .eq("id", page.id);
   if (error) return { error: error.message };
@@ -208,5 +267,109 @@ export async function deleteMessageFromEdit(slug: string, messageId: string) {
 
   revalidatePath(`/c/${slug}/edit`);
   revalidatePath(`/c/${slug}`);
+  return { ok: true };
+}
+
+// ── Custom page link (slug) ────────────────────────────────────────────
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function normalizeSlug(raw: string) {
+  return raw.trim().toLowerCase();
+}
+function slugError(s: string): string | null {
+  if (s.length < 3 || s.length > 40) return "Use 3–40 characters.";
+  if (!SLUG_RE.test(s)) return "Lowercase letters, numbers and single hyphens only.";
+  return null;
+}
+
+export async function checkSlugAvailable(
+  desired: string,
+): Promise<{ available?: boolean; error?: string }> {
+  const s = normalizeSlug(desired);
+  const err = slugError(s);
+  if (err) return { error: err };
+  const { data } = await supabaseAdmin()
+    .from("celebrations")
+    .select("id")
+    .eq("slug", s)
+    .maybeSingle();
+  return { available: !data };
+}
+
+export async function updateCelebrationSlug(
+  currentSlug: string,
+  desired: string,
+): Promise<{ ok?: boolean; slug?: string; error?: string }> {
+  const supabase = await supabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in required." };
+
+  const s = normalizeSlug(desired);
+  const err = slugError(s);
+  if (err) return { error: err };
+
+  const admin = supabaseAdmin();
+  const { data: page } = await admin
+    .from("celebrations")
+    .select("id, creator_id, slug")
+    .eq("slug", currentSlug)
+    .maybeSingle();
+  if (!page || page.creator_id !== user.id) return { error: "Not allowed." };
+  if (page.slug === s) return { ok: true, slug: s };
+
+  const { data: taken } = await admin
+    .from("celebrations")
+    .select("id")
+    .eq("slug", s)
+    .maybeSingle();
+  if (taken) return { error: "That link is taken — try another." };
+
+  const { error } = await admin.from("celebrations").update({ slug: s }).eq("id", page.id);
+  if (error) {
+    return { error: /duplicate|unique/i.test(error.message) ? "That link is taken — try another." : error.message };
+  }
+  revalidatePath(`/c/${s}`);
+  revalidatePath("/dashboard");
+  return { ok: true, slug: s };
+}
+
+// ── Delete a sealed celebration ────────────────────────────────────────
+export async function deleteSealedCelebration(
+  slug: string,
+): Promise<{ ok?: boolean; error?: string }> {
+  const supabase = await supabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in required." };
+
+  const admin = supabaseAdmin();
+  const { data: page } = await admin
+    .from("celebrations")
+    .select("id, creator_id, is_self, is_sealed, claimable_at")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!page || page.creator_id !== user.id) return { error: "Not allowed." };
+
+  const sealed =
+    (page.is_sealed || page.is_self) && new Date(page.claimable_at).getTime() > Date.now();
+  if (!sealed) return { error: "Only a sealed celebration can be deleted here." };
+
+  // Gifts are held in escrow — refuse to delete a page that already has any,
+  // so money can never be stranded.
+  const { count } = await admin
+    .from("contributions")
+    .select("id", { head: true, count: "exact" })
+    .eq("celebration_id", page.id)
+    .eq("status", "paid");
+  if ((count ?? 0) > 0) {
+    return { error: "This page has gifts already — it can't be deleted." };
+  }
+
+  // Clear any unpaid contribution rows first (FK is restrict), then the page —
+  // messages and cycles cascade away with it.
+  await admin.from("contributions").delete().eq("celebration_id", page.id);
+  const { error } = await admin.from("celebrations").delete().eq("id", page.id);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard");
   return { ok: true };
 }
