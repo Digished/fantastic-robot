@@ -18,7 +18,7 @@ export default async function AdminCelebrationsPage({
   let query = admin
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, status, celebration_date, total_raised_kobo, contributor_count, payout_status, is_paid_for_creation, background_music, created_at",
+      "id, slug, title, recipient_name, event_type, status, celebration_date, total_raised_kobo, contributor_count, payout_status, is_paid_for_creation, is_self, background_music, created_at",
     )
     .order("created_at", { ascending: false })
     .limit(PAGE_SIZE);
@@ -96,15 +96,23 @@ export default async function AdminCelebrationsPage({
                   </span>
                 </td>
                 <td className="px-4 py-2.5">
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${
-                      p.is_paid_for_creation
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-amber-100 text-amber-800"
-                    }`}
-                  >
-                    {p.is_paid_for_creation ? p.status : "unpaid"}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${
+                        p.is_paid_for_creation
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {p.is_paid_for_creation ? p.status : "unpaid"}
+                    </span>
+                    {/* Personal pages are created free (no creation fee). */}
+                    {p.is_self && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-sky-100 text-sky-800">
+                        free
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-4 py-2.5 text-right">
                   <Link
