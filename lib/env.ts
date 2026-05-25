@@ -17,8 +17,8 @@ export const env = {
   adminEmail: () => req("ADMIN_EMAIL", process.env.ADMIN_EMAIL),
   adminPassword: () => req("ADMIN_PASSWORD", process.env.ADMIN_PASSWORD),
   resendApiKey: () => req("RESEND_API_KEY", process.env.RESEND_API_KEY),
-  // Verified sender, e.g. "Spendbox Blessings <blessings@your-domain.com>".
+  // Verified sender, e.g. "Spendbox Blessings <notifications@spendbox.site>".
   blessingsFrom: () =>
-    process.env.BLESSINGS_FROM_EMAIL ?? "Spendbox Blessings <blessings@spendbox.app>",
+    process.env.BLESSINGS_FROM_EMAIL ?? "Spendbox Blessings <notifications@spendbox.site>",
   cronSecret: () => req("CRON_SECRET", process.env.CRON_SECRET),
 };
