@@ -72,18 +72,15 @@ export default async function WallPage({
 
   const wishlist = (page.wishlist as { title: string; url?: string }[] | null) ?? [];
 
-  // Creator-only: this page's keepsake gift (one paid plan per celebration).
-  // Kept reachable from the page on every screen; null = none bought yet.
-  let blessingStatus: BlessingEntryStatus = null;
-  if (isCreator) {
-    const { data: bp } = await supabaseAdmin()
-      .from("blessing_plans")
-      .select("status")
-      .eq("celebration_id", page.id)
-      .in("status", ["active", "completed"])
-      .maybeSingle();
-    blessingStatus = (bp?.status as BlessingEntryStatus) ?? null;
-  }
+  // Anyone can gift this celebration's one-time keepsake, so surface its status
+  // to every viewer — a guest sees "already gifted" instead of buying a second.
+  const { data: bp } = await supabaseAdmin()
+    .from("blessing_plans")
+    .select("status")
+    .eq("celebration_id", page.id)
+    .in("status", ["active", "completed"])
+    .maybeSingle();
+  const blessingStatus: BlessingEntryStatus = (bp?.status as BlessingEntryStatus) ?? null;
 
   // Sealed surprise: nobody — not even the owner — sees the wall, messages or
   // totals until the celebration date. Everyone gets a countdown plus a way to
@@ -267,12 +264,10 @@ export default async function WallPage({
               <p className="text-ink/55 mt-2">For {page.recipient_name}</p>
             </div>
 
-            {/* Creator-only: the keepsake gift, front and centre on every screen. */}
-            {isCreator && (
-              <div className="fade-up">
-                <BlessingCta slug={page.slug} status={blessingStatus} surface="light" />
-              </div>
-            )}
+            {/* Anyone can gift the keepsake — front and centre on every screen. */}
+            <div className="fade-up">
+              <BlessingCta slug={page.slug} status={blessingStatus} surface="light" />
+            </div>
 
             {/* Stats — raised amount is creator-only */}
             <div className="rounded-3xl2 bg-white shadow-ring p-5 grid grid-cols-2 gap-5 fade-up">
