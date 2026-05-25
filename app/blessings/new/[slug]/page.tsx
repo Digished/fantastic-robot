@@ -58,19 +58,10 @@ export default async function NewBlessingPage({
   return (
     <main className="min-h-[100dvh] bg-[#F4EDE1] px-5 py-12">
       <div className="mx-auto w-full max-w-lg">
-        <div className="text-center">
-          <div className="text-4xl mb-3">🕊️</div>
-          <h1 className="serif text-3xl text-ink leading-tight">52 Weeks of Blessings</h1>
-          <p className="text-ink/65 mt-3">
-            A year-long gift for {firstName}. Once a week, every week, a short prayer or blessing
-            lands in their inbox — some written for them, some pulled from the notes left on their page.
-          </p>
-          <p className="text-ink/55 mt-2 text-sm">
-            Add {firstName}&apos;s email below and the first blessing goes out the moment you pay — no
-            link to forward, nothing for them to claim.
-          </p>
-        </div>
-        <div className="mt-7">
+        <Link href={`/c/${cel.slug}`} className="text-sm text-ink/55 hover:text-ink">
+          ← Back to {firstName}&apos;s page
+        </Link>
+        <div className="mt-5">
           <NewBlessingForm slug={cel.slug} firstName={firstName} />
         </div>
       </div>
