@@ -47,14 +47,14 @@ export default async function AdminPayoutsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-end justify-between">
+      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
-          <h1 className="serif text-4xl text-ink">Payouts</h1>
+          <h1 className="serif text-3xl sm:text-4xl text-ink">Payouts</h1>
           <p className="text-ink/55 text-sm mt-1.5">
             Every Paystack transfer kicked off from spendbox.
           </p>
         </div>
-        <div className="text-right text-sm text-ink/55">
+        <div className="flex gap-4 sm:flex-col sm:gap-0 sm:text-right text-sm text-ink/55">
           <div>
             Pending: <span className="text-ink font-medium">{formatNaira(pendingTotal)}</span>
           </div>
@@ -64,67 +64,111 @@ export default async function AdminPayoutsPage() {
         </div>
       </header>
 
-      <div className="bg-white rounded-3xl border border-ink/10 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-ink/4 text-ink/55 text-xs uppercase tracking-wide">
-            <tr>
-              <th className="text-left px-4 py-3 font-medium">Celebration</th>
-              <th className="text-left px-4 py-3 font-medium">Reference</th>
-              <th className="text-left px-4 py-3 font-medium">Status</th>
-              <th className="text-right px-4 py-3 font-medium">Amount</th>
-              <th className="text-left px-4 py-3 font-medium">Initiated</th>
-              <th className="text-left px-4 py-3 font-medium">Completed</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-ink/8">
-            {(payouts ?? []).length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-ink/45">
-                  No payouts yet.
-                </td>
-              </tr>
-            )}
-            {(payouts ?? []).map((p) => {
-              const page = p.celebration_id ? byId.get(p.celebration_id) : null;
-              return (
-                <tr key={p.id} className="hover:bg-ink/4">
-                  <td className="px-4 py-2.5">
-                    {page ? (
-                      <Link
-                        href={`/c/${page.slug}`}
-                        target="_blank"
-                        className="text-ink hover:underline"
-                      >
-                        {page.recipient_name}
-                      </Link>
-                    ) : (
-                      <span className="text-ink/40">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-ink/70">
-                    {p.paystack_reference}
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <span
-                      className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CLASS[p.status] ?? "bg-ink/8 text-ink/70"}`}
+      {/* Mobile card list */}
+      <div className="sm:hidden space-y-3">
+        {(payouts ?? []).length === 0 && (
+          <p className="text-center text-ink/45 text-sm py-8">No payouts yet.</p>
+        )}
+        {(payouts ?? []).map((p) => {
+          const page = p.celebration_id ? byId.get(p.celebration_id) : null;
+          return (
+            <div key={p.id} className="bg-white rounded-2xl border border-ink/10 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  {page ? (
+                    <Link
+                      href={`/c/${page.slug}`}
+                      target="_blank"
+                      className="font-medium text-ink hover:underline"
                     >
-                      {p.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-medium text-ink">
-                    {formatNaira(p.amount_kobo)}
-                  </td>
-                  <td className="px-4 py-2.5 text-ink/65">
-                    {formatDateTime(p.initiated_at)}
-                  </td>
-                  <td className="px-4 py-2.5 text-ink/65">
-                    {formatDateTime(p.completed_at)}
+                      {page.recipient_name}
+                    </Link>
+                  ) : (
+                    <span className="text-ink/40">Unknown</span>
+                  )}
+                  <p className="font-mono text-xs text-ink/50 mt-0.5 truncate">
+                    {p.paystack_reference ?? "—"}
+                  </p>
+                </div>
+                <span
+                  className={`flex-shrink-0 inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CLASS[p.status] ?? "bg-ink/8 text-ink/70"}`}
+                >
+                  {p.status}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-ink/45 text-xs">{formatDateTime(p.initiated_at)}</span>
+                <span className="font-semibold text-ink">{formatNaira(p.amount_kobo)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden sm:block bg-white rounded-3xl border border-ink/10 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-ink/4 text-ink/55 text-xs uppercase tracking-wide">
+              <tr>
+                <th className="text-left px-4 py-3 font-medium">Celebration</th>
+                <th className="text-left px-4 py-3 font-medium">Reference</th>
+                <th className="text-left px-4 py-3 font-medium">Status</th>
+                <th className="text-right px-4 py-3 font-medium">Amount</th>
+                <th className="text-left px-4 py-3 font-medium">Initiated</th>
+                <th className="text-left px-4 py-3 font-medium">Completed</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ink/8">
+              {(payouts ?? []).length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-ink/45">
+                    No payouts yet.
                   </td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              )}
+              {(payouts ?? []).map((p) => {
+                const page = p.celebration_id ? byId.get(p.celebration_id) : null;
+                return (
+                  <tr key={p.id} className="hover:bg-ink/4">
+                    <td className="px-4 py-2.5">
+                      {page ? (
+                        <Link
+                          href={`/c/${page.slug}`}
+                          target="_blank"
+                          className="text-ink hover:underline"
+                        >
+                          {page.recipient_name}
+                        </Link>
+                      ) : (
+                        <span className="text-ink/40">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-ink/70">
+                      {p.paystack_reference}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span
+                        className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_CLASS[p.status] ?? "bg-ink/8 text-ink/70"}`}
+                      >
+                        {p.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-medium text-ink">
+                      {formatNaira(p.amount_kobo)}
+                    </td>
+                    <td className="px-4 py-2.5 text-ink/65">
+                      {formatDateTime(p.initiated_at)}
+                    </td>
+                    <td className="px-4 py-2.5 text-ink/65">
+                      {formatDateTime(p.completed_at)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

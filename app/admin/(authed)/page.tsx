@@ -110,9 +110,9 @@ export default async function AdminOverviewPage() {
   ]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <header>
-        <h1 className="serif text-4xl text-ink">Overview</h1>
+        <h1 className="serif text-3xl sm:text-4xl text-ink">Overview</h1>
         <p className="text-ink/55 text-sm mt-1.5">
           Revenue, payouts and Paystack wallet at a glance.
         </p>
@@ -162,61 +162,65 @@ export default async function AdminOverviewPage() {
         </div>
       )}
 
-      <section className="bg-white rounded-3xl border border-ink/10 p-5">
-        <div className="flex items-center justify-between">
+      <section className="bg-white rounded-3xl border border-ink/10 p-4 sm:p-5">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-ink">Recent pending payouts</h2>
           <Link href="/admin/payouts" className="text-sm text-ink/55 hover:text-ink">
             See all →
           </Link>
         </div>
         {m.pendingPayoutRows.length === 0 ? (
-          <p className="text-ink/45 text-sm mt-3">No payouts in flight.</p>
+          <p className="text-ink/45 text-sm">No payouts in flight.</p>
         ) : (
-          <ul className="mt-4 divide-y divide-ink/8">
+          <ul className="divide-y divide-ink/8">
             {m.pendingPayoutRows.slice(0, 8).map((p) => (
-              <li key={p.id} className="py-2.5 flex items-center justify-between text-sm">
-                <span className="text-ink/70 truncate">{p.id}</span>
-                <span className="text-ink/55">{p.status}</span>
-                <span className="text-ink font-medium">{formatNaira(p.amount_kobo)}</span>
-                <span className="text-ink/45 hidden sm:inline">
-                  {formatDateTime(p.initiated_at)}
-                </span>
+              <li key={p.id} className="py-3 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0 sm:justify-between text-sm">
+                <span className="text-ink/60 font-mono text-xs truncate max-w-[16rem]">{p.id}</span>
+                <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6">
+                  <span className="text-ink/55 capitalize">{p.status}</span>
+                  <span className="text-ink font-medium">{formatNaira(p.amount_kobo)}</span>
+                  <span className="text-ink/45 text-xs hidden sm:inline">
+                    {formatDateTime(p.initiated_at)}
+                  </span>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      <section className="bg-white rounded-3xl border border-ink/10 p-5">
-        <div className="flex items-center justify-between">
+      <section className="bg-white rounded-3xl border border-ink/10 p-4 sm:p-5">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-ink">Celebrations awaiting claim</h2>
           <Link href="/admin/celebrations" className="text-sm text-ink/55 hover:text-ink">
             See all →
           </Link>
         </div>
         {m.pendingClaims.length === 0 ? (
-          <p className="text-ink/45 text-sm mt-3">Nothing awaiting claim.</p>
+          <p className="text-ink/45 text-sm">Nothing awaiting claim.</p>
         ) : (
-          <ul className="mt-4 divide-y divide-ink/8">
+          <ul className="divide-y divide-ink/8">
             {m.pendingClaims.slice(0, 8).map((c) => (
               <li
                 key={c.id}
-                className="py-2.5 flex items-center justify-between text-sm gap-3"
+                className="py-3 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0 sm:justify-between text-sm"
               >
                 <Link
                   href={`/c/${c.slug}`}
                   target="_blank"
-                  className="text-ink hover:underline truncate"
+                  className="text-ink hover:underline font-medium truncate max-w-[16rem]"
                 >
                   {c.recipient_name}
                 </Link>
-                <span className="text-ink/55">{c.payout_status}</span>
-                <span className="text-ink font-medium">
-                  {formatNaira(c.total_raised_kobo)}
-                </span>
-                <span className="text-ink/45 hidden sm:inline">
-                  {formatDateTime(c.claimable_at)}
-                </span>
+                <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6">
+                  <span className="text-ink/55 capitalize">{c.payout_status}</span>
+                  <span className="text-ink font-medium">
+                    {formatNaira(c.total_raised_kobo)}
+                  </span>
+                  <span className="text-ink/45 text-xs hidden sm:inline">
+                    {formatDateTime(c.claimable_at)}
+                  </span>
+                </div>
               </li>
             ))}
           </ul>
