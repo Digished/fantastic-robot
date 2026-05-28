@@ -173,6 +173,7 @@ export async function createSelfCelebration(
     backgroundMusic: formData.get("backgroundMusic") || null,
     bankCode: formData.get("bankCode") || undefined,
     accountNumber: formData.get("accountNumber") || undefined,
+    avatarPath: formData.get("avatarPath") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -216,6 +217,7 @@ export async function createSelfCelebration(
       account_name: accountName,
       bank_verified_at: new Date().toISOString(),
       ...(bankChanged ? { paystack_recipient_code: null } : {}),
+      ...(parsed.data.avatarPath ? { avatar_path: parsed.data.avatarPath } : {}),
     })
     .eq("id", user.id);
   if (bankError) return { error: bankError.message };

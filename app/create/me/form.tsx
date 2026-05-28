@@ -1,13 +1,16 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { Lock, Check, Loader2 } from "lucide-react";
+import { useActionState, useRef, useState } from "react";
+import { Lock, Check, Loader2, Camera, User } from "lucide-react";
 import { createSelfCelebration, type CreateState } from "../actions";
 import { type Theme } from "@/lib/themes";
 import { ThemePickerButton } from "@/components/page-editor/theme-picker-button";
 import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox";
 import { MusicPicker } from "@/components/music-picker";
 import type { MusicTrack } from "@/lib/music";
+import { uploadWithProgress } from "@/lib/upload";
+
+const IMAGE_EXTS = ["jpg", "jpeg", "png", "webp"];
 
 const EVENT_OPTIONS: { value: string; label: string }[] = [
   { value: "birthday", label: "Birthday (renews every year)" },
@@ -15,6 +18,87 @@ const EVENT_OPTIONS: { value: string; label: string }[] = [
   { value: "wedding", label: "Wedding" },
   { value: "other", label: "Other celebration" },
 ];
+
+function AvatarUploader({
+  path,
+  previewUrl,
+  onUploaded,
+}: {
+  path: string | null;
+  previewUrl: string | null;
+  onUploaded: (result: { path: string; previewUrl: string }) => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  async function onFile(file: File) {
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 8 * 1024 * 1024) { alert("Photo must be under 8 MB."); return; }
+    const objectUrl = URL.createObjectURL(file);
+    setProgress(0);
+    setUploading(true);
+    const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+    const res = await fetch("/api/media/sign-avatar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ext: IMAGE_EXTS.includes(ext) ? ext : "jpg" }),
+    });
+    const sign = await res.json();
+    if (!res.ok) { setUploading(false); alert(sign.error ?? "Upload failed"); return; }
+    try {
+      await uploadWithProgress({ url: sign.signedUrl, file, contentType: file.type, onProgress: setProgress });
+    } catch (e) {
+      setUploading(false);
+      alert(e instanceof Error ? e.message : "Upload failed");
+      return;
+    }
+    setUploading(false);
+    onUploaded({ path: sign.path, previewUrl: objectUrl });
+  }
+
+  const display = previewUrl;
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
+      />
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        className="relative size-24 rounded-full overflow-hidden bg-ink/8 ring-2 ring-ink/10 hover:ring-[var(--accent)] transition-all"
+        aria-label={display ? "Change profile photo" : "Add a profile photo"}
+      >
+        {display ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={display} alt="" className="size-full object-cover" />
+        ) : (
+          <span className="flex size-full items-center justify-center">
+            <User className="size-10 text-ink/30" />
+          </span>
+        )}
+        <span className="absolute inset-0 grid place-items-center bg-ink/30 opacity-0 hover:opacity-100 transition-opacity rounded-full">
+          <Camera className="size-5 text-white" />
+        </span>
+        {uploading && (
+          <span className="absolute inset-0 grid place-items-center bg-ink/50 rounded-full">
+            <Loader2 className="size-5 text-white animate-spin" />
+          </span>
+        )}
+      </button>
+      <p className="text-xs text-ink/45">
+        {display ? "Tap to change" : "Add a profile photo"}
+        {uploading ? ` · ${progress}%` : ""}
+      </p>
+    </div>
+  );
+}
 
 export function SelfCreateForm({
   defaultName,
@@ -41,6 +125,10 @@ export function SelfCreateForm({
   const [theme, setTheme] = useState<Theme>("ivory");
   const [music, setMusic] = useState<string | null>(null);
   const [trackList, setTrackList] = useState<MusicTrack[]>(tracks);
+
+  // Avatar
+  const [avatarPath, setAvatarPath] = useState<string | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   // Bank (compulsory)
   const [bankCode, setBankCode] = useState(initialBankCode);
@@ -81,11 +169,22 @@ export function SelfCreateForm({
     if (music) fd.set("backgroundMusic", music);
     fd.set("bankCode", bankCode);
     fd.set("accountNumber", accountNumber);
+    if (avatarPath) fd.set("avatarPath", avatarPath);
     dispatch(fd);
   }
 
   return (
     <div className="space-y-6">
+      {/* Profile photo */}
+      <AvatarUploader
+        path={avatarPath}
+        previewUrl={avatarPreview}
+        onUploaded={({ path, previewUrl }) => {
+          setAvatarPath(path);
+          setAvatarPreview(previewUrl);
+        }}
+      />
+
       <div className="space-y-1.5">
         <label className="label" htmlFor="title">Page title</label>
         <input

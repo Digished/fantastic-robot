@@ -61,6 +61,7 @@ export const createSelfCelebrationSchema = z.object({
   backgroundMusic: musicTrackId.nullable().optional(),
   bankCode: z.string({ required_error: "Choose your bank" }).min(2, "Choose your bank").max(10),
   accountNumber: naijaAccountNumber,
+  avatarPath: z.string().optional(),
 });
 
 export const profileBankSchema = z.object({
