@@ -45,7 +45,7 @@ export default async function WallPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle, wishlist, presentation, shipping_address",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle, wishlist, presentation",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -116,6 +116,20 @@ export default async function WallPage({
       .map((r: { contributor_name: string }) => r.contributor_name.split(" ")[0])
       .filter(Boolean);
 
+    // Shipping address — fetched separately so a missing column (migration
+    // not yet applied) doesn't break the page.
+    const { data: addrRow, error: addrError } = await supabaseAdmin()
+      .from("celebrations")
+      .select("shipping_address")
+      .eq("id", page.id)
+      .maybeSingle();
+    const shippingAddress = !addrError
+      ? ((addrRow as { shipping_address?: unknown } | null)?.shipping_address as {
+          label?: string; fullName: string; line1: string; line2?: string;
+          city: string; state: string; country: string; phone?: string;
+        } | null) ?? null
+      : null;
+
     return (
       <SealedCountdown
         slug={page.slug}
@@ -137,7 +151,7 @@ export default async function WallPage({
         initialMessageCount={totalMessageCount}
         initialGiftCount={totalGiftCount}
         contributorFirstNames={contributorFirstNames}
-        shippingAddress={(page.shipping_address as { fullName: string; line1: string; line2?: string; city: string; state: string; country: string; phone?: string; label?: string } | null) ?? null}
+        shippingAddress={shippingAddress}
       />
     );
   }
