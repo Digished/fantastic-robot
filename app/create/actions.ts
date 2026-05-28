@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paystack, PaystackError } from "@/lib/paystack/client";
-import { createCelebrationSchema, createSelfCelebrationSchema } from "@/lib/validation/schemas";
+import { createCelebrationSchema, createSelfCelebrationSchema, shippingAddressSchema } from "@/lib/validation/schemas";
 import { generateIntroContent } from "@/lib/openai/generate-intro";
 import { resolveSavedTrackId } from "@/lib/music/server";
 import { buildSelfCelebrationDate } from "@/lib/self-celebration";
@@ -174,6 +174,7 @@ export async function createSelfCelebration(
     bankCode: formData.get("bankCode") || undefined,
     accountNumber: formData.get("accountNumber") || undefined,
     avatarPath: formData.get("avatarPath") || undefined,
+    shippingAddress: formData.get("shippingAddress") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -225,6 +226,36 @@ export async function createSelfCelebration(
   const recipientName =
     profile?.display_name?.trim() || profile?.email?.split("@")[0] || "Me";
 
+  // Handle optional shipping address: save to the user's address book if new.
+  let shippingAddressForPage: unknown = null;
+  if (parsed.data.shippingAddress) {
+    try {
+      const addrParsed = shippingAddressSchema.safeParse(JSON.parse(parsed.data.shippingAddress));
+      if (addrParsed.success) {
+        const addr = addrParsed.data;
+        if (!addr.id) {
+          // New address — persist to profile and tag with an id.
+          const addrWithId = { ...addr, id: crypto.randomUUID() };
+          const { data: profileAddr } = await supabase
+            .from("users")
+            .select("shipping_addresses")
+            .eq("id", user.id)
+            .maybeSingle();
+          const existing = (profileAddr?.shipping_addresses as unknown[]) ?? [];
+          if (existing.length < 5) {
+            await admin
+              .from("users")
+              .update({ shipping_addresses: [...existing, addrWithId] })
+              .eq("id", user.id);
+          }
+          shippingAddressForPage = addrWithId;
+        } else {
+          shippingAddressForPage = addr;
+        }
+      }
+    } catch { /* ignore malformed JSON */ }
+  }
+
   const resolvedMusic = await resolveSavedTrackId(parsed.data.backgroundMusic ?? null);
   const slug = slugId();
   const { error } = await admin.from("celebrations").insert({
@@ -242,6 +273,7 @@ export async function createSelfCelebration(
     is_paid_for_creation: true, // self pages are free
     published_at: new Date().toISOString(),
     gallery_images: [],
+    shipping_address: shippingAddressForPage ?? null,
   });
   if (error) return { error: error.message };
 

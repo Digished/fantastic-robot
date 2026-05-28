@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Lock, Gift, Pencil, ExternalLink, MessageCircle, Eye } from "lucide-react";
+import { Lock, Gift, Pencil, ExternalLink, MessageCircle, Eye, MapPin } from "lucide-react";
 import { formatDate } from "@/lib/time";
 import { Sparkles } from "@/components/sparkles";
 import { ShareBar } from "./share-bar";
@@ -12,6 +12,16 @@ import { BlessingCta } from "./blessing-cta";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type WishlistItem = { title: string; url?: string };
+type ShippingAddress = {
+  label?: string;
+  fullName: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  country: string;
+  phone?: string;
+};
 
 function diffParts(target: number, now: number) {
   const ms = Math.max(0, target - now);
@@ -148,6 +158,7 @@ export function SealedCountdown({
   initialMessageCount,
   initialGiftCount,
   contributorFirstNames,
+  shippingAddress,
 }: {
   slug: string;
   title: string;
@@ -168,6 +179,7 @@ export function SealedCountdown({
   initialMessageCount: number;
   initialGiftCount: number;
   contributorFirstNames: string[];
+  shippingAddress: ShippingAddress | null;
 }) {
   const target = new Date(celebrationDate).getTime();
   const [now, setNow] = useState(() => Date.now());
@@ -398,6 +410,28 @@ export function SealedCountdown({
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* Shipping address — physical gift delivery */}
+          {shippingAddress && (
+            <div className="fade-up rounded-2xl glass-dark p-4 text-left">
+              <p className="text-[10px] uppercase tracking-widest text-white/60 mb-2.5 inline-flex items-center gap-1.5">
+                <MapPin className="size-3.5" /> Send a physical gift
+              </p>
+              <div className="text-sm text-white/90 space-y-0.5">
+                {shippingAddress.label && (
+                  <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1">{shippingAddress.label}</p>
+                )}
+                <p className="font-medium">{shippingAddress.fullName}</p>
+                <p className="text-white/70">{shippingAddress.line1}</p>
+                {shippingAddress.line2 && <p className="text-white/70">{shippingAddress.line2}</p>}
+                <p className="text-white/70">{shippingAddress.city}, {shippingAddress.state}</p>
+                <p className="text-white/70">{shippingAddress.country}</p>
+                {shippingAddress.phone && (
+                  <p className="text-white/60 mt-1">{shippingAddress.phone}</p>
+                )}
+              </div>
             </div>
           )}
 

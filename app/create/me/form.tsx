@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { Lock, Check, Loader2, Camera, User } from "lucide-react";
+import { Lock, Check, Loader2, Camera, User, MapPin } from "lucide-react";
 import { createSelfCelebration, type CreateState } from "../actions";
 import { type Theme } from "@/lib/themes";
 import { ThemePickerButton } from "@/components/page-editor/theme-picker-button";
@@ -9,6 +9,8 @@ import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox"
 import { MusicPicker } from "@/components/music-picker";
 import type { MusicTrack } from "@/lib/music";
 import { uploadWithProgress } from "@/lib/upload";
+import { AddressFormFields, BLANK_ADDRESS, type AddressDraft } from "@/components/address-form-fields";
+import type { ShippingAddress } from "@/lib/validation/schemas";
 
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "webp"];
 
@@ -107,6 +109,7 @@ export function SelfCreateForm({
   initialBankCode,
   initialAccountNumber,
   initialAccountName,
+  savedAddresses,
 }: {
   defaultName: string;
   banks: Bank[];
@@ -114,6 +117,7 @@ export function SelfCreateForm({
   initialBankCode: string;
   initialAccountNumber: string;
   initialAccountName: string;
+  savedAddresses: ShippingAddress[];
 }) {
   const [state, dispatch, pending] = useActionState<CreateState, FormData>(createSelfCelebration, {});
 
@@ -136,6 +140,12 @@ export function SelfCreateForm({
   const [accountName, setAccountName] = useState(initialAccountName);
   const [resolving, setResolving] = useState(false);
   const [bankError, setBankError] = useState<string | null>(null);
+
+  // Shipping address (optional)
+  const [selectedAddress, setSelectedAddress] = useState<ShippingAddress | null>(null);
+  const [addingAddress, setAddingAddress] = useState(false);
+  const [addressDraft, setAddressDraft] = useState<AddressDraft>(BLANK_ADDRESS);
+  const [addressError, setAddressError] = useState<string | null>(null);
 
   const bankReady = !!bankCode && /^\d{10}$/.test(accountNumber);
 
@@ -160,6 +170,26 @@ export function SelfCreateForm({
     }
   }
 
+  function confirmDraftAddress() {
+    if (!addressDraft.fullName.trim()) { setAddressError("Full name is required"); return; }
+    if (!addressDraft.line1.trim()) { setAddressError("Street address is required"); return; }
+    if (!addressDraft.city.trim()) { setAddressError("City is required"); return; }
+    if (!addressDraft.state.trim()) { setAddressError("State is required"); return; }
+    const addr: ShippingAddress = {
+      fullName: addressDraft.fullName.trim(),
+      line1: addressDraft.line1.trim(),
+      city: addressDraft.city.trim(),
+      state: addressDraft.state.trim(),
+      country: addressDraft.country.trim() || "Nigeria",
+      ...(addressDraft.label.trim() ? { label: addressDraft.label.trim() } : {}),
+      ...(addressDraft.line2.trim() ? { line2: addressDraft.line2.trim() } : {}),
+      ...(addressDraft.phone.trim() ? { phone: addressDraft.phone.trim() } : {}),
+    };
+    setSelectedAddress(addr);
+    setAddingAddress(false);
+    setAddressError(null);
+  }
+
   function save() {
     const fd = new FormData();
     fd.set("title", title);
@@ -170,8 +200,13 @@ export function SelfCreateForm({
     fd.set("bankCode", bankCode);
     fd.set("accountNumber", accountNumber);
     if (avatarPath) fd.set("avatarPath", avatarPath);
+    if (selectedAddress) fd.set("shippingAddress", JSON.stringify(selectedAddress));
     dispatch(fd);
   }
+
+  // Whether the selected address came from the saved list
+  const isFromSaved = (addr: ShippingAddress) =>
+    savedAddresses.some((a) => a.id && a.id === addr.id);
 
   return (
     <div className="space-y-6">
@@ -290,6 +325,121 @@ export function SelfCreateForm({
           </p>
         )}
         {bankError && <p className="text-sm text-red-600">{bankError}</p>}
+      </div>
+
+      {/* Shipping address — optional */}
+      <div className="space-y-3 pt-2 border-t border-ink/8">
+        <div>
+          <h2 className="serif text-xl text-ink">Shipping address</h2>
+          <p className="text-xs text-ink/45 mt-1">
+            Optional. So friends can also send you a physical gift.
+          </p>
+        </div>
+
+        {savedAddresses.length > 0 ? (
+          <div className="space-y-2">
+            {/* No address option */}
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="radio"
+                className="accent-[var(--accent)]"
+                checked={selectedAddress === null && !addingAddress}
+                onChange={() => { setSelectedAddress(null); setAddingAddress(false); }}
+              />
+              <span className="text-sm text-ink/70">No shipping address</span>
+            </label>
+
+            {/* Saved addresses */}
+            {savedAddresses.map((addr) => (
+              <label key={addr.id} className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="radio"
+                  className="accent-[var(--accent)] mt-0.5"
+                  checked={selectedAddress?.id === addr.id}
+                  onChange={() => { setSelectedAddress(addr); setAddingAddress(false); }}
+                />
+                <div className="text-sm">
+                  {addr.label && (
+                    <p className="text-[10px] uppercase tracking-widest text-ink/45">{addr.label}</p>
+                  )}
+                  <p className="font-medium text-ink">{addr.fullName}</p>
+                  <p className="text-ink/55 text-xs">{addr.line1}, {addr.city}, {addr.state}</p>
+                </div>
+              </label>
+            ))}
+
+            {/* Add new option */}
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="radio"
+                className="accent-[var(--accent)]"
+                checked={addingAddress}
+                onChange={() => { setSelectedAddress(null); setAddingAddress(true); }}
+              />
+              <span className="text-sm text-ink/70">Add a new address</span>
+            </label>
+          </div>
+        ) : (
+          !addingAddress && (
+            <button
+              type="button"
+              onClick={() => setAddingAddress(true)}
+              className="text-sm text-[var(--accent)] hover:underline inline-flex items-center gap-1.5"
+            >
+              <MapPin className="size-3.5" /> Add a shipping address
+            </button>
+          )
+        )}
+
+        {/* Inline address form */}
+        {addingAddress && (
+          <div className="rounded-xl border border-ink/10 p-4 space-y-4 bg-ink/2">
+            <AddressFormFields
+              draft={addressDraft}
+              onChange={(updates) => setAddressDraft({ ...addressDraft, ...updates })}
+            />
+            {addressError && <p className="text-sm text-red-600">{addressError}</p>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={confirmDraftAddress}
+                className="btn-accent text-sm py-2"
+              >
+                Use this address
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddingAddress(false);
+                  setAddressError(null);
+                  setAddressDraft(BLANK_ADDRESS);
+                }}
+                className="btn-outline text-sm py-2"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Preview of confirmed new address */}
+        {selectedAddress && !addingAddress && !isFromSaved(selectedAddress) && (
+          <div className="rounded-xl bg-ink/4 px-3 py-2.5 text-sm flex items-start justify-between gap-3">
+            <div>
+              <p className="font-medium text-ink">{selectedAddress.fullName}</p>
+              <p className="text-ink/55 text-xs">
+                {selectedAddress.line1}, {selectedAddress.city}, {selectedAddress.state}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setAddingAddress(true); }}
+              className="text-xs text-ink/50 hover:text-ink shrink-0"
+            >
+              Edit
+            </button>
+          </div>
+        )}
       </div>
 
       <p className="text-sm text-ink/60 rounded-2xl bg-ink/5 px-4 py-3 flex gap-2.5">

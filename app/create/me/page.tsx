@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getBanks } from "@/lib/paystack/banks";
 import { getEffectiveTracks } from "@/lib/music/server";
 import { SelfCreateForm } from "./form";
+import type { ShippingAddress } from "@/lib/validation/schemas";
 
 export default async function CreateSelfPage() {
   const supabase = await supabaseServer();
@@ -12,7 +13,7 @@ export default async function CreateSelfPage() {
   const [{ data: profile }, banks, tracks] = await Promise.all([
     supabase
       .from("users")
-      .select("display_name, email, bank_code, account_number, account_name")
+      .select("display_name, email, bank_code, account_number, account_name, shipping_addresses")
       .eq("id", user.id)
       .maybeSingle(),
     getBanks(),
@@ -37,6 +38,7 @@ export default async function CreateSelfPage() {
             initialBankCode={profile?.bank_code ?? ""}
             initialAccountNumber={profile?.account_number ?? ""}
             initialAccountName={profile?.account_name ?? ""}
+            savedAddresses={(profile?.shipping_addresses as ShippingAddress[]) ?? []}
           />
         </div>
       </div>

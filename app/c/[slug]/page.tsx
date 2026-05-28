@@ -45,7 +45,7 @@ export default async function WallPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle, wishlist, presentation",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle, wishlist, presentation, shipping_address",
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -137,6 +137,7 @@ export default async function WallPage({
         initialMessageCount={totalMessageCount}
         initialGiftCount={totalGiftCount}
         contributorFirstNames={contributorFirstNames}
+        shippingAddress={(page.shipping_address as { fullName: string; line1: string; line2?: string; city: string; state: string; country: string; phone?: string; label?: string } | null) ?? null}
       />
     );
   }
