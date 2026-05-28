@@ -5,20 +5,21 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { verifyCodeAndReset } from "../actions";
 
-export function VerifyForm({ email, error }: { email: string; error?: string }) {
+export function VerifyForm({ email, token, error }: { email: string; token: string; error?: string }) {
   const [show, setShow] = useState(false);
 
   return (
     <>
       <form action={verifyCodeAndReset} className="mt-10 space-y-4">
         <input type="hidden" name="email" value={email} />
+        <input type="hidden" name="token" value={token} />
 
         <div className="space-y-1.5">
-          <label className="label" htmlFor="token">6-digit code</label>
+          <label className="label" htmlFor="code">6-digit code</label>
           <input
-            id="token"
+            id="code"
             className="field tracking-[0.3em] text-center text-lg"
-            name="token"
+            name="code"
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"

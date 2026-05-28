@@ -3,8 +3,8 @@ import { VerifyForm } from "./VerifyForm";
 
 export default async function VerifyResetPage({
   searchParams,
-}: { searchParams: Promise<{ email?: string; error?: string }> }) {
-  const { email = "", error } = await searchParams;
+}: { searchParams: Promise<{ email?: string; token?: string; error?: string }> }) {
+  const { email = "", token = "", error } = await searchParams;
 
   return (
     <main className="min-h-[100dvh] bg-white">
@@ -16,7 +16,11 @@ export default async function VerifyResetPage({
           <span className="font-medium text-ink">{email || "your email"}</span>.
           Enter it below along with your new password.
         </p>
-        <VerifyForm email={email} error={error ? decodeURIComponent(error) : undefined} />
+        <VerifyForm
+          email={email}
+          token={token}
+          error={error ? decodeURIComponent(error) : undefined}
+        />
       </div>
     </main>
   );
