@@ -86,22 +86,36 @@ export default async function WallPage({
   // totals until the celebration date. Everyone gets a countdown plus a way to
   // contribute; the content unlocks only once the date is reached.
   if ((page.is_sealed || page.is_self) && !claimable) {
+    // Fetch message count for everyone — used for social proof ticker and
+    // blurred wall teaser. Needs the service role to bypass sealed-wall RLS.
+    const { count: msgCount } = await supabaseAdmin()
+      .from("messages")
+      .select("*", { count: "exact", head: true })
+      .eq("celebration_id", page.id)
+      .eq("cycle", page.current_cycle)
+      .is("deleted_at", null);
+    const totalMessageCount = msgCount ?? 0;
+    const totalGiftCount = Number(page.contributor_count ?? 0) + (blessingStatus ? 1 : 0);
+
     // The owner can see how full their page is getting — counts only, never
-    // content or amounts. Needs the service role to bypass the sealed-wall RLS.
-    let ownerStats: { messageCount: number; giftCount: number } | null = null;
-    if (isCreator) {
-      const { count } = await supabaseAdmin()
-        .from("messages")
-        .select("*", { count: "exact", head: true })
-        .eq("celebration_id", page.id)
-        .eq("cycle", page.current_cycle)
-        .is("deleted_at", null);
-      ownerStats = {
-        messageCount: count ?? 0,
-        // The keepsake blessing counts as a sealed gift alongside cash gifts.
-        giftCount: Number(page.contributor_count ?? 0) + (blessingStatus ? 1 : 0),
-      };
-    }
+    // content or amounts.
+    const ownerStats = isCreator
+      ? { messageCount: totalMessageCount, giftCount: totalGiftCount }
+      : null;
+
+    // Non-anonymous contributor first names for the name marquee.
+    const { data: nameRows } = await supabaseAdmin()
+      .from("messages")
+      .select("contributor_name")
+      .eq("celebration_id", page.id)
+      .eq("cycle", page.current_cycle)
+      .eq("is_anonymous", false)
+      .is("deleted_at", null)
+      .limit(40);
+    const contributorFirstNames = (nameRows ?? [])
+      .map((r: { contributor_name: string }) => r.contributor_name.split(" ")[0])
+      .filter(Boolean);
+
     return (
       <SealedCountdown
         slug={page.slug}
@@ -109,6 +123,7 @@ export default async function WallPage({
         recipientName={page.recipient_name}
         eventLabel={page.event_type.replace(/_/g, " ")}
         celebrationDate={page.celebration_date}
+        celebrationId={page.id}
         avatarUrl={profile.avatarPath ? coverUrl(profile.avatarPath) : null}
         createdBy={createdBy}
         isCreator={isCreator}
@@ -118,6 +133,10 @@ export default async function WallPage({
         wishlist={wishlist}
         ownerStats={ownerStats}
         blessingStatus={blessingStatus}
+        messageFromCreator={page.message_from_creator}
+        initialMessageCount={totalMessageCount}
+        initialGiftCount={totalGiftCount}
+        contributorFirstNames={contributorFirstNames}
       />
     );
   }
