@@ -104,11 +104,13 @@ function TabCard({
       type="button"
       onClick={onClick}
       className={`relative flex-shrink-0 w-[100px] h-[68px] rounded-2xl overflow-hidden transition-all duration-200 ${
-        isActive ? "ring-2 ring-[var(--accent)] scale-[1.06]" : "opacity-55 hover:opacity-75"
+        isActive
+          ? "ring-2 ring-[var(--accent)] ring-offset-1 ring-offset-black/20 opacity-100"
+          : "opacity-50 hover:opacity-70"
       }`}
     >
       <div className="absolute inset-0 glass-dark" />
-      {isActive && <div className="absolute inset-0 bg-[var(--accent)] opacity-20" />}
+      {isActive && <div className="absolute inset-0 bg-[var(--accent)] opacity-25" />}
       <div className="relative z-10 flex flex-col justify-between h-full p-2.5">
         <div className="flex items-center gap-1">
           {tabId === "home" && <Home className="size-3 text-white/70" />}
@@ -327,7 +329,10 @@ export function SealedCountdown({
 
       {/* ── Sticky top: header + tab preview nav ── */}
       <div className="relative z-30 flex-shrink-0">
-        <header className="px-5 pt-5 pb-2 flex items-center justify-between">
+        <header
+          className="px-5 pb-2 flex items-center justify-between"
+          style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top))" }}
+        >
           <Link href={isCreator ? "/dashboard" : "/"} className="serif text-lg text-white drop-shadow">
             Spendbox
           </Link>
@@ -341,7 +346,7 @@ export function SealedCountdown({
           )}
         </header>
 
-        <div className="flex gap-3 px-5 pb-4 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+        <div className="flex gap-3 px-5 pb-4 pt-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
           {tabIds.map((tabId, i) => (
             <TabCard
               key={tabId}

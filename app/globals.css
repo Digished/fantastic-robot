@@ -158,6 +158,11 @@
   --accent: #FF6B35; --accent-soft: #3D0000; --accent-glow: rgba(255,107,53,.45);
   --hero-ink: #FFD0B0;
 }
+/* All 10 sealed-theme accent colours are light/neon — btn-accent needs dark ink
+   to meet WCAG 4.5:1 contrast on every one of them. */
+[data-sealed-theme]:not([data-sealed-theme=""]) {
+  --btn-accent-fg: rgba(0, 0, 0, 0.85);
+}
 
 @layer components {
   .page-shell { @apply mx-auto w-full max-w-phone px-5; }
@@ -189,8 +194,9 @@
            disabled:pointer-events-none select-none;
   }
   .btn-primary { @apply btn bg-ink text-white hover:bg-ink/90 shadow-soft; }
-  .btn-accent  { @apply btn text-white shadow-soft;
-                 background-color: var(--accent); }
+  .btn-accent  { @apply btn shadow-soft;
+                 background-color: var(--accent);
+                 color: var(--btn-accent-fg, white); }
   .btn-accent:hover { filter: brightness(0.92); }
   .btn-outline { @apply btn border border-ink/15 bg-white text-ink hover:bg-ink/5; }
   .btn-ghost   { @apply btn text-ink hover:bg-ink/5; }
