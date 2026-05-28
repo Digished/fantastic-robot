@@ -172,6 +172,7 @@ export async function editSelfCelebration(
     wishlist,
     bankCode: (formData.get("bankCode") as string) || undefined,
     accountNumber: (formData.get("accountNumber") as string) || undefined,
+    sealedTheme: (formData.get("sealedTheme") as string) || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -200,6 +201,7 @@ export async function editSelfCelebration(
       is_sealed: true, // personal pages are always a surprise
       background_music: resolvedMusic,
       wishlist: cleanWishlist,
+      sealed_theme: parsed.data.sealedTheme || null,
       ...(parsed.data.theme ? { theme: parsed.data.theme } : {}),
       ...(parsed.data.presentation ? { presentation: parsed.data.presentation } : {}),
     })

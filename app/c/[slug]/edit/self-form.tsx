@@ -7,6 +7,7 @@ import { editSelfCelebration, deleteSealedCelebration, type SelfEditState } from
 import { SlugEditor } from "./slug-editor";
 import { isTheme, type Theme } from "@/lib/themes";
 import { ThemePickerButton } from "@/components/page-editor/theme-picker-button";
+import { SEALED_THEME_PACKS } from "@/lib/sealed-themes";
 import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox";
 import { MusicPicker } from "@/components/music-picker";
 import { isValidUploadedTrackId, makeUploadedTrack, parseMusicValue, type MusicTrack } from "@/lib/music";
@@ -25,6 +26,7 @@ export function SelfEditForm({
   initial: {
     title: string;
     theme: string;
+    sealedTheme?: string | null;
     messageFromCreator: string;
     isRecurring: boolean;
     backgroundMusic: string | null;
@@ -41,6 +43,7 @@ export function SelfEditForm({
 
   const [title, setTitle] = useState(initial.title);
   const [theme, setTheme] = useState<Theme>(isTheme(initial.theme) ? initial.theme : "ivory");
+  const [sealedTheme, setSealedTheme] = useState<string | null>(initial.sealedTheme ?? null);
   const [note, setNote] = useState(initial.messageFromCreator);
   const [isRecurring, setIsRecurring] = useState(initial.isRecurring);
   const [presentation, setPresentation] = useState<"reel" | "book">(initial.presentation);
@@ -122,6 +125,7 @@ export function SelfEditForm({
       fd.set("bankCode", bankCode);
       fd.set("accountNumber", accountNumber);
     }
+    if (sealedTheme) fd.set("sealedTheme", sealedTheme);
     dispatch(fd);
   }
 
@@ -138,7 +142,7 @@ export function SelfEditForm({
   }
 
   return (
-    <main className="min-h-[100dvh] bg-white pb-28" data-theme={theme}>
+    <main className="min-h-[100dvh] bg-white pb-28" data-theme={theme} data-sealed-theme={sealedTheme ?? ""}>
       <div className="mx-auto max-w-2xl px-5 md:px-10 pt-6 space-y-7">
         <button
           onClick={() => router.push(`/c/${slug}`)}
@@ -172,6 +176,58 @@ export function SelfEditForm({
         <div className="space-y-1.5">
           <label className="label">Theme</label>
           <ThemePickerButton value={theme} onChange={setTheme} />
+        </div>
+
+        {/* Sealed theme pack */}
+        <div className="space-y-3 pt-2 border-t border-ink/8">
+          <div>
+            <h2 className="serif text-xl text-ink">Page theme pack</h2>
+            <p className="text-xs text-ink/45 mt-1">
+              Override the look of your sealed page with a dramatic theme. Guests see this when they visit.
+            </p>
+          </div>
+          <div className="grid grid-cols-5 gap-2">
+            {/* "None" option */}
+            <button
+              type="button"
+              onClick={() => setSealedTheme(null)}
+              className={`relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-1 transition ${
+                !sealedTheme
+                  ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/30"
+                  : "border-ink/15 hover:border-ink/30"
+              }`}
+            >
+              <span className="text-lg">✨</span>
+              <span className="text-[9px] text-ink/60 font-medium">Default</span>
+            </button>
+            {SEALED_THEME_PACKS.map((pack) => {
+              const active = sealedTheme === pack.id;
+              return (
+                <button
+                  key={pack.id}
+                  type="button"
+                  onClick={() => setSealedTheme(active ? null : pack.id)}
+                  title={pack.label}
+                  className={`relative aspect-square rounded-2xl border-2 overflow-hidden transition ${
+                    active
+                      ? "border-[var(--accent)] ring-2 ring-[var(--accent)]/30"
+                      : "border-transparent hover:border-white/50"
+                  }`}
+                >
+                  <div className="absolute inset-0" style={{ background: pack.swatch }} />
+                  <div className="relative flex flex-col items-center justify-center h-full gap-0.5">
+                    <span className="text-lg drop-shadow">{pack.emoji}</span>
+                    <span className="text-[9px] text-white/90 font-medium drop-shadow">{pack.label}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {sealedTheme && (
+            <p className="text-xs text-[var(--accent)]">
+              Active: {SEALED_THEME_PACKS.find((p) => p.id === sealedTheme)?.label ?? sealedTheme}
+            </p>
+          )}
         </div>
 
         {/* Celebration song */}

@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Lock, Gift, Pencil, ExternalLink, MessageCircle, Eye, MapPin } from "lucide-react";
+import {
+  Lock, Gift, Pencil, ExternalLink, MessageCircle, Eye, MapPin,
+  Home, Users,
+} from "lucide-react";
 import { formatDate } from "@/lib/time";
 import { Sparkles } from "@/components/sparkles";
 import { ShareBar } from "./share-bar";
@@ -22,6 +25,7 @@ type ShippingAddress = {
   country: string;
   phone?: string;
 };
+type TabId = "home" | "wishlist" | "wall";
 
 function diffParts(target: number, now: number) {
   const ms = Math.max(0, target - now);
@@ -45,7 +49,6 @@ function Unit({ value, label }: { value: number; label: string }) {
   );
 }
 
-// Inline confetti burst — extracted from components/interactives/gift.tsx pattern
 function ConfettiBurst({ active }: { active: boolean }) {
   if (!active) return null;
   const palette = ["#FBBF24", "#F472B6", "#34D399", "#60A5FA", "#F87171", "#A78BFA"];
@@ -73,11 +76,10 @@ function ConfettiBurst({ active }: { active: boolean }) {
   );
 }
 
-// Floating toast for realtime activity
 function ActivityToast({ name }: { name: string }) {
   return (
     <div
-      className="fixed bottom-6 right-4 z-50 glass-dark rounded-full px-4 py-2.5 text-sm text-white shadow-card"
+      className="fixed bottom-28 right-4 z-50 glass-dark rounded-full px-4 py-2.5 text-sm text-white shadow-card"
       style={{ animation: "riseFade 3.6s ease-in-out forwards" }}
     >
       ✨ {name} just left a surprise
@@ -85,55 +87,99 @@ function ActivityToast({ name }: { name: string }) {
   );
 }
 
-// Blurred polaroid wall teaser
-function BlurredWallTeaser({ count, slug, firstName }: { count: number; slug: string; firstName: string }) {
+// Tab preview card shown in the sticky top nav
+function TabCard({
+  tabId, label, isActive, days, wishlistCount, messageCount, onClick,
+}: {
+  tabId: TabId;
+  label: string;
+  isActive: boolean;
+  days: number;
+  wishlistCount: number;
+  messageCount: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative flex-shrink-0 w-[100px] h-[68px] rounded-2xl overflow-hidden transition-all duration-200 ${
+        isActive ? "ring-2 ring-[var(--accent)] scale-[1.06]" : "opacity-55 hover:opacity-75"
+      }`}
+    >
+      <div className="absolute inset-0 glass-dark" />
+      {isActive && <div className="absolute inset-0 bg-[var(--accent)] opacity-20" />}
+      <div className="relative z-10 flex flex-col justify-between h-full p-2.5">
+        <div className="flex items-center gap-1">
+          {tabId === "home" && <Home className="size-3 text-white/70" />}
+          {tabId === "wishlist" && <Gift className="size-3 text-white/70" />}
+          {tabId === "wall" && <MessageCircle className="size-3 text-white/70" />}
+          <span className="text-[10px] uppercase tracking-wider text-white/70 font-medium">{label}</span>
+        </div>
+        {tabId === "home" && (
+          <div>
+            <p className="text-white text-sm font-semibold tabular-nums leading-none">{days}d</p>
+            <p className="text-white/50 text-[9px] mt-0.5">remaining</p>
+          </div>
+        )}
+        {tabId === "wishlist" && (
+          <div>
+            <p className="text-white text-sm font-semibold leading-none">{wishlistCount}</p>
+            <p className="text-white/50 text-[9px] mt-0.5">{wishlistCount === 1 ? "item" : "items"}</p>
+          </div>
+        )}
+        {tabId === "wall" && (
+          <div className="flex items-center gap-1">
+            <Lock className="size-3 text-white/40" />
+            <p className="text-white/50 text-[9px]">
+              {messageCount > 0 ? `${messageCount} sealed` : "Sealed"}
+            </p>
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// Blurred wall teaser — no embedded CTA (sticky bottom handles it)
+function BlurredWallTeaser({ count }: { count: number }) {
   const ROTS = ["polaroid--a", "polaroid--b", "polaroid--c", "polaroid--d", "polaroid--e"];
-  const shown = Math.min(count, 10);
+  const shown = Math.min(count, 6);
+
+  if (count === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <MessageCircle className="size-10 text-white/20 mb-3" />
+        <p className="text-white/50 text-sm">No surprises yet.</p>
+        <p className="text-white/35 text-xs mt-1">Use the button below to be the first!</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="fade-up w-full max-w-sm mt-6">
-      {count > 0 ? (
-        <div className="relative rounded-2xl overflow-hidden">
+    <div className="relative rounded-2xl overflow-hidden w-full">
+      <div
+        className="grid grid-cols-2 gap-2.5 p-3"
+        style={{ filter: "blur(5px)", opacity: 0.5, pointerEvents: "none", userSelect: "none" }}
+      >
+        {Array.from({ length: shown }).map((_, i) => (
           <div
-            className="grid grid-cols-2 gap-2.5 p-3"
-            style={{ filter: "blur(5px)", opacity: 0.55, pointerEvents: "none", userSelect: "none" }}
+            key={i}
+            className={`polaroid ${ROTS[i % ROTS.length]} w-full`}
+            style={{ transform: "rotate(var(--rot, 0deg))" }}
           >
-            {Array.from({ length: shown }).map((_, i) => (
-              <div
-                key={i}
-                className={`polaroid ${ROTS[i % ROTS.length]} w-full`}
-                style={{ transform: `rotate(var(--rot, 0deg))` }}
-              >
-                <div className="w-full aspect-[3/2] rounded-md bg-white/30" />
-                <div className="mt-2 h-1.5 bg-white/20 rounded-full w-3/4" />
-              </div>
-            ))}
+            <div className="w-full aspect-[3/2] rounded-md bg-white/30" />
+            <div className="mt-2 h-1.5 bg-white/20 rounded-full w-3/4" />
           </div>
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-            <p className="text-white font-medium text-sm drop-shadow-md">
-              Be one of the {count} {count === 1 ? "person" : "people"} on this wall
-            </p>
-            <NavLoadingLink
-              href={`/c/${slug}/post`}
-              className="mt-3 btn-accent shadow-glow text-sm inline-flex items-center justify-center"
-              loadingText="Opening…"
-            >
-              Leave a message →
-            </NavLoadingLink>
-          </div>
-        </div>
-      ) : (
-        <div className="text-center">
-          <p className="text-white/65 text-sm">No surprises yet.</p>
-          <NavLoadingLink
-            href={`/c/${slug}/post`}
-            className="mt-2 btn-accent shadow-glow text-sm inline-flex items-center justify-center"
-            loadingText="Opening…"
-          >
-            Start the wall for {firstName} →
-          </NavLoadingLink>
-        </div>
-      )}
+        ))}
+      </div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+        <Lock className="size-5 text-white/70" />
+        <p className="text-white font-medium text-sm drop-shadow-md">
+          {count} {count === 1 ? "surprise" : "surprises"} sealed
+        </p>
+        <p className="text-white/55 text-xs">Unlocks on the day ✨</p>
+      </div>
     </div>
   );
 }
@@ -159,6 +205,7 @@ export function SealedCountdown({
   initialGiftCount,
   contributorFirstNames,
   shippingAddress,
+  sealedTheme,
 }: {
   slug: string;
   title: string;
@@ -180,6 +227,7 @@ export function SealedCountdown({
   initialGiftCount: number;
   contributorFirstNames: string[];
   shippingAddress: ShippingAddress | null;
+  sealedTheme?: string | null;
 }) {
   const target = new Date(celebrationDate).getTime();
   const [now, setNow] = useState(() => Date.now());
@@ -199,7 +247,6 @@ export function SealedCountdown({
   function handleLockTap() {
     setConfettiActive(false);
     if (confettiTimer.current) clearTimeout(confettiTimer.current);
-    // Small delay to allow re-render before re-triggering
     requestAnimationFrame(() => {
       setConfettiActive(true);
       setLockToast(true);
@@ -210,11 +257,10 @@ export function SealedCountdown({
     }, 2000);
   }
 
-  // Live social proof counts
+  // Live counts
   const [messageCount, setMessageCount] = useState(initialMessageCount);
   const [giftCount, setGiftCount] = useState(initialGiftCount);
 
-  // Activity toast (realtime new message)
   const [activityToast, setActivityToast] = useState<string | null>(null);
   const activityTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -227,7 +273,6 @@ export function SealedCountdown({
         { event: "INSERT", schema: "public", table: "messages", filter: `celebration_id=eq.${celebrationId}` },
         (payload) => {
           setMessageCount((c) => c + 1);
-          // Show a toast with the contributor's first name (may be anonymous)
           const row = payload.new as { contributor_name?: string; is_anonymous?: boolean };
           const toastName = row.is_anonymous ? "Someone" : (row.contributor_name?.split(" ")[0] ?? "Someone");
           setActivityToast(toastName);
@@ -245,233 +290,340 @@ export function SealedCountdown({
   const milestone = MILESTONES.find((m) => m > totalSurprises) ?? MILESTONES[MILESTONES.length - 1];
   const milestoneProgress = Math.min((totalSurprises / milestone) * 100, 100);
 
-  return (
-    <main data-theme={theme} className="relative min-h-[100dvh] overflow-x-hidden theme-mesh flex flex-col">
-      <Sparkles count={8} />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/75" aria-hidden />
+  // Tab system
+  const hasWishlistContent = wishlist.length > 0 || !!shippingAddress;
+  const tabIds: TabId[] = ["home", ...(hasWishlistContent ? ["wishlist" as TabId] : []), "wall"];
+  const wallTabIndex = tabIds.length - 1;
+  const [activeTab, setActiveTab] = useState(0);
 
-      {/* Realtime activity toast */}
+  // Swipe gesture
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  function onTouchStart(e: React.TouchEvent) {
+    touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    if (!touchStart.current) return;
+    const dx = e.changedTouches[0].clientX - touchStart.current.x;
+    const dy = Math.abs(e.changedTouches[0].clientY - touchStart.current.y);
+    touchStart.current = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > dy * 1.5) {
+      if (dx < 0 && activeTab < tabIds.length - 1) setActiveTab((i) => i + 1);
+      if (dx > 0 && activeTab > 0) setActiveTab((i) => i - 1);
+    }
+  }
+
+  const hasCtas = canMessage || canContribute;
+
+  return (
+    <main
+      data-theme={theme}
+      data-sealed-theme={sealedTheme ?? ""}
+      className="relative h-[100dvh] overflow-hidden flex flex-col theme-mesh"
+    >
+      <Sparkles count={8} />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/75 pointer-events-none" aria-hidden />
+
       {activityToast && <ActivityToast key={activityToast + Date.now()} name={activityToast} />}
 
-      {/* Header */}
-      <header className="relative z-10 px-5 pt-5 flex items-center justify-between">
-        <Link href={isCreator ? "/dashboard" : "/"} className="serif text-lg text-white drop-shadow">
-          Spendbox
-        </Link>
-        {isCreator && (
-          <Link href={`/c/${slug}/edit`} className="glass-dark rounded-full px-3 py-1.5 text-xs text-white inline-flex items-center gap-1.5">
-            <Pencil className="size-3.5" /> Edit
+      {/* ── Sticky top: header + tab preview nav ── */}
+      <div className="relative z-30 flex-shrink-0">
+        <header className="px-5 pt-5 pb-2 flex items-center justify-between">
+          <Link href={isCreator ? "/dashboard" : "/"} className="serif text-lg text-white drop-shadow">
+            Spendbox
           </Link>
-        )}
-      </header>
-
-      {/* Center column */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 py-10">
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={avatarUrl} alt="" className="size-20 md:size-24 rounded-full object-cover ring-2 ring-white/40 shadow-card mb-5" />
-        ) : (
-          <div className="size-20 md:size-24 rounded-full bg-white/15 grid place-items-center mb-5">
-            <Gift className="size-9 text-white" />
-          </div>
-        )}
-
-        <p className="fade-up text-[11px] uppercase tracking-[0.3em] text-white/75">
-          {eventLabel ? `${eventLabel} · ` : ""}{formatDate(celebrationDate)}
-        </p>
-        <h1 className="fade-up serif text-white mt-3 leading-[0.95] drop-shadow-sm" style={{ fontSize: "clamp(2.2rem,9vw,3.75rem)" }}>
-          {title}
-        </h1>
-
-        <div className="fade-up mt-7 flex items-end justify-center gap-4 md:gap-7">
-          <Unit value={t.days} label="days" />
-          <Unit value={t.hours} label="hrs" />
-          <Unit value={t.mins} label="min" />
-          <Unit value={t.secs} label="sec" />
-        </div>
-
-        {/* Tappable lock badge with confetti */}
-        <div className="relative mt-6">
-          <ConfettiBurst active={confettiActive} />
-          <button
-            onClick={handleLockTap}
-            className="fade-up text-white/80 text-sm inline-flex items-center gap-2 glass-dark rounded-full px-4 py-2 active:scale-110 transition-transform duration-150"
-            aria-label="Tap the lock"
-          >
-            <Lock className="size-4" />
-            {isCreator ? "Your surprises are sealed until the day" : `Sealed until ${firstName}'s day`}
-          </button>
-          {lockToast && (
-            <p className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-white/80 text-xs pop-in">
-              Nice try! Still sealed tight 🔒
-            </p>
+          {isCreator && (
+            <Link
+              href={`/c/${slug}/edit`}
+              className="glass-dark rounded-full px-3 py-1.5 text-xs text-white inline-flex items-center gap-1.5"
+            >
+              <Pencil className="size-3.5" /> Edit
+            </Link>
           )}
+        </header>
+
+        <div className="flex gap-3 px-5 pb-4 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+          {tabIds.map((tabId, i) => (
+            <TabCard
+              key={tabId}
+              tabId={tabId}
+              label={tabId === "home" ? "Home" : tabId === "wishlist" ? "Wishlist" : "Wall"}
+              isActive={activeTab === i}
+              days={daysLeft}
+              wishlistCount={wishlist.length}
+              messageCount={messageCount}
+              onClick={() => setActiveTab(i)}
+            />
+          ))}
         </div>
+      </div>
 
-        {/* Creator hype message */}
-        {messageFromCreator && (
-          <div className="fade-up mt-6 glass-dark rounded-2xl px-4 py-3 max-w-sm text-white/85 text-sm italic text-center">
-            &ldquo;{messageFromCreator}&rdquo;
-          </div>
-        )}
-
-        {/* Public social proof ticker (everyone sees message count) */}
-        {messageCount > 0 && (
-          <p className="fade-up mt-4 text-white/70 text-sm inline-flex items-center gap-2">
-            <MessageCircle className="size-4" />
-            {messageCount} {messageCount === 1 ? "person has" : "people have"} left {firstName} a surprise ✨
-          </p>
-        )}
-
-        {/* Milestone progress bar (once there's at least 1 surprise) */}
-        {totalSurprises > 0 && (
-          <div className="fade-up mt-3 w-full max-w-xs">
-            <div className="h-[3px] rounded-full bg-white/15 overflow-hidden">
-              <div
-                className="h-full rounded-full shimmer-text"
-                style={{
-                  width: `${milestoneProgress}%`,
-                  background: "var(--accent)",
-                  transition: "width 0.8s ease",
-                }}
+      {/* ── Sliding tab panels ── */}
+      <div
+        className="relative flex-1 overflow-hidden"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        {/* HOME tab */}
+        <div
+          aria-hidden={activeTab !== 0}
+          className="absolute inset-0 overflow-y-auto overscroll-contain transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(${(0 - activeTab) * 100}%)` }}
+        >
+          <div className="flex flex-col items-center text-center px-6 py-6 pb-40 min-h-full">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt=""
+                className="size-20 md:size-24 rounded-full object-cover ring-2 ring-white/40 shadow-card mb-5"
               />
-            </div>
-            <p className="mt-1.5 text-[10px] text-white/45 text-center">
-              {totalSurprises} sealed · {Math.max(milestone - totalSurprises, 0)} more to reach {milestone}
+            ) : (
+              <div className="size-20 md:size-24 rounded-full bg-white/15 grid place-items-center mb-5">
+                <Gift className="size-9 text-white" />
+              </div>
+            )}
+
+            <p className="fade-up text-[11px] uppercase tracking-[0.3em] text-white/75">
+              {eventLabel ? `${eventLabel} · ` : ""}{formatDate(celebrationDate)}
             </p>
-          </div>
-        )}
+            <h1
+              className="fade-up serif text-white mt-3 leading-[0.95] drop-shadow-sm"
+              style={{ fontSize: "clamp(2.2rem,9vw,3.75rem)" }}
+            >
+              {title}
+            </h1>
 
-        {/* Owner-only: a private peek at the counts (never the content). */}
-        {isCreator && ownerStats && (
-          <div className="fade-up mt-3 flex items-center gap-4 glass-dark rounded-full px-4 py-2 text-sm text-white/90">
-            <span className="inline-flex items-center gap-1.5">
-              <MessageCircle className="size-4 text-white/70" /> {ownerStats.messageCount}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Gift className="size-4 text-white/70" /> {ownerStats.giftCount}
-            </span>
-            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-white/45">
-              <Eye className="size-3" /> only you
-            </span>
-          </div>
-        )}
+            <div className="fade-up mt-7 flex items-end justify-center gap-4 md:gap-7">
+              <Unit value={t.days} label="days" />
+              <Unit value={t.hours} label="hrs" />
+              <Unit value={t.mins} label="min" />
+              <Unit value={t.secs} label="sec" />
+            </div>
 
-        {/* Contributor name marquee (3+ non-anonymous names) */}
-        {contributorFirstNames.length >= 3 && (
-          <div
-            className="fade-up mt-4 w-full max-w-sm overflow-hidden"
-            style={{ maskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)" }}
-          >
-            <NavLoadingLink href={`/c/${slug}/post`} loadingText="Opening…" className="block">
-              <div className="flex whitespace-nowrap">
-                {/* Duplicate for seamless loop */}
-                <span className="marquee inline-flex gap-4 text-[11px] uppercase tracking-widest text-white/55 pr-4">
-                  {[...contributorFirstNames, ...contributorFirstNames].map((name, i) => (
-                    <span key={i}>{name} <span className="text-white/30">·</span></span>
-                  ))}
+            {/* Tappable lock badge */}
+            <div className="relative mt-6">
+              <ConfettiBurst active={confettiActive} />
+              <button
+                onClick={handleLockTap}
+                className="fade-up text-white/80 text-sm inline-flex items-center gap-2 glass-dark rounded-full px-4 py-2 active:scale-110 transition-transform duration-150"
+                aria-label="Tap the lock"
+              >
+                <Lock className="size-4" />
+                {isCreator
+                  ? "Your surprises are sealed until the day"
+                  : `Sealed until ${firstName}'s day`}
+              </button>
+              {lockToast && (
+                <p className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-white/80 text-xs pop-in">
+                  Nice try! Still sealed tight 🔒
+                </p>
+              )}
+            </div>
+
+            {messageFromCreator && (
+              <div className="fade-up mt-6 glass-dark rounded-2xl px-4 py-3 max-w-sm text-white/85 text-sm italic text-center">
+                &ldquo;{messageFromCreator}&rdquo;
+              </div>
+            )}
+
+            {messageCount > 0 && (
+              <p className="fade-up mt-4 text-white/70 text-sm inline-flex items-center gap-2">
+                <MessageCircle className="size-4" />
+                {messageCount} {messageCount === 1 ? "person has" : "people have"} left {firstName} a surprise ✨
+              </p>
+            )}
+
+            {totalSurprises > 0 && (
+              <div className="fade-up mt-3 w-full max-w-xs">
+                <div className="h-[3px] rounded-full bg-white/15 overflow-hidden">
+                  <div
+                    className="h-full rounded-full shimmer-text"
+                    style={{
+                      width: `${milestoneProgress}%`,
+                      background: "var(--accent)",
+                      transition: "width 0.8s ease",
+                    }}
+                  />
+                </div>
+                <p className="mt-1.5 text-[10px] text-white/45 text-center">
+                  {totalSurprises} sealed · {Math.max(milestone - totalSurprises, 0)} more to reach {milestone}
+                </p>
+              </div>
+            )}
+
+            {isCreator && ownerStats && (
+              <div className="fade-up mt-3 flex items-center gap-4 glass-dark rounded-full px-4 py-2 text-sm text-white/90">
+                <span className="inline-flex items-center gap-1.5">
+                  <MessageCircle className="size-4 text-white/70" /> {ownerStats.messageCount}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Gift className="size-4 text-white/70" /> {ownerStats.giftCount}
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest text-white/45">
+                  <Eye className="size-3" /> only you
                 </span>
               </div>
-            </NavLoadingLink>
+            )}
+
+            {contributorFirstNames.length >= 3 && (
+              <div
+                className="fade-up mt-4 w-full max-w-sm overflow-hidden"
+                style={{ maskImage: "linear-gradient(to right, transparent, black 15%, black 85%, transparent)" }}
+              >
+                <NavLoadingLink href={`/c/${slug}/post`} loadingText="Opening…" className="block">
+                  <div className="flex whitespace-nowrap">
+                    <span className="marquee inline-flex gap-4 text-[11px] uppercase tracking-widest text-white/55 pr-4">
+                      {[...contributorFirstNames, ...contributorFirstNames].map((name, i) => (
+                        <span key={i}>{name} <span className="text-white/30">·</span></span>
+                      ))}
+                    </span>
+                  </div>
+                </NavLoadingLink>
+              </div>
+            )}
+
+            <div className="fade-up mt-4 w-full max-w-sm">
+              <BlessingCta slug={slug} status={blessingStatus} surface="dark" />
+            </div>
+
+            <div className="fade-up mt-5 w-full max-w-sm">
+              <ShareBar slug={slug} title={title} recipient={recipientName} messageCount={messageCount} daysLeft={daysLeft} />
+            </div>
+
+            {createdBy && (
+              <p className="mt-6 text-[11px] text-white/55">
+                Put together by <span className="text-white/80">{createdBy}</span>
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* WISHLIST tab (only rendered if there's content) */}
+        {hasWishlistContent && (
+          <div
+            aria-hidden={activeTab !== 1}
+            className="absolute inset-0 overflow-y-auto overscroll-contain transition-transform duration-300 ease-out"
+            style={{ transform: `translateX(${(1 - activeTab) * 100}%)` }}
+          >
+            <div className="px-5 pt-8 pb-40 space-y-4">
+              <h2 className="serif text-2xl text-white text-center drop-shadow-sm">
+                {firstName}&apos;s Wishlist
+              </h2>
+
+              {wishlist.length > 0 && (
+                <div className="glass-dark rounded-2xl p-4 space-y-2.5">
+                  <p className="text-[10px] uppercase tracking-widest text-white/60 mb-1 inline-flex items-center gap-1.5">
+                    <Gift className="size-3.5" /> Items
+                  </p>
+                  <ul className="space-y-2">
+                    {wishlist.map((item, i) => (
+                      <li key={i} className="flex items-center gap-2 text-white/90 text-sm">
+                        <span className="size-1.5 rounded-full bg-white/40 shrink-0" />
+                        {item.url ? (
+                          <a
+                            href={item.url}
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            className="inline-flex items-center gap-1 hover:underline"
+                          >
+                            {item.title}
+                            <ExternalLink className="size-3 text-white/50" />
+                          </a>
+                        ) : (
+                          <span>{item.title}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {shippingAddress && (
+                <div className="glass-dark rounded-2xl p-4">
+                  <p className="text-[10px] uppercase tracking-widest text-white/60 mb-2.5 inline-flex items-center gap-1.5">
+                    <MapPin className="size-3.5" /> Send a physical gift
+                  </p>
+                  <div className="text-sm text-white/90 space-y-0.5">
+                    {shippingAddress.label && (
+                      <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1">
+                        {shippingAddress.label}
+                      </p>
+                    )}
+                    <p className="font-medium">{shippingAddress.fullName}</p>
+                    <p className="text-white/70">{shippingAddress.line1}</p>
+                    {shippingAddress.line2 && <p className="text-white/70">{shippingAddress.line2}</p>}
+                    <p className="text-white/70">{shippingAddress.city}, {shippingAddress.state}</p>
+                    <p className="text-white/70">{shippingAddress.country}</p>
+                    {shippingAddress.phone && (
+                      <p className="text-white/60 mt-1">{shippingAddress.phone}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {wishlist.length === 0 && !shippingAddress && (
+                <p className="text-center text-white/50 text-sm py-8">Nothing here yet.</p>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Anyone can gift a year of weekly blessings, even while sealed.
-            Once bought it stays here showing its current status. */}
-        <div className="fade-up mt-4 w-full max-w-sm">
-          <BlessingCta slug={slug} status={blessingStatus} surface="dark" />
-        </div>
-
-        {/* Everything below shares one tidy column. */}
-        <div className="w-full max-w-sm mt-7 space-y-3">
-          {/* Wishlist */}
-          {wishlist.length > 0 && (
-            <div className="fade-up rounded-2xl glass-dark p-4 text-left">
-              <p className="text-[10px] uppercase tracking-widest text-white/60 mb-2.5 inline-flex items-center gap-1.5">
-                <Gift className="size-3.5" /> {firstName}&apos;s wishlist
+        {/* WALL tab */}
+        <div
+          aria-hidden={activeTab !== wallTabIndex}
+          className="absolute inset-0 overflow-y-auto overscroll-contain transition-transform duration-300 ease-out"
+          style={{ transform: `translateX(${(wallTabIndex - activeTab) * 100}%)` }}
+        >
+          <div className="flex flex-col items-center px-5 pt-8 pb-40">
+            <div className="flex items-center gap-2 mb-1">
+              <Users className="size-4 text-white/60" />
+              <p className="text-white/70 text-sm">
+                {messageCount > 0
+                  ? `${messageCount} ${messageCount === 1 ? "person has" : "people have"} left a surprise`
+                  : "No surprises yet — be the first!"}
               </p>
-              <ul className="space-y-2">
-                {wishlist.map((item, i) => (
-                  <li key={i} className="flex items-center gap-2 text-white/90 text-sm">
-                    <span className="size-1.5 rounded-full bg-white/40 shrink-0" />
-                    {item.url ? (
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer nofollow"
-                        className="inline-flex items-center gap-1 hover:underline"
-                      >
-                        {item.title}
-                        <ExternalLink className="size-3 text-white/50" />
-                      </a>
-                    ) : (
-                      <span>{item.title}</span>
-                    )}
-                  </li>
-                ))}
-              </ul>
             </div>
-          )}
-
-          {/* Shipping address — physical gift delivery */}
-          {shippingAddress && (
-            <div className="fade-up rounded-2xl glass-dark p-4 text-left">
-              <p className="text-[10px] uppercase tracking-widest text-white/60 mb-2.5 inline-flex items-center gap-1.5">
-                <MapPin className="size-3.5" /> Send a physical gift
-              </p>
-              <div className="text-sm text-white/90 space-y-0.5">
-                {shippingAddress.label && (
-                  <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1">{shippingAddress.label}</p>
-                )}
-                <p className="font-medium">{shippingAddress.fullName}</p>
-                <p className="text-white/70">{shippingAddress.line1}</p>
-                {shippingAddress.line2 && <p className="text-white/70">{shippingAddress.line2}</p>}
-                <p className="text-white/70">{shippingAddress.city}, {shippingAddress.state}</p>
-                <p className="text-white/70">{shippingAddress.country}</p>
-                {shippingAddress.phone && (
-                  <p className="text-white/60 mt-1">{shippingAddress.phone}</p>
-                )}
-              </div>
+            {messageCount > 0 && (
+              <p className="text-white/40 text-xs mb-5">Revealed on {formatDate(celebrationDate)}</p>
+            )}
+            <div className="w-full max-w-sm mt-2">
+              <BlurredWallTeaser count={messageCount} />
             </div>
-          )}
-
-          {/* Blurred wall teaser */}
-          <BlurredWallTeaser count={messageCount} slug={slug} firstName={firstName} />
-
-          {/* CTAs */}
-          {(canMessage || canContribute) && (
-            <div className="fade-up flex gap-3 pt-1">
-              {canMessage && (
-                <NavLoadingLink
-                  href={`/c/${slug}/post`}
-                  className={`btn-accent ${canContribute ? "flex-1" : "w-full"} shadow-glow inline-flex items-center justify-center`}
-                  loadingText="Opening…"
-                >
-                  Leave a message
-                </NavLoadingLink>
-              )}
-              {canContribute && (
-                <NavLoadingLink
-                  href={`/c/${slug}/contribute`}
-                  className={`${canMessage ? "flex-1" : "w-full"} inline-flex items-center justify-center rounded-full bg-white/90 text-ink py-3 px-5 font-medium`}
-                  loadingText="Opening…"
-                >
-                  Send a gift
-                </NavLoadingLink>
-              )}
-            </div>
-          )}
-
-          <div className="fade-up pt-1">
-            <ShareBar slug={slug} title={title} recipient={recipientName} messageCount={messageCount} daysLeft={daysLeft} />
           </div>
         </div>
       </div>
 
-      {createdBy && (
-        <p className="relative z-10 pb-6 text-center text-[11px] text-white/55">
-          Put together by <span className="text-white/80">{createdBy}</span>
-        </p>
+      {/* ── Sticky bottom CTAs ── */}
+      {hasCtas && (
+        <div
+          className="relative z-20 flex-shrink-0 px-5 pt-3 pb-6 glass-dark"
+          style={{ paddingBottom: "max(env(safe-area-inset-bottom, 0px), 1.5rem)" }}
+        >
+          <div className="flex gap-3">
+            {canMessage && (
+              <NavLoadingLink
+                href={`/c/${slug}/post`}
+                className={`btn-accent shadow-glow inline-flex items-center justify-center ${
+                  canContribute ? "flex-1" : "w-full"
+                }`}
+                loadingText="Opening…"
+              >
+                Leave a message
+              </NavLoadingLink>
+            )}
+            {canContribute && (
+              <NavLoadingLink
+                href={`/c/${slug}/contribute`}
+                className={`inline-flex items-center justify-center rounded-full bg-white/90 text-ink py-3 px-5 font-medium ${
+                  canMessage ? "flex-1" : "w-full"
+                }`}
+                loadingText="Opening…"
+              >
+                Send a gift
+              </NavLoadingLink>
+            )}
+          </div>
+        </div>
       )}
     </main>
   );

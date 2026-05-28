@@ -217,7 +217,7 @@ export function NewBlessingForm({ slug, firstName }: { slug: string; firstName: 
                 <ArrowLeft className="size-4" /> Back
               </button>
               <button type="button" onClick={pay} disabled={!canPay} className="btn-primary flex-1 disabled:opacity-60">
-                {busy ? "Starting…" : "Pay ₦5,000"}
+                {busy ? "Starting…" : "Pay ₦3,000"}
               </button>
             </div>
             <p className="text-xs text-ink/45 text-center">
@@ -268,7 +268,7 @@ function Stepper({ step }: { step: number }) {
 // the three beats of the gift spelled out beneath it.
 function HowItWorks({ firstName }: { firstName: string }) {
   const beats: { icon: typeof Gift; text: string }[] = [
-    { icon: Gift, text: "You pay once — ₦5,000 for the whole year." },
+    { icon: Gift, text: "You pay once — ₦3,000 for the whole year." },
     { icon: Mail, text: `Every week, a short blessing emails to ${firstName}.` },
     { icon: CalendarDays, text: "52 weeks — some written for them, some from their wall." },
   ];

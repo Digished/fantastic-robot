@@ -105,6 +105,60 @@
   --hero-ink: #FAF5E9;
 }
 
+/* ─── Sealed page theme packs ───────────────────────────────────────── */
+/* These override the regular theme variables when a sealed theme pack
+   is chosen. They always assume a dark surface (white text overlays). */
+[data-sealed-theme="cosmic"] {
+  --mesh-a: #0F0C29; --mesh-b: #302B63; --mesh-c: #24243e; --mesh-d: #1a1540;
+  --accent: #A78BFA; --accent-soft: #2D1F6E; --accent-glow: rgba(167,139,250,.45);
+  --hero-ink: #EEE8FF;
+}
+[data-sealed-theme="halloween"] {
+  --mesh-a: #1a0800; --mesh-b: #4a1800; --mesh-c: #6b2d00; --mesh-d: #3d1000;
+  --accent: #F97316; --accent-soft: #431A00; --accent-glow: rgba(249,115,22,.45);
+  --hero-ink: #FEE2C8;
+}
+[data-sealed-theme="angelic"] {
+  --mesh-a: #1a0f2e; --mesh-b: #2d1f4e; --mesh-c: #1f1040; --mesh-d: #251530;
+  --accent: #F5CC7A; --accent-soft: #3D2A00; --accent-glow: rgba(245,204,122,.45);
+  --hero-ink: #FAF0CC;
+}
+[data-sealed-theme="calm"] {
+  --mesh-a: #0F2027; --mesh-b: #203A43; --mesh-c: #2C5364; --mesh-d: #173240;
+  --accent: #4FC3F7; --accent-soft: #0A2030; --accent-glow: rgba(79,195,247,.45);
+  --hero-ink: #E0F7FA;
+}
+[data-sealed-theme="sunny"] {
+  --mesh-a: #3D1C02; --mesh-b: #7A3B05; --mesh-c: #B55E09; --mesh-d: #5A2B03;
+  --accent: #FFD700; --accent-soft: #4A2800; --accent-glow: rgba(255,215,0,.45);
+  --hero-ink: #FFEAA0;
+}
+[data-sealed-theme="royal"] {
+  --mesh-a: #16003B; --mesh-b: #300064; --mesh-c: #1A0045; --mesh-d: #200050;
+  --accent: #FFD700; --accent-soft: #2D1A00; --accent-glow: rgba(255,215,0,.45);
+  --hero-ink: #FFEEAA;
+}
+[data-sealed-theme="cherry"] {
+  --mesh-a: #3D0020; --mesh-b: #6B0F3C; --mesh-c: #1A0010; --mesh-d: #4A0028;
+  --accent: #FFB7C5; --accent-soft: #3D0020; --accent-glow: rgba(255,183,197,.45);
+  --hero-ink: #FFE4F0;
+}
+[data-sealed-theme="abyss"] {
+  --mesh-a: #000428; --mesh-b: #004E92; --mesh-c: #001850; --mesh-d: #002860;
+  --accent: #00D4FF; --accent-soft: #001230; --accent-glow: rgba(0,212,255,.45);
+  --hero-ink: #B8F4FF;
+}
+[data-sealed-theme="aurora"] {
+  --mesh-a: #0D0221; --mesh-b: #1A0A3D; --mesh-c: #0A2E1A; --mesh-d: #0F1535;
+  --accent: #00FF94; --accent-soft: #001A10; --accent-glow: rgba(0,255,148,.45);
+  --hero-ink: #B8FFE0;
+}
+[data-sealed-theme="inferno"] {
+  --mesh-a: #200122; --mesh-b: #6f0000; --mesh-c: #3A0010; --mesh-d: #4A0000;
+  --accent: #FF6B35; --accent-soft: #3D0000; --accent-glow: rgba(255,107,53,.45);
+  --hero-ink: #FFD0B0;
+}
+
 @layer components {
   .page-shell { @apply mx-auto w-full max-w-phone px-5; }
 
@@ -182,6 +236,7 @@
 
   .fade-up { animation: fadeUp .55s cubic-bezier(.2,.7,.2,1) both; }
   .fade-in { animation: fadeIn .45s ease both; }
+  .pop-in  { animation: popIn 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
   .ken-burns { animation: kenBurns 22s ease-in-out infinite alternate; }
   .cover-pan { animation: coverPan3d 26s ease-in-out infinite; transform-origin: center; will-change: transform; backface-visibility: hidden; }
   .float-y   { animation: floatY 7s ease-in-out infinite; }
