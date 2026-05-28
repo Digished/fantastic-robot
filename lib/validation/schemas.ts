@@ -61,12 +61,29 @@ export const createSelfCelebrationSchema = z.object({
   backgroundMusic: musicTrackId.nullable().optional(),
   bankCode: z.string({ required_error: "Choose your bank" }).min(2, "Choose your bank").max(10),
   accountNumber: naijaAccountNumber,
+  avatarPath: z.string().optional(),
+  shippingAddress: z.string().optional(),
 });
 
 export const profileBankSchema = z.object({
   bankCode: z.string().min(2).max(10),
   accountNumber: naijaAccountNumber,
 });
+
+export const shippingAddressSchema = z.object({
+  id: z.string().optional(),
+  label: z.string().max(40).optional(),
+  fullName: z.string().min(1, "Full name is required").max(80),
+  line1: z.string().min(1, "Street address is required").max(100),
+  line2: z.string().max(100).optional(),
+  city: z.string().min(1, "City is required").max(60),
+  state: z.string().min(1, "State is required").max(60),
+  country: z.string().min(1).max(60).default("Nigeria"),
+  phone: z.string().max(24).optional(),
+});
+
+export const shippingAddressesSchema = z.array(shippingAddressSchema).max(5);
+export type ShippingAddress = z.infer<typeof shippingAddressSchema>;
 
 // A wishlist item: a thing the celebrant would love, with an optional link.
 export const wishlistItemSchema = z.object({

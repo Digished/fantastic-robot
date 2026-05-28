@@ -4,17 +4,38 @@ import { useState } from "react";
 import { Copy, Check } from "lucide-react";
 
 export function ShareBar({
-  slug, title, recipient,
-}: { slug: string; title: string; recipient: string }) {
+  slug, title, recipient, messageCount = 0, daysLeft,
+}: {
+  slug: string;
+  title: string;
+  recipient: string;
+  messageCount?: number;
+  daysLeft?: number;
+}) {
   const [copied, setCopied] = useState(false);
   const url = typeof window !== "undefined"
     ? `${window.location.origin}/c/${slug}`
     : `/c/${slug}`;
-  const text = `🎉 ${title}\n\nLeave a message for ${recipient} and contribute if you can:\n${url}`;
-  const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
+
+  const firstName = recipient.split(" ")[0];
+
+  let shareText: string;
+  if (daysLeft !== undefined) {
+    if (daysLeft <= 0) {
+      shareText = `🎉 It's ${firstName}'s celebration today! Leave them a surprise:\n${url}`;
+    } else if (messageCount > 0) {
+      shareText = `🎁 ${firstName}'s celebration is in ${daysLeft} day${daysLeft === 1 ? "" : "s"} — ${messageCount} ${messageCount === 1 ? "person has" : "people have"} already left a surprise. Add yours:\n${url}`;
+    } else {
+      shareText = `🎁 ${firstName}'s celebration is in ${daysLeft} day${daysLeft === 1 ? "" : "s"}. Be the first to leave them a surprise:\n${url}`;
+    }
+  } else {
+    shareText = `🎉 ${title}\n\nLeave a message for ${recipient} and contribute if you can:\n${url}`;
+  }
+
+  const wa = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
 
   async function copy() {
-    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
+    try { await navigator.clipboard.writeText(shareText); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
   }
 
   return (

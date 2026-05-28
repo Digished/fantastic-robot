@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { getBanks } from "@/lib/paystack/banks";
 import { ProfileForm } from "./form";
+import type { ShippingAddress } from "@/lib/validation/schemas";
 
 export default async function SettingsPage() {
   const supabase = await supabaseServer();
@@ -13,7 +14,7 @@ export default async function SettingsPage() {
   const [{ data: profile }, banks] = await Promise.all([
     supabase
       .from("users")
-      .select("display_name, email, bank_code, account_number, account_name, avatar_path")
+      .select("display_name, email, bank_code, account_number, account_name, avatar_path, shipping_addresses")
       .eq("id", user.id)
       .maybeSingle(),
     getBanks(),
@@ -43,6 +44,7 @@ export default async function SettingsPage() {
             initialAccountNumber={profile?.account_number ?? ""}
             initialAccountName={profile?.account_name ?? ""}
             initialAvatarPath={profile?.avatar_path ?? null}
+            initialAddresses={(profile?.shipping_addresses as ShippingAddress[]) ?? []}
           />
         </div>
       </div>

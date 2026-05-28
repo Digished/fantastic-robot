@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { login } from "./actions";
@@ -14,7 +15,12 @@ export function LoginForm({ next, error }: { next?: string; error?: string }) {
         <input className="field" name="email" type="email" autoComplete="email" required />
       </div>
       <div className="space-y-1.5">
-        <label className="label">Password</label>
+        <div className="flex items-center justify-between">
+          <label className="label">Password</label>
+          <Link href="/forgot-password" className="text-xs text-[var(--accent)] hover:underline">
+            Forgot password?
+          </Link>
+        </div>
         <div className="relative">
           <input
             className="field pr-11"

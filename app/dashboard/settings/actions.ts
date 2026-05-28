@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { paystack, PaystackError } from "@/lib/paystack/client";
-import { profileBankSchema } from "@/lib/validation/schemas";
+import { profileBankSchema, shippingAddressesSchema } from "@/lib/validation/schemas";
 
 export type ProfileState = { error?: string; ok?: boolean };
 
@@ -60,6 +60,14 @@ export async function updateProfile(
         return { error: `Bank check failed: ${msg}` };
       }
     }
+  }
+
+  const addressesRaw = (formData.get("shippingAddresses") as string | null)?.trim();
+  if (addressesRaw) {
+    try {
+      const parsed = shippingAddressesSchema.safeParse(JSON.parse(addressesRaw));
+      if (parsed.success) update.shipping_addresses = parsed.data;
+    } catch { /* ignore malformed JSON */ }
   }
 
   const { error } = await supabase.from("users").update(update).eq("id", user.id);
