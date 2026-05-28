@@ -106,6 +106,8 @@ export const editSelfCelebrationSchema = z.object({
   // Payout bank lives on the profile; optional here so they can set it inline.
   bankCode: z.string().min(2).max(10).optional(),
   accountNumber: naijaAccountNumber.optional(),
+  // Sealed page theme pack (separate from the regular theme).
+  sealedTheme: z.string().max(40).optional(),
 });
 
 export type WishlistItem = z.infer<typeof wishlistItemSchema>;

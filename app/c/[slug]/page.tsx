@@ -116,18 +116,21 @@ export default async function WallPage({
       .map((r: { contributor_name: string }) => r.contributor_name.split(" ")[0])
       .filter(Boolean);
 
-    // Shipping address — fetched separately so a missing column (migration
-    // not yet applied) doesn't break the page.
-    const { data: addrRow, error: addrError } = await supabaseAdmin()
+    // Extra columns fetched separately so missing columns (migrations not yet
+    // applied to the live instance) don't break the page.
+    const { data: extrasRow, error: extrasError } = await supabaseAdmin()
       .from("celebrations")
-      .select("shipping_address")
+      .select("shipping_address, sealed_theme")
       .eq("id", page.id)
       .maybeSingle();
-    const shippingAddress = !addrError
-      ? ((addrRow as { shipping_address?: unknown } | null)?.shipping_address as {
+    const shippingAddress = !extrasError
+      ? ((extrasRow as { shipping_address?: unknown } | null)?.shipping_address as {
           label?: string; fullName: string; line1: string; line2?: string;
           city: string; state: string; country: string; phone?: string;
         } | null) ?? null
+      : null;
+    const sealedTheme = !extrasError
+      ? ((extrasRow as { sealed_theme?: string | null } | null)?.sealed_theme ?? null)
       : null;
 
     return (
@@ -152,6 +155,7 @@ export default async function WallPage({
         initialGiftCount={totalGiftCount}
         contributorFirstNames={contributorFirstNames}
         shippingAddress={shippingAddress}
+        sealedTheme={sealedTheme}
       />
     );
   }
