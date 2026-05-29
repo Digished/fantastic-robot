@@ -108,6 +108,9 @@ export const editSelfCelebrationSchema = z.object({
   accountNumber: naijaAccountNumber.optional(),
   // Sealed page theme pack (separate from the regular theme).
   sealedTheme: z.string().max(40).optional(),
+  // Date of birth (drives the recurring birthday countdown). Lives on the
+  // profile; optional here so existing pages without it still save.
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date").optional(),
 });
 
 export type WishlistItem = z.infer<typeof wishlistItemSchema>;

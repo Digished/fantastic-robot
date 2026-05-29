@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { Lock, Check, Loader2, Camera, User, MapPin } from "lucide-react";
 import { createSelfCelebration, type CreateState } from "../actions";
 import { type Theme } from "@/lib/themes";
 import { ThemePickerButton } from "@/components/page-editor/theme-picker-button";
 import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox";
 import { MusicPicker } from "@/components/music-picker";
+import { DateOfBirthPicker } from "@/components/date-of-birth-picker";
 import type { MusicTrack } from "@/lib/music";
 import { uploadWithProgress } from "@/lib/upload";
 import { AddressFormFields, BLANK_ADDRESS, type AddressDraft } from "@/components/address-form-fields";
@@ -125,6 +126,12 @@ export function SelfCreateForm({
 }) {
   const [state, dispatch, pending] = useActionState<CreateState, FormData>(createSelfCelebration, {});
 
+  // Navigate client-side once the page is created (server redirect from a
+  // useActionState action leaves the form spinning).
+  useEffect(() => {
+    if (state.redirectTo) window.location.href = state.redirectTo;
+  }, [state.redirectTo]);
+
   const [eventType, setEventType] = useState("birthday");
   const [title, setTitle] = useState(
     defaultName ? `${defaultName}'s Birthday` : "",
@@ -152,6 +159,15 @@ export function SelfCreateForm({
   const [addressError, setAddressError] = useState<string | null>(null);
 
   const bankReady = !!bankCode && /^\d{10}$/.test(accountNumber);
+  // Birthday pages need a photo and a date of birth, plus the payout account.
+  const ready = !!avatarPath && !!date && bankReady;
+  const missingHint = !avatarPath
+    ? "Add a profile photo to continue."
+    : !date
+      ? "Add your date of birth to continue."
+      : !bankReady
+        ? "Add your payout account to continue."
+        : null;
 
   async function resolveBank(code: string, num: string) {
     setBankError(null);
@@ -214,15 +230,20 @@ export function SelfCreateForm({
 
   return (
     <div className="space-y-6">
-      {/* Profile photo */}
-      <AvatarUploader
-        path={avatarPath}
-        previewUrl={avatarPreview}
-        onUploaded={({ path, previewUrl }) => {
-          setAvatarPath(path);
-          setAvatarPreview(previewUrl);
-        }}
-      />
+      {/* Profile photo — required */}
+      <div className="space-y-1">
+        <AvatarUploader
+          path={avatarPath}
+          previewUrl={avatarPreview}
+          onUploaded={({ path, previewUrl }) => {
+            setAvatarPath(path);
+            setAvatarPreview(previewUrl);
+          }}
+        />
+        {!avatarPath && (
+          <p className="text-xs text-center text-ink/45">A profile photo is required.</p>
+        )}
+      </div>
 
       <div className="space-y-1.5">
         <label className="label" htmlFor="title">Page title</label>
@@ -258,13 +279,7 @@ export function SelfCreateForm({
         <label className="label" htmlFor="date">
           {eventType === "birthday" ? "Your date of birth" : "The date"}
         </label>
-        <input
-          id="date"
-          type="date"
-          className="field"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
+        <DateOfBirthPicker id="date" value={date} onChange={setDate} />
         <p className="text-xs text-ink/45">
           {eventType === "birthday"
             ? "We'll celebrate your next birthday and renew it every year."
@@ -462,13 +477,13 @@ export function SelfCreateForm({
       <button
         type="button"
         onClick={save}
-        disabled={pending || !bankReady}
+        disabled={pending || !!state.redirectTo || !ready}
         className="btn-accent shadow-soft w-full py-4 disabled:opacity-60"
       >
-        {pending ? "Creating…" : "Create my page"}
+        {pending || state.redirectTo ? "Creating…" : "Create my page"}
       </button>
-      {!bankReady && (
-        <p className="text-xs text-ink/45 text-center -mt-3">Add your payout account to continue.</p>
+      {missingHint && (
+        <p className="text-xs text-ink/45 text-center -mt-3">{missingHint}</p>
       )}
     </div>
   );

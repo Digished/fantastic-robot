@@ -40,6 +40,16 @@ export default async function EditPage({
       getEffectiveTracks(),
     ]);
 
+    // Date of birth in its own query so a not-yet-applied migration can't break
+    // the editor.
+    const { data: dobRow } = await supabase
+      .from("users")
+      .select("date_of_birth")
+      .eq("id", user.id)
+      .maybeSingle();
+    const initialDateOfBirth =
+      (dobRow as { date_of_birth?: string | null } | null)?.date_of_birth ?? "";
+
     // Fetch sealed_theme with error handling (migration may not yet be applied).
     const { data: sealedExtras, error: sealedExtrasError } = await supabaseAdmin()
       .from("celebrations")
@@ -69,6 +79,7 @@ export default async function EditPage({
           bankCode: profile?.bank_code ?? "",
           accountNumber: profile?.account_number ?? "",
           accountName: profile?.account_name ?? "",
+          dateOfBirth: initialDateOfBirth,
         }}
       />
     );

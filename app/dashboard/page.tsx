@@ -16,6 +16,16 @@ function coverUrl(path: string | null | undefined) {
   return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${path}`;
 }
 
+/** The age the celebrant turns on a celebration date, given their DOB. */
+function ageOn(dateOfBirth: string | null, celebrationDate: string): number | null {
+  if (!dateOfBirth) return null;
+  const birthYear = Number(dateOfBirth.slice(0, 4));
+  const year = new Date(celebrationDate).getUTCFullYear();
+  if (!birthYear || !year) return null;
+  const age = year - birthYear;
+  return age > 0 && age < 130 ? age : null;
+}
+
 export default async function Dashboard() {
   const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
@@ -42,6 +52,15 @@ export default async function Dashboard() {
   const createHref = BIRTHDAY_ONLY ? "/create/me" : "/create";
   const createLabel = BIRTHDAY_ONLY ? "Create my birthday page" : "New celebration";
   const showCreate = !hasBirthdayPage;
+
+  // The user's date of birth drives the age shown on birthday cards. Fetched in
+  // its own query so a not-yet-applied migration can't break the dashboard.
+  const { data: dobRow } = await supabase
+    .from("users")
+    .select("date_of_birth")
+    .eq("id", user.id)
+    .maybeSingle();
+  const dateOfBirth = (dobRow as { date_of_birth?: string | null } | null)?.date_of_birth ?? null;
 
   // Sealed pages hide their wall — even from the owner. But the owner can still
   // see how many messages/gifts have landed (counts only, no content/amount).
@@ -112,6 +131,10 @@ export default async function Dashboard() {
             {pages?.map((p, i) => {
               const cover = coverUrl(p.cover_photo_path);
               const sealed = isSealedNow(p);
+              const age =
+                p.is_self && p.event_type === "birthday"
+                  ? ageOn(dateOfBirth, p.celebration_date)
+                  : null;
               return (
                 <Link
                   key={p.id}
@@ -129,6 +152,13 @@ export default async function Dashboard() {
                       <div className="absolute inset-0 theme-mesh" />
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+                    {/* Birthday cards with no cover show the age they're turning. */}
+                    {!cover && age !== null && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center pb-10">
+                        <span className="text-[10px] uppercase tracking-[0.3em] text-white/70">Turning</span>
+                        <span className="serif text-7xl leading-none text-white drop-shadow">{age}</span>
+                      </div>
+                    )}
                     {p.is_paid_for_creation === false ? (
                       <span className="absolute top-3 right-3 bg-amber-500 text-white rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest">
                         Awaiting payment

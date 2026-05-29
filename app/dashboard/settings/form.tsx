@@ -5,6 +5,7 @@ import { Check, Loader2, User, MapPin } from "lucide-react";
 import { updateProfile, type ProfileState } from "./actions";
 import { uploadWithProgress } from "@/lib/upload";
 import { AddressFormFields, BLANK_ADDRESS, type AddressDraft } from "@/components/address-form-fields";
+import { DateOfBirthPicker } from "@/components/date-of-birth-picker";
 import type { ShippingAddress } from "@/lib/validation/schemas";
 
 type Bank = { name: string; code: string };
@@ -22,6 +23,7 @@ export function ProfileForm({
   initialAccountNumber,
   initialAccountName,
   initialAvatarPath,
+  initialDateOfBirth,
   initialAddresses,
 }: {
   initialDisplayName: string;
@@ -31,9 +33,12 @@ export function ProfileForm({
   initialAccountNumber: string;
   initialAccountName: string;
   initialAvatarPath: string | null;
+  initialDateOfBirth: string;
   initialAddresses: ShippingAddress[];
 }) {
   const [state, action, pending] = useActionState<ProfileState, FormData>(updateProfile, {});
+
+  const [dateOfBirth, setDateOfBirth] = useState(initialDateOfBirth);
 
   // Avatar
   const fileRef = useRef<HTMLInputElement>(null);
@@ -169,6 +174,16 @@ export function ProfileForm({
       <div className="space-y-1.5">
         <label className="label">Email</label>
         <input className="field bg-ink/5 text-ink/55" value={email} disabled />
+      </div>
+
+      {/* Date of birth */}
+      <div className="space-y-1.5">
+        <label className="label">Date of birth</label>
+        <DateOfBirthPicker value={dateOfBirth} onChange={setDateOfBirth} />
+        <p className="text-xs text-ink/45">
+          Sets your birthday countdown. We celebrate the next one and renew it every year.
+        </p>
+        <input type="hidden" name="dateOfBirth" value={dateOfBirth} />
       </div>
 
       {/* Bank details */}

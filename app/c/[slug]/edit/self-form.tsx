@@ -10,6 +10,7 @@ import { ThemePickerButton } from "@/components/page-editor/theme-picker-button"
 import { SEALED_THEME_PACKS } from "@/lib/sealed-themes";
 import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox";
 import { MusicPicker } from "@/components/music-picker";
+import { DateOfBirthPicker } from "@/components/date-of-birth-picker";
 import { isValidUploadedTrackId, makeUploadedTrack, parseMusicValue, type MusicTrack } from "@/lib/music";
 import { PresentationToggle } from "./presentation-toggle";
 import type { WishlistItem } from "@/lib/validation/schemas";
@@ -35,6 +36,7 @@ export function SelfEditForm({
     bankCode: string;
     accountNumber: string;
     accountName: string;
+    dateOfBirth: string;
   };
 }) {
   const router = useRouter();
@@ -46,6 +48,7 @@ export function SelfEditForm({
   const [sealedTheme, setSealedTheme] = useState<string | null>(initial.sealedTheme ?? null);
   const [note, setNote] = useState(initial.messageFromCreator);
   const [isRecurring, setIsRecurring] = useState(initial.isRecurring);
+  const [dateOfBirth, setDateOfBirth] = useState(initial.dateOfBirth);
   const [presentation, setPresentation] = useState<"reel" | "book">(initial.presentation);
   const [wishlist, setWishlist] = useState<WishlistItem[]>(
     initial.wishlist.length ? initial.wishlist : [],
@@ -106,6 +109,7 @@ export function SelfEditForm({
     fd.set("theme", theme);
     if (note) fd.set("messageFromCreator", note);
     if (isRecurring) fd.set("isRecurring", "on");
+    if (dateOfBirth) fd.set("dateOfBirth", dateOfBirth);
     if (music) fd.set("backgroundMusic", music);
     fd.set("presentation", presentation);
     fd.set(
@@ -170,6 +174,15 @@ export function SelfEditForm({
             onChange={(e) => setTitle(e.target.value)}
             placeholder="My Birthday"
           />
+        </div>
+
+        {/* Date of birth */}
+        <div className="space-y-1.5">
+          <label className="label">Date of birth</label>
+          <DateOfBirthPicker value={dateOfBirth} onChange={setDateOfBirth} />
+          <p className="text-xs text-ink/45">
+            We celebrate your next birthday and renew it every year.
+          </p>
         </div>
 
         {/* Theme */}

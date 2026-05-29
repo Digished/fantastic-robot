@@ -2,7 +2,6 @@
 
 import { customAlphabet } from "nanoid";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paystack, PaystackError } from "@/lib/paystack/client";
@@ -21,6 +20,7 @@ export type CreateState = {
   error?: string;
   authorizationUrl?: string;
   alreadyPaid?: boolean;
+  redirectTo?: string;
 };
 
 export async function createCelebration(
@@ -183,6 +183,11 @@ export async function createSelfCelebration(
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
+  // A profile photo is required for birthday pages.
+  if (BIRTHDAY_ONLY && !parsed.data.avatarPath) {
+    return { error: "Please add a profile photo." };
+  }
+
   // Birthdays-only mode: the page is always a recurring birthday.
   const eventType = BIRTHDAY_ONLY ? "birthday" : parsed.data.eventType;
   const recurring = eventType === "birthday";
@@ -204,7 +209,7 @@ export async function createSelfCelebration(
       .eq("event_type", "birthday")
       .limit(1)
       .maybeSingle();
-    if (existing?.slug) redirect(`/c/${existing.slug}`);
+    if (existing?.slug) return { redirectTo: `/c/${existing.slug}` };
   }
 
   // A payout bank is compulsory — there's nowhere to send the gift otherwise.
@@ -301,7 +306,10 @@ export async function createSelfCelebration(
   });
   if (error) return { error: error.message };
 
-  redirect(`/c/${slug}`);
+  // Navigate client-side (the for-others flow does the same). A server-side
+  // redirect() from a useActionState action doesn't reliably commit here and
+  // leaves the form spinning.
+  return { redirectTo: `/c/${slug}` };
 }
 
 /**
