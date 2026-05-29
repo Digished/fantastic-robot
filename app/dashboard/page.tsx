@@ -36,7 +36,9 @@ export default async function Dashboard() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/dashboard");
 
-  const [pagesQ, draftQ] = await Promise.all([
+  // Fetch everything the dashboard needs up front, in parallel.
+  const admin = supabaseAdmin();
+  const [pagesQ, draftQ, meRowQ, friends, inviteToken] = await Promise.all([
     supabase
       .from("celebrations")
       .select("id, slug, title, recipient_name, event_type, celebration_date, status, total_raised_kobo, contributor_count, theme, cover_photo_path, is_paid_for_creation, is_self, is_sealed, claimable_at, current_cycle")
@@ -47,38 +49,33 @@ export default async function Dashboard() {
       .select("data, updated_at")
       .eq("creator_id", user.id)
       .maybeSingle(),
+    supabase
+      .from("users")
+      .select("date_of_birth, avatar_path, username")
+      .eq("id", user.id)
+      .maybeSingle(),
+    getFriendsWithBirthdays(user.id),
+    ensureInviteToken(user.id),
   ]);
   const pages = pagesQ.data;
 
-  // A birthday page is required to use the app. If it's missing (new user, or
-  // they deleted theirs), send them through creation first.
+  // A birthday page is required to use the app. If it's genuinely missing (new
+  // user, or they deleted theirs) send them through creation — but never bounce
+  // on a transient query error, which would hide the dashboard.
   const birthdayPage = (pages ?? []).find((p) => p.is_self && p.event_type === "birthday");
-  if (BIRTHDAY_ONLY && !birthdayPage) redirect("/create/me");
+  if (BIRTHDAY_ONLY && !pagesQ.error && !birthdayPage) redirect("/create/me");
 
-  // Birthdays-only: each user gets a single birthday page. Once they have one,
-  // hide the "create" CTAs. The create flow lives at /create/me.
+  // Birthdays-only: each user gets a single birthday page.
   const hasBirthdayPage = BIRTHDAY_ONLY ? !!birthdayPage : false;
   const createHref = BIRTHDAY_ONLY ? "/create/me" : "/create";
   const createLabel = BIRTHDAY_ONLY ? "Create my birthday page" : "New celebration";
   const showCreate = !hasBirthdayPage;
 
-  // The user's date of birth drives the age shown on birthday cards. Fetched in
-  // its own query so a not-yet-applied migration can't break the dashboard.
-  const { data: meRow } = await supabase
-    .from("users")
-    .select("date_of_birth, avatar_path, username")
-    .eq("id", user.id)
-    .maybeSingle();
-  const dateOfBirth = (meRow as { date_of_birth?: string | null } | null)?.date_of_birth ?? null;
-  const myAvatar = (meRow as { avatar_path?: string | null } | null)?.avatar_path ?? null;
-  const myUsername = (meRow as { username?: string | null } | null)?.username ?? null;
+  const meRow = meRowQ.data as { date_of_birth?: string | null; avatar_path?: string | null; username?: string | null } | null;
+  const dateOfBirth = meRow?.date_of_birth ?? null;
+  const myAvatar = meRow?.avatar_path ?? null;
+  const myUsername = meRow?.username ?? null;
 
-  // Friends: list (with birthday countdowns) + personal invite link.
-  const admin = supabaseAdmin();
-  const [friends, inviteToken] = await Promise.all([
-    getFriendsWithBirthdays(user.id),
-    ensureInviteToken(user.id),
-  ]);
   const inviteUrl = `${env.appUrl()}/i/${inviteToken}`;
 
   // Sealed pages hide their wall — even from the owner. But the owner can still
@@ -156,6 +153,24 @@ export default async function Dashboard() {
             hasPhoto={!!myAvatar}
             friendCount={friends.length}
           />
+
+          {birthdayPage && (
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {[
+                { id: "wishlist", label: "Wishlist" },
+                { id: "messages", label: "Messages" },
+                { id: "gifts", label: "Gifts" },
+              ].map((t) => (
+                <Link
+                  key={t.id}
+                  href={`/c/${birthdayPage.slug}/${t.id}`}
+                  className="rounded-2xl bg-ink/5 hover:bg-ink/10 transition text-center py-2.5 text-sm text-ink/70"
+                >
+                  {t.label}
+                </Link>
+              ))}
+            </div>
+          )}
 
           <div className="grid sm:grid-cols-2 gap-4">
             {draft && <DraftCard draft={draft.draft} updatedAt={draft.updatedAt} />}
