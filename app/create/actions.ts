@@ -11,6 +11,7 @@ import { generateIntroContent } from "@/lib/openai/generate-intro";
 import { resolveSavedTrackId } from "@/lib/music/server";
 import { buildSelfCelebrationDate } from "@/lib/self-celebration";
 import { PAGE_CREATION_FEE_KOBO } from "@/lib/fees";
+import { BIRTHDAY_ONLY } from "@/lib/features";
 import { env } from "@/lib/env";
 
 const slugId = customAlphabet("23456789abcdefghjkmnpqrstvwxyz", 10);
@@ -26,6 +27,10 @@ export async function createCelebration(
   _prev: CreateState,
   formData: FormData,
 ): Promise<CreateState> {
+  // Creating pages for someone else is hidden in birthdays-only mode. The UI
+  // path is already gated; this guards the action directly too.
+  if (BIRTHDAY_ONLY) return { error: "This option isn't available right now." };
+
   const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Please sign in again." };
@@ -178,13 +183,29 @@ export async function createSelfCelebration(
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
-  const recurring = parsed.data.eventType === "birthday";
+  // Birthdays-only mode: the page is always a recurring birthday.
+  const eventType = BIRTHDAY_ONLY ? "birthday" : parsed.data.eventType;
+  const recurring = eventType === "birthday";
   const celebrationDate = buildSelfCelebrationDate(parsed.data.date, recurring);
   if (!celebrationDate) {
     return { error: "Pick a date at least 96 hours from now." };
   }
 
   const admin = supabaseAdmin();
+
+  // One birthday page per user — if they already have one, send them to it
+  // instead of creating a duplicate.
+  if (recurring) {
+    const { data: existing } = await admin
+      .from("celebrations")
+      .select("slug")
+      .eq("creator_id", user.id)
+      .eq("is_self", true)
+      .eq("event_type", "birthday")
+      .limit(1)
+      .maybeSingle();
+    if (existing?.slug) redirect(`/c/${existing.slug}`);
+  }
 
   // A payout bank is compulsory — there's nowhere to send the gift otherwise.
   // Verify it with Paystack and save it to the profile so it's reused for the
@@ -219,6 +240,9 @@ export async function createSelfCelebration(
       bank_verified_at: new Date().toISOString(),
       ...(bankChanged ? { paystack_recipient_code: null } : {}),
       ...(parsed.data.avatarPath ? { avatar_path: parsed.data.avatarPath } : {}),
+      // Save the full DOB (the recurring date math discards the year) so we can
+      // show age/milestones in the throwback section and reuse it later.
+      ...(recurring ? { date_of_birth: parsed.data.date } : {}),
     })
     .eq("id", user.id);
   if (bankError) return { error: bankError.message };
@@ -263,7 +287,7 @@ export async function createSelfCelebration(
     creator_id: user.id,
     title: parsed.data.title,
     recipient_name: recipientName,
-    event_type: parsed.data.eventType,
+    event_type: eventType,
     theme: parsed.data.theme,
     background_music: resolvedMusic,
     celebration_date: celebrationDate,

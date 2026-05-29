@@ -9,6 +9,7 @@ import { formatDate } from "@/lib/time";
 import { DraftCard, EmptyState } from "./draft-card";
 import { DeleteUnpaidButton } from "./delete-unpaid-button";
 import { rehydrateDraft, type SavedDraft } from "@/lib/draft/draft";
+import { BIRTHDAY_ONLY } from "@/lib/features";
 
 function coverUrl(path: string | null | undefined) {
   if (!path) return null;
@@ -33,6 +34,14 @@ export default async function Dashboard() {
       .maybeSingle(),
   ]);
   const pages = pagesQ.data;
+
+  // Birthdays-only: each user gets a single birthday page. Once they have one,
+  // hide the "create" CTAs. The create flow lives at /create/me.
+  const hasBirthdayPage =
+    BIRTHDAY_ONLY && (pages ?? []).some((p) => p.is_self && p.event_type === "birthday");
+  const createHref = BIRTHDAY_ONLY ? "/create/me" : "/create";
+  const createLabel = BIRTHDAY_ONLY ? "Create my birthday page" : "New celebration";
+  const showCreate = !hasBirthdayPage;
 
   // Sealed pages hide their wall — even from the owner. But the owner can still
   // see how many messages/gifts have landed (counts only, no content/amount).
@@ -73,9 +82,11 @@ export default async function Dashboard() {
         <header className="py-5 md:py-7 flex items-center justify-between border-b border-ink/8">
           <Link href="/" className="serif text-xl md:text-2xl text-ink">Spendbox</Link>
           <div className="flex items-center gap-4">
-            <Link href="/create" className="btn-accent shadow-soft hidden md:inline-flex gap-2">
-              <Plus className="size-4" /> New celebration
-            </Link>
+            {showCreate && (
+              <Link href={createHref} className="btn-accent shadow-soft hidden md:inline-flex gap-2">
+                <Plus className="size-4" /> {createLabel}
+              </Link>
+            )}
             <Link
               href="/dashboard/settings"
               className="text-sm text-ink/55 hover:text-ink transition inline-flex items-center gap-1.5"
@@ -97,7 +108,7 @@ export default async function Dashboard() {
 
           <div className="mt-7 md:mt-8 grid sm:grid-cols-2 gap-4">
             {draft && <DraftCard draft={draft.draft} updatedAt={draft.updatedAt} />}
-            <EmptyState hasPages={!!pages?.length} hasDraft={!!draft} />
+            {showCreate && <EmptyState hasPages={!!pages?.length} hasDraft={!!draft} />}
             {pages?.map((p, i) => {
               const cover = coverUrl(p.cover_photo_path);
               const sealed = isSealedNow(p);
@@ -171,9 +182,11 @@ export default async function Dashboard() {
       </div>
 
       {/* Mobile FAB */}
-      <Link href="/create" className="btn-accent fixed bottom-6 right-6 shadow-glow z-20 md:hidden gap-2">
-        <Plus className="size-4" /> New
-      </Link>
+      {showCreate && (
+        <Link href={createHref} className="btn-accent fixed bottom-6 right-6 shadow-glow z-20 md:hidden gap-2">
+          <Plus className="size-4" /> {BIRTHDAY_ONLY ? "Birthday" : "New"}
+        </Link>
+      )}
     </main>
   );
 }

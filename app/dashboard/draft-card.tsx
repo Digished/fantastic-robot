@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Pencil, Plus, X } from "lucide-react";
 import { eventLabel, type PageDraft } from "@/components/page-editor/types";
+import { BIRTHDAY_ONLY } from "@/lib/features";
 
 function coverUrl(path: string | null | undefined) {
   if (!path) return null;
@@ -100,9 +101,14 @@ export function EmptyState({ hasPages, hasDraft }: { hasPages: boolean; hasDraft
   return (
     <div className="sm:col-span-2 card text-center py-12">
       <p className="serif text-3xl text-ink">Nothing here yet.</p>
-      <p className="text-ink/55 mt-3 text-sm">Build a beautiful page in two minutes.</p>
-      <Link href="/create" className="btn-accent mt-6 inline-flex">
-        <Plus className="size-4 mr-1" /> Create your first page
+      <p className="text-ink/55 mt-3 text-sm">
+        {BIRTHDAY_ONLY
+          ? "Add your date of birth and your birthday page sets itself up."
+          : "Build a beautiful page in two minutes."}
+      </p>
+      <Link href={BIRTHDAY_ONLY ? "/create/me" : "/create"} className="btn-accent mt-6 inline-flex">
+        <Plus className="size-4 mr-1" />
+        {BIRTHDAY_ONLY ? "Create my birthday page" : "Create your first page"}
       </Link>
     </div>
   );

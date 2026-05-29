@@ -5,6 +5,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { getBanks } from "@/lib/paystack/banks";
 import { getEffectiveTracks } from "@/lib/music/server";
 import { rehydrateDraft, type SavedDraft } from "@/lib/draft/draft";
+import { BIRTHDAY_ONLY } from "@/lib/features";
 import { CreateForm } from "./form";
 
 export default async function CreatePage({
@@ -13,6 +14,10 @@ export default async function CreatePage({
   const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/create");
+
+  // Birthdays-only mode: there's no "who's this for?" choice and no creating
+  // for someone else — everyone lands on their own birthday page.
+  if (BIRTHDAY_ONLY) redirect("/create/me");
 
   const { for: forWhom } = await searchParams;
 

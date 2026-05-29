@@ -11,9 +11,11 @@ import type { MusicTrack } from "@/lib/music";
 import { uploadWithProgress } from "@/lib/upload";
 import { AddressFormFields, BLANK_ADDRESS, type AddressDraft } from "@/components/address-form-fields";
 import type { ShippingAddress } from "@/lib/validation/schemas";
+import { BIRTHDAY_ONLY } from "@/lib/features";
 
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "webp"];
 
+// Kept for when BIRTHDAY_ONLY is off — the full set of self-page occasions.
 const EVENT_OPTIONS: { value: string; label: string }[] = [
   { value: "birthday", label: "Birthday (renews every year)" },
   { value: "graduation", label: "Graduation" },
@@ -109,6 +111,7 @@ export function SelfCreateForm({
   initialBankCode,
   initialAccountNumber,
   initialAccountName,
+  initialDateOfBirth = "",
   savedAddresses,
 }: {
   defaultName: string;
@@ -117,6 +120,7 @@ export function SelfCreateForm({
   initialBankCode: string;
   initialAccountNumber: string;
   initialAccountName: string;
+  initialDateOfBirth?: string;
   savedAddresses: ShippingAddress[];
 }) {
   const [state, dispatch, pending] = useActionState<CreateState, FormData>(createSelfCelebration, {});
@@ -125,7 +129,7 @@ export function SelfCreateForm({
   const [title, setTitle] = useState(
     defaultName ? `${defaultName}'s Birthday` : "",
   );
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(initialDateOfBirth);
   const [theme, setTheme] = useState<Theme>("ivory");
   const [music, setMusic] = useState<string | null>(null);
   const [trackList, setTrackList] = useState<MusicTrack[]>(tracks);
@@ -232,23 +236,27 @@ export function SelfCreateForm({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <label className="label" htmlFor="eventType">Occasion</label>
-        <select
-          id="eventType"
-          className="field"
-          value={eventType}
-          onChange={(e) => setEventType(e.target.value)}
-        >
-          {EVENT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </div>
+      {/* Occasion picker — only when the full multi-event product is enabled.
+          In birthdays-only mode the type is fixed to "birthday". */}
+      {!BIRTHDAY_ONLY && (
+        <div className="space-y-1.5">
+          <label className="label" htmlFor="eventType">Occasion</label>
+          <select
+            id="eventType"
+            className="field"
+            value={eventType}
+            onChange={(e) => setEventType(e.target.value)}
+          >
+            {EVENT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <label className="label" htmlFor="date">
-          {eventType === "birthday" ? "Your birthday" : "The date"}
+          {eventType === "birthday" ? "Your date of birth" : "The date"}
         </label>
         <input
           id="date"
@@ -259,7 +267,7 @@ export function SelfCreateForm({
         />
         <p className="text-xs text-ink/45">
           {eventType === "birthday"
-            ? "We'll celebrate the next one and renew it every year."
+            ? "We'll celebrate your next birthday and renew it every year."
             : "Must be at least 4 days away."}
         </p>
       </div>
