@@ -1,11 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
 
 function daysInMonth(month: number, year: number): number {
   if (!month) return 31;
@@ -16,8 +20,9 @@ function daysInMonth(month: number, year: number): number {
 
 /**
  * A clean date-of-birth picker laid out as Day / Month / Year (dd/mm/yyyy),
- * avoiding the locale-dependent and clunky native <input type="date">.
- * Emits a "YYYY-MM-DD" string (or "" until all three parts are chosen).
+ * avoiding the locale-dependent native <input type="date">. Keeps its own
+ * part-state so partial selections aren't lost, and emits a "YYYY-MM-DD" string
+ * to the parent only once all three parts are chosen ("" otherwise).
  */
 export function DateOfBirthPicker({
   value,
@@ -28,31 +33,30 @@ export function DateOfBirthPicker({
   onChange: (value: string) => void;
   id?: string;
 }) {
-  const [y, m, d] = value
-    ? value.split("-").map((n) => Number(n))
-    : [0, 0, 0];
-  const year = y || 0;
-  const month = m || 0;
-  const day = d || 0;
+  const [day, setDay] = useState(0);
+  const [month, setMonth] = useState(0);
+  const [year, setYear] = useState(0);
+
+  // Sync from an externally provided value (edit/settings prefill).
+  useEffect(() => {
+    if (!value) return;
+    const [y, m, d] = value.split("-").map((n) => Number(n));
+    if (y) setYear(y);
+    if (m) setMonth(m);
+    if (d) setDay(d);
+  }, [value]);
 
   const currentYear = new Date().getUTCFullYear();
-  const years = useMemo(
-    () => Array.from({ length: 120 }, (_, i) => currentYear - i),
-    [currentYear],
-  );
-  const days = useMemo(
-    () => Array.from({ length: daysInMonth(month, year) }, (_, i) => i + 1),
-    [month, year],
-  );
+  const years = Array.from({ length: 120 }, (_, i) => currentYear - i);
+  const days = Array.from({ length: daysInMonth(month, year) }, (_, i) => i + 1);
 
-  function emit(nd: number, nm: number, ny: number) {
-    if (nd && nm && ny) {
-      // Clamp the day to the chosen month (e.g. 31 → 30, or Feb 29/28).
-      const dd = Math.min(nd, daysInMonth(nm, ny));
-      onChange(`${ny}-${String(nm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`);
-    } else {
-      onChange("");
-    }
+  function update(nd: number, nm: number, ny: number) {
+    // Clamp the day to the chosen month (e.g. 31 → 30, or Feb 29/28).
+    const clamped = nd && nm ? Math.min(nd, daysInMonth(nm, ny)) : nd;
+    setDay(clamped);
+    setMonth(nm);
+    setYear(ny);
+    onChange(clamped && nm && ny ? `${ny}-${pad(nm)}-${pad(clamped)}` : "");
   }
 
   return (
@@ -61,7 +65,7 @@ export function DateOfBirthPicker({
         className="field"
         aria-label="Day"
         value={day || ""}
-        onChange={(e) => emit(Number(e.target.value), month, year)}
+        onChange={(e) => update(Number(e.target.value), month, year)}
       >
         <option value="">Day</option>
         {days.map((dd) => (
@@ -72,7 +76,7 @@ export function DateOfBirthPicker({
         className="field"
         aria-label="Month"
         value={month || ""}
-        onChange={(e) => emit(day, Number(e.target.value), year)}
+        onChange={(e) => update(day, Number(e.target.value), year)}
       >
         <option value="">Month</option>
         {MONTHS.map((label, i) => (
@@ -83,7 +87,7 @@ export function DateOfBirthPicker({
         className="field"
         aria-label="Year"
         value={year || ""}
-        onChange={(e) => emit(day, month, Number(e.target.value))}
+        onChange={(e) => update(day, month, Number(e.target.value))}
       >
         <option value="">Year</option>
         {years.map((yy) => (

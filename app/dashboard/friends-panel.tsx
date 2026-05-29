@@ -69,6 +69,24 @@ export function FriendsPanel({
       router.refresh();
     });
   }
+
+  // Send a request (or accept a reverse one) and reflect it in the result row.
+  function addPerson(p: PersonResult) {
+    startTransition(async () => {
+      const res = await sendFriendRequest(p.id);
+      if (res?.error) { window.alert(res.error); return; }
+      setResults((prev) =>
+        prev
+          ? prev.map((x) =>
+              x.id === p.id
+                ? { ...x, relation: x.relation === "incoming" ? "friend" : "outgoing" }
+                : x,
+            )
+          : prev,
+      );
+      router.refresh();
+    });
+  }
   function runSearch(q: string) {
     setQuery(q);
     if (q.trim().length < 2) { setResults(null); return; }
@@ -197,7 +215,7 @@ export function FriendsPanel({
                     ) : p.relation === "outgoing" ? (
                       <span className="text-xs text-ink/45 inline-flex items-center gap-1"><Clock className="size-3.5" /> Sent</span>
                     ) : (
-                      <button className="btn-outline text-xs py-1.5 inline-flex items-center gap-1" disabled={pending} onClick={() => act(() => sendFriendRequest(p.id))}>
+                      <button className="btn-outline text-xs py-1.5 inline-flex items-center gap-1" disabled={pending} onClick={() => addPerson(p)}>
                         <UserPlus className="size-3.5" /> {p.relation === "incoming" ? "Accept" : "Add"}
                       </button>
                     )}

@@ -114,6 +114,7 @@ export function SelfCreateForm({
   initialAccountNumber,
   initialAccountName,
   initialDateOfBirth = "",
+  initialAvatarPath = null,
   savedAddresses,
 }: {
   defaultName: string;
@@ -123,6 +124,7 @@ export function SelfCreateForm({
   initialAccountNumber: string;
   initialAccountName: string;
   initialDateOfBirth?: string;
+  initialAvatarPath?: string | null;
   savedAddresses: ShippingAddress[];
 }) {
   const [state, dispatch, pending] = useActionState<CreateState, FormData>(createSelfCelebration, {});
@@ -142,9 +144,14 @@ export function SelfCreateForm({
   const [music, setMusic] = useState<string | null>(null);
   const [trackList, setTrackList] = useState<MusicTrack[]>(tracks);
 
-  // Avatar
-  const [avatarPath, setAvatarPath] = useState<string | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  // Avatar — prefilled from the profile photo set in Settings, so the two stay
+  // in sync (saving here also updates the profile avatar).
+  const [avatarPath, setAvatarPath] = useState<string | null>(initialAvatarPath);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(
+    initialAvatarPath
+      ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${initialAvatarPath}`
+      : null,
+  );
 
   // Bank (compulsory)
   const [bankCode, setBankCode] = useState(initialBankCode);

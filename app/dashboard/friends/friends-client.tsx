@@ -94,6 +94,23 @@ export function FriendsClient({
     });
   }
 
+  function addPerson(p: PersonResult) {
+    startTransition(async () => {
+      const res = await sendFriendRequest(p.id);
+      if (res?.error) { window.alert(res.error); return; }
+      setResults((prev) =>
+        prev
+          ? prev.map((x) =>
+              x.id === p.id
+                ? { ...x, relation: x.relation === "incoming" ? "friend" : "outgoing" }
+                : x,
+            )
+          : prev,
+      );
+      router.refresh();
+    });
+  }
+
   // Invite link + email
   const [copied, setCopied] = useState(false);
   const [email, setEmail] = useState("");
@@ -155,11 +172,11 @@ export function FriendsClient({
                 ) : p.relation === "outgoing" ? (
                   <span className="text-xs text-ink/45 inline-flex items-center gap-1"><Clock className="size-3.5" /> Requested</span>
                 ) : p.relation === "incoming" ? (
-                  <button className="btn-accent text-sm py-2" disabled={pending} onClick={() => act(() => sendFriendRequest(p.id))}>
+                  <button className="btn-accent text-sm py-2" disabled={pending} onClick={() => addPerson(p)}>
                     Accept
                   </button>
                 ) : p.relation === "self" ? null : (
-                  <button className="btn-outline text-sm py-2 inline-flex items-center gap-1.5" disabled={pending} onClick={() => act(() => sendFriendRequest(p.id))}>
+                  <button className="btn-outline text-sm py-2 inline-flex items-center gap-1.5" disabled={pending} onClick={() => addPerson(p)}>
                     <UserPlus className="size-3.5" /> Add
                   </button>
                 )}
