@@ -7,7 +7,7 @@ import { logout } from "@/app/login/actions";
 import { formatNaira } from "@/lib/utils";
 import { formatDate } from "@/lib/time";
 import { DraftCard, EmptyState } from "./draft-card";
-import { DeleteUnpaidButton } from "./delete-unpaid-button";
+import { DeleteCelebrationButton } from "./delete-celebration-button";
 import { rehydrateDraft, type SavedDraft } from "@/lib/draft/draft";
 import { BIRTHDAY_ONLY } from "@/lib/features";
 
@@ -130,17 +130,19 @@ export default async function Dashboard() {
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
                     {p.is_paid_for_creation === false ? (
-                      <>
-                        <span className="absolute top-3 right-3 bg-amber-500 text-white rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest">
-                          Awaiting payment
-                        </span>
-                        <DeleteUnpaidButton slug={p.slug} title={p.title} />
-                      </>
+                      <span className="absolute top-3 right-3 bg-amber-500 text-white rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest">
+                        Awaiting payment
+                      </span>
                     ) : p.status !== "active" && (
                       <span className="absolute top-3 right-3 glass-dark text-white rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest">
                         {p.status}
                       </span>
                     )}
+                    <DeleteCelebrationButton
+                      slug={p.slug}
+                      title={p.title}
+                      raisedKobo={Number(p.total_raised_kobo ?? 0)}
+                    />
                     <div className="absolute inset-x-0 bottom-0 p-4 text-white">
                       <p className="text-[10px] uppercase tracking-widest text-white/75">
                         {p.event_type.replace(/_/g, " ")}
