@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Settings, Lock, MessageCircle, Gift, Users, Cake } from "lucide-react";
+import { Plus, Settings, Users, Lock, MessageCircle, Gift } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { logout } from "@/app/login/actions";
@@ -8,14 +8,16 @@ import { formatNaira } from "@/lib/utils";
 import { formatDate } from "@/lib/time";
 import { DraftCard, EmptyState } from "./draft-card";
 import { DeleteCelebrationButton } from "./delete-celebration-button";
+import { FriendsPanel } from "./friends-panel";
+import { MobileNav } from "./mobile-nav";
 import { rehydrateDraft, type SavedDraft } from "@/lib/draft/draft";
 import { BIRTHDAY_ONLY } from "@/lib/features";
-import { getFriendIds, getPublicProfiles, daysUntilBirthday, profileName } from "@/lib/friends";
-
-function avatarThumb(path: string | null) {
-  if (!path) return null;
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${path}`;
-}
+import {
+  ensureInviteToken,
+  getFriendsWithBirthdays,
+  getIncomingRequests,
+} from "@/lib/friends";
+import { env } from "@/lib/env";
 
 function coverUrl(path: string | null | undefined) {
   if (!path) return null;
@@ -68,22 +70,15 @@ export default async function Dashboard() {
     .maybeSingle();
   const dateOfBirth = (dobRow as { date_of_birth?: string | null } | null)?.date_of_birth ?? null;
 
-  // Friends: pending-request badge + an upcoming-birthdays preview strip.
+  // Friends: list (with birthday countdowns), incoming requests, invite link.
   const admin = supabaseAdmin();
-  const friendIds = await getFriendIds(user.id);
-  const [{ count: pendingRequests }, friendProfiles] = await Promise.all([
-    admin
-      .from("friend_requests")
-      .select("*", { count: "exact", head: true })
-      .eq("addressee_id", user.id)
-      .eq("status", "pending"),
-    getPublicProfiles(friendIds),
+  const [friends, incoming, inviteToken] = await Promise.all([
+    getFriendsWithBirthdays(user.id),
+    getIncomingRequests(user.id),
+    ensureInviteToken(user.id),
   ]);
-  const upcoming = friendProfiles
-    .map((p) => ({ p, days: p.dateOfBirth ? daysUntilBirthday(p.dateOfBirth) : null }))
-    .filter((x): x is { p: typeof x.p; days: number } => x.days !== null)
-    .sort((a, b) => a.days - b.days)
-    .slice(0, 6);
+  const pendingRequests = incoming.length;
+  const inviteUrl = `${env.appUrl()}/i/${inviteToken}`;
 
   // Sealed pages hide their wall — even from the owner. But the owner can still
   // see how many messages/gifts have landed (counts only, no content/amount).
@@ -122,7 +117,15 @@ export default async function Dashboard() {
         {/* Header */}
         <header className="py-5 md:py-7 flex items-center justify-between border-b border-ink/8">
           <Link href="/" className="serif text-xl md:text-2xl text-ink">Spendbox</Link>
-          <div className="flex items-center gap-4">
+
+          <MobileNav
+            showCreate={showCreate}
+            createHref={createHref}
+            createLabel={createLabel}
+            pendingRequests={pendingRequests}
+          />
+
+          <div className="hidden md:flex items-center gap-4">
             {showCreate && (
               <Link href={createHref} className="btn-accent shadow-soft hidden md:inline-flex gap-2">
                 <Plus className="size-4" /> {createLabel}
@@ -159,39 +162,6 @@ export default async function Dashboard() {
           <h1 className="fade-up serif text-4xl md:text-6xl text-ink">
             Your<br className="md:hidden" /> celebrations
           </h1>
-
-          {/* Upcoming friend birthdays */}
-          {upcoming.length > 0 && (
-            <Link
-              href="/dashboard/friends"
-              className="mt-6 flex items-center gap-4 rounded-3xl2 bg-white shadow-ring px-4 py-3 hover:shadow-card transition fade-up"
-            >
-              <span className="text-[10px] uppercase tracking-widest text-ink/45 inline-flex items-center gap-1.5 shrink-0">
-                <Cake className="size-3.5 text-[var(--accent)]" /> Upcoming
-              </span>
-              <div className="flex items-center gap-4 overflow-x-auto">
-                {upcoming.map(({ p, days }) => {
-                  const url = avatarThumb(p.avatarPath);
-                  const label = days === 0 ? "today" : days === 1 ? "tomorrow" : `${days}d`;
-                  return (
-                    <span key={p.id} className="flex items-center gap-2 shrink-0">
-                      <span className="size-8 rounded-full overflow-hidden bg-ink/8 grid place-items-center">
-                        {url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={url} alt="" className="size-full object-cover" />
-                        ) : (
-                          <span className="text-xs text-ink/40">{profileName(p).replace("@", "").charAt(0).toUpperCase()}</span>
-                        )}
-                      </span>
-                      <span className="text-xs text-ink/70 whitespace-nowrap">
-                        {profileName(p).split(" ")[0]} · {label}
-                      </span>
-                    </span>
-                  );
-                })}
-              </div>
-            </Link>
-          )}
 
           <div className="mt-7 md:mt-8 grid sm:grid-cols-2 gap-4">
             {draft && <DraftCard draft={draft.draft} updatedAt={draft.updatedAt} />}
@@ -242,11 +212,7 @@ export default async function Dashboard() {
                       raisedKobo={Number(p.total_raised_kobo ?? 0)}
                     />
                     <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                      <p className="text-[10px] uppercase tracking-widest text-white/75">
-                        {p.event_type.replace(/_/g, " ")}
-                      </p>
-                      <p className="serif text-2xl leading-tight mt-0.5 truncate">{p.title}</p>
-                      <p className="text-sm text-white/80">For {p.recipient_name}</p>
+                      <p className="serif text-2xl leading-tight truncate">{p.title}</p>
                     </div>
                   </div>
 
@@ -278,6 +244,9 @@ export default async function Dashboard() {
               );
             })}
           </div>
+
+          {/* Friends */}
+          <FriendsPanel inviteUrl={inviteUrl} friends={friends} incoming={incoming} />
         </div>
       </div>
 

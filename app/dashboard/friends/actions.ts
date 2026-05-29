@@ -16,6 +16,8 @@ import {
   createFriendship,
   acceptInviteForUser,
   getPublicProfile,
+  getUserBirthdayPage,
+  daysUntilBirthday,
   profileName,
   searchUsers,
   type PublicProfile,
@@ -37,9 +39,11 @@ async function emailFor(userId: string): Promise<string | null> {
   return (data?.email as string | undefined) ?? null;
 }
 
-/** Search results annotated with the caller's relationship to each person. */
+/** Search results annotated with relationship + their birthday page (if any). */
 export type PersonResult = PublicProfile & {
   relation: "self" | "friend" | "incoming" | "outgoing" | "none";
+  slug: string | null;
+  days: number | null;
 };
 
 export async function searchPeople(query: string): Promise<PersonResult[]> {
@@ -64,16 +68,23 @@ export async function searchPeople(query: string): Promise<PersonResult[]> {
   const incoming = new Set(
     (reqs ?? []).filter((r) => r.addressee_id === me).map((r) => r.requester_id as string),
   );
-  return profiles.map((p) => ({
-    ...p,
-    relation: friendSet.has(p.id)
-      ? "friend"
-      : outgoing.has(p.id)
-        ? "outgoing"
-        : incoming.has(p.id)
-          ? "incoming"
-          : "none",
-  }));
+  return Promise.all(
+    profiles.map(async (p) => {
+      const page = p.dateOfBirth ? await getUserBirthdayPage(p.id) : null;
+      return {
+        ...p,
+        relation: friendSet.has(p.id)
+          ? "friend"
+          : outgoing.has(p.id)
+            ? "outgoing"
+            : incoming.has(p.id)
+              ? "incoming"
+              : "none",
+        slug: page?.slug ?? null,
+        days: p.dateOfBirth ? daysUntilBirthday(p.dateOfBirth) : null,
+      } as PersonResult;
+    }),
+  );
 }
 
 export async function sendFriendRequest(targetId: string): Promise<FriendActionState> {

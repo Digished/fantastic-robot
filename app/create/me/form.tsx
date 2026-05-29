@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Lock, Check, Loader2, Camera, User, MapPin } from "lucide-react";
+import { Lock, Check, Loader2, Camera, User, MapPin, ArrowLeft, ArrowRight } from "lucide-react";
+import { StepProgress } from "@/components/step-progress";
 import { createSelfCelebration, type CreateState } from "../actions";
 import { type Theme } from "@/lib/themes";
 import { ThemePickerButton } from "@/components/page-editor/theme-picker-button";
@@ -228,8 +229,18 @@ export function SelfCreateForm({
   const isFromSaved = (addr: ShippingAddress) =>
     savedAddresses.some((a) => a.id && a.id === addr.id);
 
+  // ── Multi-step wizard ──
+  const steps = ["About you", "Look", "Gifts"];
+  const [step, setStep] = useState(0);
+  const stepValid = step === 0 ? !!avatarPath && !!date : true;
+
   return (
     <div className="space-y-6">
+      <StepProgress steps={steps} current={step} />
+
+      {/* ── Step 1: About you ── */}
+      {step === 0 && (
+      <div className="space-y-6 fade-up">
       {/* Profile photo — required */}
       <div className="space-y-1">
         <AvatarUploader
@@ -286,7 +297,12 @@ export function SelfCreateForm({
             : "Must be at least 4 days away."}
         </p>
       </div>
+      </div>
+      )}
 
+      {/* ── Step 2: Look ── */}
+      {step === 1 && (
+      <div className="space-y-6 fade-up">
       <div className="space-y-1.5">
         <label className="label">Theme</label>
         <ThemePickerButton value={theme} onChange={setTheme} />
@@ -300,9 +316,14 @@ export function SelfCreateForm({
         allowUpload
         onAddTrack={(t) => setTrackList((prev) => [t, ...prev])}
       />
+      </div>
+      )}
 
+      {/* ── Step 3: Gifts ── */}
+      {step === 2 && (
+      <div className="space-y-6 fade-up">
       {/* Payout bank — compulsory */}
-      <div className="space-y-3 pt-2 border-t border-ink/8">
+      <div className="space-y-3">
         <div>
           <h2 className="serif text-xl text-ink">Payout account</h2>
           <p className="text-xs text-ink/45 mt-1">
@@ -469,21 +490,49 @@ export function SelfCreateForm({
         <Lock className="size-4 mt-0.5 shrink-0 text-[var(--accent)]" />
         Messages and gifts stay sealed — nobody (not even you) sees them until the day.
       </p>
+      </div>
+      )}
 
       {state.error && (
         <p className="text-sm rounded-xl bg-red-50 text-red-700 px-3 py-2">{state.error}</p>
       )}
 
-      <button
-        type="button"
-        onClick={save}
-        disabled={pending || !!state.redirectTo || !ready}
-        className="btn-accent shadow-soft w-full py-4 disabled:opacity-60"
-      >
-        {pending || state.redirectTo ? "Creating…" : "Create my page"}
-      </button>
-      {missingHint && (
-        <p className="text-xs text-ink/45 text-center -mt-3">{missingHint}</p>
+      {/* ── Wizard navigation ── */}
+      <div className="flex items-center gap-3 pt-2">
+        {step > 0 && (
+          <button
+            type="button"
+            onClick={() => setStep((s) => s - 1)}
+            className="btn-outline py-3.5 inline-flex items-center gap-1.5"
+          >
+            <ArrowLeft className="size-4" /> Back
+          </button>
+        )}
+        {step < steps.length - 1 ? (
+          <button
+            type="button"
+            onClick={() => setStep((s) => s + 1)}
+            disabled={!stepValid}
+            className="btn-accent shadow-soft flex-1 py-3.5 inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+          >
+            Continue <ArrowRight className="size-4" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={save}
+            disabled={pending || !!state.redirectTo || !ready}
+            className="btn-accent shadow-soft flex-1 py-3.5 disabled:opacity-60"
+          >
+            {pending || state.redirectTo ? "Creating…" : "Create my page"}
+          </button>
+        )}
+      </div>
+      {step === 0 && !stepValid && (
+        <p className="text-xs text-ink/45 text-center -mt-1">Add a photo and your date of birth to continue.</p>
+      )}
+      {step === steps.length - 1 && missingHint && (
+        <p className="text-xs text-ink/45 text-center -mt-1">{missingHint}</p>
       )}
     </div>
   );

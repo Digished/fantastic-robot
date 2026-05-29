@@ -129,6 +129,62 @@ export async function getFriendIds(userId: string): Promise<string[]> {
   return (data ?? []).map((r) => r.friend_id as string);
 }
 
+// A friend plus their birthday page + countdown, for feeds and lists.
+export type FriendBirthday = {
+  profile: PublicProfile;
+  slug: string | null;
+  days: number | null;
+  turning: number | null;
+};
+export type RequestPerson = { id: string; profile: PublicProfile };
+
+export async function getFriendsWithBirthdays(userId: string): Promise<FriendBirthday[]> {
+  const profiles = await getPublicProfiles(await getFriendIds(userId));
+  const items = await Promise.all(
+    profiles.map(async (profile) => {
+      const page = profile.dateOfBirth ? await getUserBirthdayPage(profile.id) : null;
+      const days = profile.dateOfBirth ? daysUntilBirthday(profile.dateOfBirth) : null;
+      const turning = profile.dateOfBirth ? turningAge(profile.dateOfBirth) : null;
+      return { profile, slug: page?.slug ?? null, days, turning } as FriendBirthday;
+    }),
+  );
+  return items.sort((a, b) => (a.days ?? 9999) - (b.days ?? 9999));
+}
+
+export async function getIncomingRequests(userId: string): Promise<RequestPerson[]> {
+  const admin = supabaseAdmin();
+  const { data } = await admin
+    .from("friend_requests")
+    .select("id, requester_id")
+    .eq("addressee_id", userId)
+    .eq("status", "pending");
+  const profiles = await getPublicProfiles((data ?? []).map((r) => r.requester_id as string));
+  const byId = new Map(profiles.map((p) => [p.id, p]));
+  return (data ?? [])
+    .map((r) => {
+      const profile = byId.get(r.requester_id as string);
+      return profile ? { id: r.id as string, profile } : null;
+    })
+    .filter((x): x is RequestPerson => x !== null);
+}
+
+export async function getOutgoingRequests(userId: string): Promise<RequestPerson[]> {
+  const admin = supabaseAdmin();
+  const { data } = await admin
+    .from("friend_requests")
+    .select("id, addressee_id")
+    .eq("requester_id", userId)
+    .eq("status", "pending");
+  const profiles = await getPublicProfiles((data ?? []).map((r) => r.addressee_id as string));
+  const byId = new Map(profiles.map((p) => [p.id, p]));
+  return (data ?? [])
+    .map((r) => {
+      const profile = byId.get(r.addressee_id as string);
+      return profile ? { id: r.id as string, profile } : null;
+    })
+    .filter((x): x is RequestPerson => x !== null);
+}
+
 export async function getPublicProfiles(ids: string[]): Promise<PublicProfile[]> {
   if (!ids.length) return [];
   const admin = supabaseAdmin();
