@@ -130,7 +130,9 @@ export function ProfileForm({
   const avatarUrl = publicUrl(avatarPath);
 
   return (
-    <form action={action} className="space-y-7">
+    <form action={action} className="space-y-5">
+      <section className="card space-y-6">
+        <h2 className="serif text-xl text-ink">Profile</h2>
       {/* Avatar */}
       <div className="flex items-center gap-4">
         <div className="size-20 rounded-full overflow-hidden bg-ink/8 grid place-items-center shrink-0">
@@ -203,9 +205,10 @@ export function ProfileForm({
         </p>
         <input type="hidden" name="dateOfBirth" value={dateOfBirth} />
       </div>
+      </section>
 
       {/* Bank details */}
-      <div className="space-y-3 pt-2 border-t border-ink/8">
+      <section className="card space-y-3">
         <div>
           <h2 className="serif text-xl text-ink">Payout account</h2>
           <p className="text-xs text-ink/45 mt-1">
@@ -259,14 +262,14 @@ export function ProfileForm({
           </p>
         )}
         {bankError && <p className="text-sm text-red-600">{bankError}</p>}
-      </div>
+      </section>
 
       {/* Delivery addresses */}
-      <div className="space-y-3 pt-2 border-t border-ink/8">
+      <section className="card space-y-3">
         <div>
           <h2 className="serif text-xl text-ink">Delivery addresses</h2>
           <p className="text-xs text-ink/45 mt-1">
-            Where friends can send you physical gifts. Shown on your sealed celebration pages.
+            Where friends can send you a physical gift.
           </p>
         </div>
 
@@ -344,7 +347,7 @@ export function ProfileForm({
         )}
 
         <input type="hidden" name="shippingAddresses" value={JSON.stringify(addresses)} />
-      </div>
+      </section>
 
       {state.error && (
         <p className="text-sm rounded-xl bg-red-50 text-red-700 px-3 py-2">{state.error}</p>

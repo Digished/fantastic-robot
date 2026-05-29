@@ -87,6 +87,17 @@ export async function searchPeople(query: string): Promise<PersonResult[]> {
   );
 }
 
+/** Add a friend instantly — no request, no confirmation. */
+export async function addFriend(targetId: string): Promise<FriendActionState> {
+  const me = await currentUserId();
+  if (!me) return { error: "Please sign in again." };
+  if (targetId === me) return { error: "That's you." };
+  await createFriendship(me, targetId);
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/friends");
+  return { ok: true };
+}
+
 export async function sendFriendRequest(targetId: string): Promise<FriendActionState> {
   const me = await currentUserId();
   if (!me) return { error: "Please sign in again." };

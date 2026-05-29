@@ -296,7 +296,7 @@ export function SealedCountdown({
   const milestoneProgress = Math.min((totalSurprises / milestone) * 100, 100);
 
   // Tab system
-  const hasWishlistContent = wishlist.length > 0 || !!shippingAddress;
+  const hasWishlistContent = wishlist.length > 0;
   const tabIds: TabId[] = ["home", ...(hasWishlistContent ? ["wishlist" as TabId] : []), "wall"];
   const wallTabIndex = tabIds.length - 1;
   const [activeTab, setActiveTab] = useState(0);
@@ -548,30 +548,7 @@ export function SealedCountdown({
                 </div>
               )}
 
-              {shippingAddress && (
-                <div className="glass-dark rounded-2xl p-4">
-                  <p className="text-[10px] uppercase tracking-widest text-white/60 mb-2.5 inline-flex items-center gap-1.5">
-                    <MapPin className="size-3.5" /> Send a physical gift
-                  </p>
-                  <div className="text-sm text-white/90 space-y-0.5">
-                    {shippingAddress.label && (
-                      <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1">
-                        {shippingAddress.label}
-                      </p>
-                    )}
-                    <p className="font-medium">{shippingAddress.fullName}</p>
-                    <p className="text-white/70">{shippingAddress.line1}</p>
-                    {shippingAddress.line2 && <p className="text-white/70">{shippingAddress.line2}</p>}
-                    <p className="text-white/70">{shippingAddress.city}, {shippingAddress.state}</p>
-                    <p className="text-white/70">{shippingAddress.country}</p>
-                    {shippingAddress.phone && (
-                      <p className="text-white/60 mt-1">{shippingAddress.phone}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {wishlist.length === 0 && !shippingAddress && (
+              {wishlist.length === 0 && (
                 <p className="text-center text-white/50 text-sm py-8">Nothing here yet.</p>
               )}
             </div>

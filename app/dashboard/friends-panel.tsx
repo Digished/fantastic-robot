@@ -3,16 +3,9 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Search, UserPlus, Check, Clock, Copy, Mail, Cake, Loader2, X, Users } from "lucide-react";
-import type { PublicProfile, FriendBirthday, RequestPerson } from "@/lib/friends";
-import {
-  searchPeople,
-  sendFriendRequest,
-  respondToRequest,
-  unfriend,
-  inviteByEmail,
-  type PersonResult,
-} from "./friends/actions";
+import { Search, UserPlus, Check, Copy, Cake, Loader2, X, Users } from "lucide-react";
+import type { PublicProfile, FriendBirthday } from "@/lib/friends";
+import { searchPeople, addFriend, unfriend, type PersonResult } from "./friends/actions";
 
 function avatarUrl(path: string | null) {
   if (!path) return null;
@@ -45,11 +38,9 @@ function Avatar({ p, size = 44 }: { p: PublicProfile; size?: number }) {
 export function FriendsPanel({
   inviteUrl,
   friends,
-  incoming,
 }: {
   inviteUrl: string;
   friends: FriendBirthday[];
-  incoming: RequestPerson[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -59,34 +50,7 @@ export function FriendsPanel({
   const [results, setResults] = useState<PersonResult[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [email, setEmail] = useState("");
-  const [emailSent, setEmailSent] = useState(false);
 
-  function act(fn: () => Promise<{ error?: string }>) {
-    startTransition(async () => {
-      const res = await fn();
-      if (res?.error) { window.alert(res.error); return; }
-      router.refresh();
-    });
-  }
-
-  // Send a request (or accept a reverse one) and reflect it in the result row.
-  function addPerson(p: PersonResult) {
-    startTransition(async () => {
-      const res = await sendFriendRequest(p.id);
-      if (res?.error) { window.alert(res.error); return; }
-      setResults((prev) =>
-        prev
-          ? prev.map((x) =>
-              x.id === p.id
-                ? { ...x, relation: x.relation === "incoming" ? "friend" : "outgoing" }
-                : x,
-            )
-          : prev,
-      );
-      router.refresh();
-    });
-  }
   function runSearch(q: string) {
     setQuery(q);
     if (q.trim().length < 2) { setResults(null); return; }
@@ -96,25 +60,31 @@ export function FriendsPanel({
       setSearching(false);
     });
   }
+  function addPerson(p: PersonResult) {
+    startTransition(async () => {
+      const res = await addFriend(p.id);
+      if (res?.error) { window.alert(res.error); return; }
+      setResults((prev) => (prev ? prev.map((x) => (x.id === p.id ? { ...x, relation: "friend" } : x)) : prev));
+      router.refresh();
+    });
+  }
+  function removeFriend(p: PublicProfile) {
+    if (!window.confirm(`Remove ${name(p)}?`)) return;
+    startTransition(async () => {
+      const res = await unfriend(p.id);
+      if (res?.error) { window.alert(res.error); return; }
+      router.refresh();
+    });
+  }
   function copyLink() {
     navigator.clipboard.writeText(inviteUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
   }
-  function sendInvite() {
-    if (!email.trim()) return;
-    startTransition(async () => {
-      const res = await inviteByEmail(email);
-      if (res?.error) { window.alert(res.error); return; }
-      setEmail("");
-      setEmailSent(true);
-      setTimeout(() => setEmailSent(false), 2500);
-    });
-  }
 
   return (
-    <section className="mt-10">
+    <section className="mt-12">
       <div className="flex items-center justify-between mb-4">
         <h2 className="serif text-2xl md:text-3xl text-ink inline-flex items-center gap-2">
           <Users className="size-5 text-[var(--accent)]" /> Friends
@@ -124,22 +94,6 @@ export function FriendsPanel({
         </button>
       </div>
 
-      {/* Incoming requests */}
-      {incoming.length > 0 && (
-        <div className="card mb-4 space-y-3">
-          <p className="text-[10px] uppercase tracking-widest text-ink/45">Requests</p>
-          {incoming.map((r) => (
-            <div key={r.id} className="flex items-center gap-3">
-              <Avatar p={r.profile} />
-              <p className="text-ink font-medium truncate flex-1">{name(r.profile)}</p>
-              <button className="btn-accent text-sm py-2" disabled={pending} onClick={() => act(() => respondToRequest(r.id, true))}>Accept</button>
-              <button className="btn-ghost text-sm py-2" disabled={pending} onClick={() => act(() => respondToRequest(r.id, false))}><X className="size-4" /></button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Friends list */}
       {friends.length === 0 ? (
         <div className="card text-center py-8">
           <p className="serif text-xl text-ink">No friends yet.</p>
@@ -161,11 +115,7 @@ export function FriendsPanel({
                 </p>
               </div>
               {slug && <Link href={`/c/${slug}`} className="btn-outline text-sm py-2 shrink-0">View</Link>}
-              <button
-                className="text-ink/35 hover:text-red-600 text-xs shrink-0"
-                disabled={pending}
-                onClick={() => { if (window.confirm(`Remove ${name(profile)}?`)) act(() => unfriend(profile.id)); }}
-              >
+              <button className="text-ink/35 hover:text-red-600 text-xs shrink-0" disabled={pending} onClick={() => removeFriend(profile)}>
                 Remove
               </button>
             </li>
@@ -173,7 +123,7 @@ export function FriendsPanel({
         </ul>
       )}
 
-      {/* ── Modal ── */}
+      {/* ── Find friends modal ── */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-5" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
@@ -196,7 +146,7 @@ export function FriendsPanel({
 
             {searching && <p className="text-sm text-ink/50 mt-3 inline-flex items-center gap-1.5"><Loader2 className="size-4 animate-spin" /> Searching…</p>}
             {results && results.length === 0 && !searching && (
-              <p className="text-sm text-ink/50 mt-3">No one found. Invite them by email below.</p>
+              <p className="text-sm text-ink/50 mt-3">No one found. Share your invite link below.</p>
             )}
             {results && results.length > 0 && (
               <ul className="space-y-2 mt-3">
@@ -212,11 +162,9 @@ export function FriendsPanel({
                     {p.slug && <Link href={`/c/${p.slug}`} className="text-xs text-[var(--accent)] shrink-0">View</Link>}
                     {p.relation === "friend" ? (
                       <span className="text-xs text-ink/45 inline-flex items-center gap-1"><Check className="size-3.5" /> Friends</span>
-                    ) : p.relation === "outgoing" ? (
-                      <span className="text-xs text-ink/45 inline-flex items-center gap-1"><Clock className="size-3.5" /> Sent</span>
                     ) : (
                       <button className="btn-outline text-xs py-1.5 inline-flex items-center gap-1" disabled={pending} onClick={() => addPerson(p)}>
-                        <UserPlus className="size-3.5" /> {p.relation === "incoming" ? "Accept" : "Add"}
+                        <UserPlus className="size-3.5" /> Add
                       </button>
                     )}
                   </li>
@@ -224,25 +172,15 @@ export function FriendsPanel({
               </ul>
             )}
 
-            <div className="mt-5 pt-4 border-t border-ink/8 space-y-3">
-              <div>
-                <p className="label mb-1.5">Your invite link</p>
-                <div className="flex gap-2">
-                  <input className="field text-sm flex-1" readOnly value={inviteUrl} onFocus={(e) => e.currentTarget.select()} />
-                  <button type="button" onClick={copyLink} className="btn-outline text-sm py-2 inline-flex items-center gap-1.5 shrink-0">
-                    {copied ? <Check className="size-4" /> : <Copy className="size-4" />} {copied ? "Copied" : "Copy"}
-                  </button>
-                </div>
+            <div className="mt-5 pt-4 border-t border-ink/8">
+              <p className="label mb-1.5">Your invite link</p>
+              <div className="flex gap-2">
+                <input className="field text-sm flex-1" readOnly value={inviteUrl} onFocus={(e) => e.currentTarget.select()} />
+                <button type="button" onClick={copyLink} className="btn-outline text-sm py-2 inline-flex items-center gap-1.5 shrink-0">
+                  {copied ? <Check className="size-4" /> : <Copy className="size-4" />} {copied ? "Copied" : "Copy"}
+                </button>
               </div>
-              <div>
-                <p className="label mb-1.5">Invite by email</p>
-                <div className="flex gap-2">
-                  <input className="field text-sm flex-1" type="email" placeholder="friend@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-                  <button type="button" onClick={sendInvite} disabled={pending || !email.trim()} className="btn-accent text-sm py-2 inline-flex items-center gap-1.5 shrink-0 disabled:opacity-60">
-                    <Mail className="size-4" /> {emailSent ? "Sent" : "Invite"}
-                  </button>
-                </div>
-              </div>
+              <p className="text-xs text-ink/45 mt-1">Anyone who opens this link becomes your friend.</p>
             </div>
           </div>
         </div>

@@ -1,22 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Settings, Users, Lock, MessageCircle, Gift } from "lucide-react";
+import { Plus, Settings, Users, Lock, MessageCircle, Gift, Cake } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { logout } from "@/app/login/actions";
 import { formatNaira } from "@/lib/utils";
-import { formatDate } from "@/lib/time";
+import { formatDate, timeUntil } from "@/lib/time";
 import { DraftCard, EmptyState } from "./draft-card";
 import { DeleteCelebrationButton } from "./delete-celebration-button";
 import { FriendsPanel } from "./friends-panel";
 import { MobileNav } from "./mobile-nav";
 import { rehydrateDraft, type SavedDraft } from "@/lib/draft/draft";
 import { BIRTHDAY_ONLY } from "@/lib/features";
-import {
-  ensureInviteToken,
-  getFriendsWithBirthdays,
-  getIncomingRequests,
-} from "@/lib/friends";
+import { ensureInviteToken, getFriendsWithBirthdays } from "@/lib/friends";
 import { env } from "@/lib/env";
 
 function coverUrl(path: string | null | undefined) {
@@ -63,21 +59,20 @@ export default async function Dashboard() {
 
   // The user's date of birth drives the age shown on birthday cards. Fetched in
   // its own query so a not-yet-applied migration can't break the dashboard.
-  const { data: dobRow } = await supabase
+  const { data: meRow } = await supabase
     .from("users")
-    .select("date_of_birth")
+    .select("date_of_birth, avatar_path")
     .eq("id", user.id)
     .maybeSingle();
-  const dateOfBirth = (dobRow as { date_of_birth?: string | null } | null)?.date_of_birth ?? null;
+  const dateOfBirth = (meRow as { date_of_birth?: string | null } | null)?.date_of_birth ?? null;
+  const myAvatar = (meRow as { avatar_path?: string | null } | null)?.avatar_path ?? null;
 
-  // Friends: list (with birthday countdowns), incoming requests, invite link.
+  // Friends: list (with birthday countdowns) + personal invite link.
   const admin = supabaseAdmin();
-  const [friends, incoming, inviteToken] = await Promise.all([
+  const [friends, inviteToken] = await Promise.all([
     getFriendsWithBirthdays(user.id),
-    getIncomingRequests(user.id),
     ensureInviteToken(user.id),
   ]);
-  const pendingRequests = incoming.length;
   const inviteUrl = `${env.appUrl()}/i/${inviteToken}`;
 
   // Sealed pages hide their wall — even from the owner. But the owner can still
@@ -118,12 +113,7 @@ export default async function Dashboard() {
         <header className="py-5 md:py-7 flex items-center justify-between border-b border-ink/8">
           <Link href="/" className="serif text-xl md:text-2xl text-ink">Spendbox</Link>
 
-          <MobileNav
-            showCreate={showCreate}
-            createHref={createHref}
-            createLabel={createLabel}
-            pendingRequests={pendingRequests}
-          />
+          <MobileNav showCreate={showCreate} createHref={createHref} createLabel={createLabel} />
 
           <div className="hidden md:flex items-center gap-4">
             {showCreate && (
@@ -133,16 +123,11 @@ export default async function Dashboard() {
             )}
             <Link
               href="/dashboard/friends"
-              className="relative text-sm text-ink/55 hover:text-ink transition inline-flex items-center gap-1.5"
+              className="text-sm text-ink/55 hover:text-ink transition inline-flex items-center gap-1.5"
               title="Friends"
             >
               <Users className="size-4" />
               <span className="hidden md:inline">Friends</span>
-              {!!pendingRequests && (
-                <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-[var(--accent)] text-white text-[10px] grid place-items-center">
-                  {pendingRequests}
-                </span>
-              )}
             </Link>
             <Link
               href="/dashboard/settings"
@@ -158,21 +143,17 @@ export default async function Dashboard() {
           </div>
         </header>
 
-        <div className="pt-7 md:pt-12">
-          <h1 className="fade-up serif text-4xl md:text-6xl text-ink">
-            Your<br className="md:hidden" /> celebrations
-          </h1>
-
-          <div className="mt-7 md:mt-8 grid sm:grid-cols-2 gap-4">
+        <div className="pt-7 md:pt-10">
+          <div className="grid sm:grid-cols-2 gap-4">
             {draft && <DraftCard draft={draft.draft} updatedAt={draft.updatedAt} />}
             {showCreate && <EmptyState hasPages={!!pages?.length} hasDraft={!!draft} />}
             {pages?.map((p, i) => {
               const cover = coverUrl(p.cover_photo_path);
               const sealed = isSealedNow(p);
-              const age =
-                p.is_self && p.event_type === "birthday"
-                  ? ageOn(dateOfBirth, p.celebration_date)
-                  : null;
+              const isBirthday = p.is_self && p.event_type === "birthday";
+              const age = isBirthday ? ageOn(dateOfBirth, p.celebration_date) : null;
+              const avatar = isBirthday ? coverUrl(myAvatar) : null;
+              const upcoming = new Date(p.celebration_date).getTime() > Date.now();
               return (
                 <Link
                   key={p.id}
@@ -189,14 +170,27 @@ export default async function Dashboard() {
                     ) : (
                       <div className="absolute inset-0 theme-mesh" />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-                    {/* Birthday cards with no cover show the age they're turning. */}
-                    {!cover && age !== null && (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center pb-10">
-                        <span className="text-[10px] uppercase tracking-[0.3em] text-white/70">Turning</span>
-                        <span className="serif text-7xl leading-none text-white drop-shadow">{age}</span>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" />
+
+                    {/* Celebrant avatar + age, front and centre */}
+                    {!cover && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                        {avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={avatar} alt="" className="size-16 rounded-full object-cover ring-2 ring-white/60 shadow-lg" />
+                        ) : (
+                          <span className="size-16 rounded-full bg-white/15 grid place-items-center ring-2 ring-white/40">
+                            <Cake className="size-7 text-white" />
+                          </span>
+                        )}
+                        {age !== null && (
+                          <p className="mt-2 text-white/85 text-xs uppercase tracking-[0.25em]">
+                            Turning <span className="text-white font-semibold">{age}</span>
+                          </p>
+                        )}
                       </div>
                     )}
+
                     {p.is_paid_for_creation === false ? (
                       <span className="absolute top-3 right-3 bg-amber-500 text-white rounded-full px-2.5 py-1 text-[10px] uppercase tracking-widest">
                         Awaiting payment
@@ -208,11 +202,16 @@ export default async function Dashboard() {
                     )}
                     <DeleteCelebrationButton
                       slug={p.slug}
-                      title={p.title}
+                      title={p.recipient_name}
                       raisedKobo={Number(p.total_raised_kobo ?? 0)}
                     />
-                    <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                      <p className="serif text-2xl leading-tight truncate">{p.title}</p>
+                    <div className="absolute inset-x-0 bottom-0 p-4 text-white flex items-end justify-between gap-2">
+                      <p className="serif text-2xl leading-tight truncate">{p.recipient_name}</p>
+                      {upcoming && (
+                        <span className="shrink-0 glass-dark rounded-full px-2.5 py-1 text-[11px] inline-flex items-center gap-1">
+                          <Cake className="size-3" /> {timeUntil(p.celebration_date)}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -246,7 +245,7 @@ export default async function Dashboard() {
           </div>
 
           {/* Friends */}
-          <FriendsPanel inviteUrl={inviteUrl} friends={friends} incoming={incoming} />
+          <FriendsPanel inviteUrl={inviteUrl} friends={friends} />
         </div>
       </div>
 

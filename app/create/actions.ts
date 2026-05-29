@@ -306,10 +306,9 @@ export async function createSelfCelebration(
   });
   if (error) return { error: error.message };
 
-  // Navigate client-side (the for-others flow does the same). A server-side
-  // redirect() from a useActionState action doesn't reliably commit here and
-  // leaves the form spinning.
-  return { redirectTo: `/c/${slug}` };
+  // Land back on the dashboard after creating (navigate client-side — a server
+  // redirect() from a useActionState action leaves the form spinning).
+  return { redirectTo: `/dashboard` };
 }
 
 /**
