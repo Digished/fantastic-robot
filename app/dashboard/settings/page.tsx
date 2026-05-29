@@ -20,14 +20,15 @@ export default async function SettingsPage() {
     getBanks(),
   ]);
 
-  // Date of birth in its own query so a not-yet-applied migration can't break
-  // the settings page.
-  const { data: dobRow } = await supabase
+  // Date of birth + username in their own query so a not-yet-applied migration
+  // can't break the settings page.
+  const { data: extra } = await supabase
     .from("users")
-    .select("date_of_birth")
+    .select("date_of_birth, username")
     .eq("id", user.id)
     .maybeSingle();
-  const dateOfBirth = (dobRow as { date_of_birth?: string | null } | null)?.date_of_birth ?? "";
+  const dateOfBirth = (extra as { date_of_birth?: string | null } | null)?.date_of_birth ?? "";
+  const username = (extra as { username?: string | null } | null)?.username ?? "";
 
   return (
     <main className="min-h-[100dvh] bg-white pb-28">
@@ -54,6 +55,7 @@ export default async function SettingsPage() {
             initialAccountName={profile?.account_name ?? ""}
             initialAvatarPath={profile?.avatar_path ?? null}
             initialDateOfBirth={dateOfBirth}
+            initialUsername={username}
             initialAddresses={(profile?.shipping_addresses as ShippingAddress[]) ?? []}
           />
         </div>

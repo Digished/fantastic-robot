@@ -24,6 +24,7 @@ export function ProfileForm({
   initialAccountName,
   initialAvatarPath,
   initialDateOfBirth,
+  initialUsername,
   initialAddresses,
 }: {
   initialDisplayName: string;
@@ -34,6 +35,7 @@ export function ProfileForm({
   initialAccountName: string;
   initialAvatarPath: string | null;
   initialDateOfBirth: string;
+  initialUsername: string;
   initialAddresses: ShippingAddress[];
 }) {
   const [state, action, pending] = useActionState<ProfileState, FormData>(updateProfile, {});
@@ -169,6 +171,22 @@ export function ProfileForm({
         <p className="text-xs text-ink/45">
           Shown under &ldquo;Put together by &hellip;&rdquo;. Leave blank to fall back to your email.
         </p>
+      </div>
+
+      {/* Username */}
+      <div className="space-y-1.5">
+        <label className="label" htmlFor="username">Username</label>
+        <input
+          id="username"
+          name="username"
+          className="field"
+          defaultValue={initialUsername}
+          autoComplete="username"
+          placeholder="yourname"
+          pattern="[A-Za-z0-9_]{3,20}"
+          title="3–20 letters, numbers or underscores"
+        />
+        <p className="text-xs text-ink/45">How friends find you. Letters, numbers or underscores.</p>
       </div>
 
       <div className="space-y-1.5">

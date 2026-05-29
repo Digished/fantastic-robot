@@ -24,6 +24,7 @@ import type { BlessingEntryStatus } from "@/lib/blessings/labels";
 import { BlessingCta } from "./blessing-cta";
 import { SealedCountdown } from "./sealed-countdown";
 import { ThrowbackMilestones, type PastCycle } from "./throwback-milestones";
+import { areFriends } from "@/lib/friends";
 
 export const dynamic = "force-dynamic";
 
@@ -134,9 +135,17 @@ export default async function WallPage({
       ? ((extrasRow as { sealed_theme?: string | null } | null)?.sealed_theme ?? null)
       : null;
 
+    // Offer "Add friend" to a signed-in viewer who isn't the celebrant or
+    // already a friend (self birthday pages only).
+    const addFriendTargetId =
+      page.is_self && !!user && !isCreator && !(await areFriends(user.id, page.creator_id))
+        ? page.creator_id
+        : null;
+
     return (
       <SealedCountdown
         slug={page.slug}
+        addFriendTargetId={addFriendTargetId}
         title={page.title}
         recipientName={page.recipient_name}
         eventLabel={page.event_type.replace(/_/g, " ")}

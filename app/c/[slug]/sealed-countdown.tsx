@@ -9,6 +9,7 @@ import {
 import { formatDate } from "@/lib/time";
 import { Sparkles } from "@/components/sparkles";
 import { ShareBar } from "./share-bar";
+import { AddFriendButton } from "./add-friend-button";
 import { NavLoadingLink } from "@/components/nav-loading-link";
 import type { BlessingEntryStatus } from "@/lib/blessings/labels";
 import { BlessingCta } from "./blessing-cta";
@@ -208,6 +209,7 @@ export function SealedCountdown({
   contributorFirstNames,
   shippingAddress,
   sealedTheme,
+  addFriendTargetId,
 }: {
   slug: string;
   title: string;
@@ -230,6 +232,7 @@ export function SealedCountdown({
   contributorFirstNames: string[];
   shippingAddress: ShippingAddress | null;
   sealedTheme?: string | null;
+  addFriendTargetId?: string | null;
 }) {
   const target = new Date(celebrationDate).getTime();
   const [now, setNow] = useState(() => Date.now());
@@ -336,14 +339,16 @@ export function SealedCountdown({
           <Link href={isCreator ? "/dashboard" : "/"} className="serif text-lg text-white drop-shadow">
             Spendbox
           </Link>
-          {isCreator && (
+          {isCreator ? (
             <Link
               href={`/c/${slug}/edit`}
               className="glass-dark rounded-full px-3 py-1.5 text-xs text-white inline-flex items-center gap-1.5"
             >
               <Pencil className="size-3.5" /> Edit
             </Link>
-          )}
+          ) : addFriendTargetId ? (
+            <AddFriendButton targetUserId={addFriendTargetId} />
+          ) : null}
         </header>
 
         <div className="flex gap-3 px-5 pb-4 pt-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>

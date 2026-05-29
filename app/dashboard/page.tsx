@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Settings, Lock, MessageCircle, Gift } from "lucide-react";
+import { Plus, Settings, Lock, MessageCircle, Gift, Users, Cake } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { logout } from "@/app/login/actions";
@@ -10,6 +10,12 @@ import { DraftCard, EmptyState } from "./draft-card";
 import { DeleteCelebrationButton } from "./delete-celebration-button";
 import { rehydrateDraft, type SavedDraft } from "@/lib/draft/draft";
 import { BIRTHDAY_ONLY } from "@/lib/features";
+import { getFriendIds, getPublicProfiles, daysUntilBirthday, profileName } from "@/lib/friends";
+
+function avatarThumb(path: string | null) {
+  if (!path) return null;
+  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${path}`;
+}
 
 function coverUrl(path: string | null | undefined) {
   if (!path) return null;
@@ -62,6 +68,23 @@ export default async function Dashboard() {
     .maybeSingle();
   const dateOfBirth = (dobRow as { date_of_birth?: string | null } | null)?.date_of_birth ?? null;
 
+  // Friends: pending-request badge + an upcoming-birthdays preview strip.
+  const admin = supabaseAdmin();
+  const friendIds = await getFriendIds(user.id);
+  const [{ count: pendingRequests }, friendProfiles] = await Promise.all([
+    admin
+      .from("friend_requests")
+      .select("*", { count: "exact", head: true })
+      .eq("addressee_id", user.id)
+      .eq("status", "pending"),
+    getPublicProfiles(friendIds),
+  ]);
+  const upcoming = friendProfiles
+    .map((p) => ({ p, days: p.dateOfBirth ? daysUntilBirthday(p.dateOfBirth) : null }))
+    .filter((x): x is { p: typeof x.p; days: number } => x.days !== null)
+    .sort((a, b) => a.days - b.days)
+    .slice(0, 6);
+
   // Sealed pages hide their wall — even from the owner. But the owner can still
   // see how many messages/gifts have landed (counts only, no content/amount).
   // Counting needs the service role since the wall-read policy hides the rows.
@@ -71,7 +94,6 @@ export default async function Dashboard() {
   const messageCounts = new Map<string, number>();
   const sealedPages = (pages ?? []).filter(isSealedNow);
   if (sealedPages.length) {
-    const admin = supabaseAdmin();
     await Promise.all(
       sealedPages.map(async (p) => {
         const { count } = await admin
@@ -107,6 +129,19 @@ export default async function Dashboard() {
               </Link>
             )}
             <Link
+              href="/dashboard/friends"
+              className="relative text-sm text-ink/55 hover:text-ink transition inline-flex items-center gap-1.5"
+              title="Friends"
+            >
+              <Users className="size-4" />
+              <span className="hidden md:inline">Friends</span>
+              {!!pendingRequests && (
+                <span className="absolute -top-2 -right-2 min-w-4 h-4 px-1 rounded-full bg-[var(--accent)] text-white text-[10px] grid place-items-center">
+                  {pendingRequests}
+                </span>
+              )}
+            </Link>
+            <Link
               href="/dashboard/settings"
               className="text-sm text-ink/55 hover:text-ink transition inline-flex items-center gap-1.5"
               title="Profile settings"
@@ -124,6 +159,39 @@ export default async function Dashboard() {
           <h1 className="fade-up serif text-4xl md:text-6xl text-ink">
             Your<br className="md:hidden" /> celebrations
           </h1>
+
+          {/* Upcoming friend birthdays */}
+          {upcoming.length > 0 && (
+            <Link
+              href="/dashboard/friends"
+              className="mt-6 flex items-center gap-4 rounded-3xl2 bg-white shadow-ring px-4 py-3 hover:shadow-card transition fade-up"
+            >
+              <span className="text-[10px] uppercase tracking-widest text-ink/45 inline-flex items-center gap-1.5 shrink-0">
+                <Cake className="size-3.5 text-[var(--accent)]" /> Upcoming
+              </span>
+              <div className="flex items-center gap-4 overflow-x-auto">
+                {upcoming.map(({ p, days }) => {
+                  const url = avatarThumb(p.avatarPath);
+                  const label = days === 0 ? "today" : days === 1 ? "tomorrow" : `${days}d`;
+                  return (
+                    <span key={p.id} className="flex items-center gap-2 shrink-0">
+                      <span className="size-8 rounded-full overflow-hidden bg-ink/8 grid place-items-center">
+                        {url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={url} alt="" className="size-full object-cover" />
+                        ) : (
+                          <span className="text-xs text-ink/40">{profileName(p).replace("@", "").charAt(0).toUpperCase()}</span>
+                        )}
+                      </span>
+                      <span className="text-xs text-ink/70 whitespace-nowrap">
+                        {profileName(p).split(" ")[0]} · {label}
+                      </span>
+                    </span>
+                  );
+                })}
+              </div>
+            </Link>
+          )}
 
           <div className="mt-7 md:mt-8 grid sm:grid-cols-2 gap-4">
             {draft && <DraftCard draft={draft.draft} updatedAt={draft.updatedAt} />}

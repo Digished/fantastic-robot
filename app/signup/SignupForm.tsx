@@ -4,13 +4,27 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { signup } from "./actions";
 
-export function SignupForm({ error }: { error?: string }) {
+export function SignupForm({ error, invite }: { error?: string; invite?: string }) {
   const [show, setShow] = useState(false);
   return (
     <form action={signup} className="mt-10 space-y-4">
+      {invite && <input type="hidden" name="invite" value={invite} />}
       <div className="space-y-1.5">
         <label className="label">Your name</label>
         <input className="field" name="displayName" autoComplete="name" />
+      </div>
+      <div className="space-y-1.5">
+        <label className="label">Username</label>
+        <input
+          className="field"
+          name="username"
+          autoComplete="username"
+          placeholder="yourname"
+          pattern="[A-Za-z0-9_]{3,20}"
+          title="3–20 letters, numbers or underscores"
+          required
+        />
+        <p className="text-xs text-ink/45">Letters, numbers or underscores — how friends find you.</p>
       </div>
       <div className="space-y-1.5">
         <label className="label">Email</label>

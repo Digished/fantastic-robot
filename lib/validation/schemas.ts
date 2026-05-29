@@ -8,10 +8,18 @@ import { THEME_IDS } from "@/lib/themes";
 // `#clip=<start>-<end>` window — so it needs more room than a bare id.
 const musicTrackId = z.string().min(1).max(200);
 
+// A handle for finding and @-mentioning people. Lowercased, URL-safe.
+export const usernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^[a-z0-9_]{3,20}$/, "3–20 letters, numbers or underscores");
+
 export const signupSchema = z.object({
   email: z.string().email().max(120),
   password: z.string().min(8).max(72),
   displayName: z.string().min(1).max(60).optional(),
+  username: usernameSchema,
 });
 
 export const loginSchema = z.object({
