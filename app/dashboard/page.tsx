@@ -7,9 +7,10 @@ import { logout } from "@/app/login/actions";
 import { formatNaira } from "@/lib/utils";
 import { formatDate, timeUntil } from "@/lib/time";
 import { DraftCard, EmptyState } from "./draft-card";
-import { DeleteCelebrationButton } from "./delete-celebration-button";
 import { FriendsPanel } from "./friends-panel";
 import { MobileNav } from "./mobile-nav";
+import { DashboardChecklist } from "./checklist";
+import { CardArt } from "./card-art";
 import { rehydrateDraft, type SavedDraft } from "@/lib/draft/draft";
 import { BIRTHDAY_ONLY } from "@/lib/features";
 import { ensureInviteToken, getFriendsWithBirthdays } from "@/lib/friends";
@@ -61,11 +62,12 @@ export default async function Dashboard() {
   // its own query so a not-yet-applied migration can't break the dashboard.
   const { data: meRow } = await supabase
     .from("users")
-    .select("date_of_birth, avatar_path")
+    .select("date_of_birth, avatar_path, username")
     .eq("id", user.id)
     .maybeSingle();
   const dateOfBirth = (meRow as { date_of_birth?: string | null } | null)?.date_of_birth ?? null;
   const myAvatar = (meRow as { avatar_path?: string | null } | null)?.avatar_path ?? null;
+  const myUsername = (meRow as { username?: string | null } | null)?.username ?? null;
 
   // Friends: list (with birthday countdowns) + personal invite link.
   const admin = supabaseAdmin();
@@ -144,6 +146,13 @@ export default async function Dashboard() {
         </header>
 
         <div className="pt-7 md:pt-10">
+          <DashboardChecklist
+            hasBirthdayPage={hasBirthdayPage}
+            hasUsername={!!myUsername}
+            hasPhoto={!!myAvatar}
+            friendCount={friends.length}
+          />
+
           <div className="grid sm:grid-cols-2 gap-4">
             {draft && <DraftCard draft={draft.draft} updatedAt={draft.updatedAt} />}
             {showCreate && <EmptyState hasPages={!!pages?.length} hasDraft={!!draft} />}
@@ -168,7 +177,10 @@ export default async function Dashboard() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={cover} alt="" className="absolute inset-0 size-full object-cover" />
                     ) : (
-                      <div className="absolute inset-0 theme-mesh" />
+                      <>
+                        <div className="absolute inset-0 theme-mesh" />
+                        <CardArt seed={p.slug} />
+                      </>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" />
 
@@ -200,11 +212,6 @@ export default async function Dashboard() {
                         {p.status}
                       </span>
                     )}
-                    <DeleteCelebrationButton
-                      slug={p.slug}
-                      title={p.recipient_name}
-                      raisedKobo={Number(p.total_raised_kobo ?? 0)}
-                    />
                     <div className="absolute inset-x-0 bottom-0 p-4 text-white flex items-end justify-between gap-2">
                       <p className="serif text-2xl leading-tight truncate">{p.recipient_name}</p>
                       {upcoming && (

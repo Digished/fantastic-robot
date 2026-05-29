@@ -16,7 +16,7 @@ import {
   createFriendship,
   acceptInviteForUser,
   getPublicProfile,
-  getUserBirthdayPage,
+  getBirthdayPagesFor,
   daysUntilBirthday,
   profileName,
   searchUsers,
@@ -68,23 +68,19 @@ export async function searchPeople(query: string): Promise<PersonResult[]> {
   const incoming = new Set(
     (reqs ?? []).filter((r) => r.addressee_id === me).map((r) => r.requester_id as string),
   );
-  return Promise.all(
-    profiles.map(async (p) => {
-      const page = p.dateOfBirth ? await getUserBirthdayPage(p.id) : null;
-      return {
-        ...p,
-        relation: friendSet.has(p.id)
-          ? "friend"
-          : outgoing.has(p.id)
-            ? "outgoing"
-            : incoming.has(p.id)
-              ? "incoming"
-              : "none",
-        slug: page?.slug ?? null,
-        days: p.dateOfBirth ? daysUntilBirthday(p.dateOfBirth) : null,
-      } as PersonResult;
-    }),
-  );
+  const pages = await getBirthdayPagesFor(ids);
+  return profiles.map((p) => ({
+    ...p,
+    relation: friendSet.has(p.id)
+      ? "friend"
+      : outgoing.has(p.id)
+        ? "outgoing"
+        : incoming.has(p.id)
+          ? "incoming"
+          : "none",
+    slug: pages.get(p.id)?.slug ?? null,
+    days: p.dateOfBirth ? daysUntilBirthday(p.dateOfBirth) : null,
+  } as PersonResult));
 }
 
 /** Add a friend instantly — no request, no confirmation. */

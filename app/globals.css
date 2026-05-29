@@ -311,6 +311,10 @@
   0%, 100% { transform: translateY(0px); }
   50%      { transform: translateY(-8px); }
 }
+@keyframes cardBlob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(10px, -14px) scale(1.12); }
+}
 @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 @keyframes sparkle {

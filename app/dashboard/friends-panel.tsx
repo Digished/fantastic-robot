@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search, UserPlus, Check, Copy, Cake, Loader2, X, Users } from "lucide-react";
@@ -51,20 +51,31 @@ export function FriendsPanel({
   const [searching, setSearching] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latest = useRef("");
   function runSearch(q: string) {
     setQuery(q);
-    if (q.trim().length < 2) { setResults(null); return; }
+    latest.current = q;
+    if (timer.current) clearTimeout(timer.current);
+    if (q.trim().length < 2) { setResults(null); setSearching(false); return; }
     setSearching(true);
-    startTransition(async () => {
-      setResults(await searchPeople(q));
-      setSearching(false);
-    });
+    // Debounce so we don't hit the server on every keystroke.
+    timer.current = setTimeout(async () => {
+      const r = await searchPeople(q);
+      // Ignore stale responses if the query changed meanwhile.
+      if (latest.current === q) { setResults(r); setSearching(false); }
+    }, 250);
   }
   function addPerson(p: PersonResult) {
+    // Optimistic: flip to "Friends" immediately, reconcile in the background.
+    setResults((prev) => (prev ? prev.map((x) => (x.id === p.id ? { ...x, relation: "friend" } : x)) : prev));
     startTransition(async () => {
       const res = await addFriend(p.id);
-      if (res?.error) { window.alert(res.error); return; }
-      setResults((prev) => (prev ? prev.map((x) => (x.id === p.id ? { ...x, relation: "friend" } : x)) : prev));
+      if (res?.error) {
+        window.alert(res.error);
+        setResults((prev) => (prev ? prev.map((x) => (x.id === p.id ? { ...x, relation: "none" } : x)) : prev));
+        return;
+      }
       router.refresh();
     });
   }
@@ -163,7 +174,7 @@ export function FriendsPanel({
                     {p.relation === "friend" ? (
                       <span className="text-xs text-ink/45 inline-flex items-center gap-1"><Check className="size-3.5" /> Friends</span>
                     ) : (
-                      <button className="btn-outline text-xs py-1.5 inline-flex items-center gap-1" disabled={pending} onClick={() => addPerson(p)}>
+                      <button className="btn-outline text-xs py-1.5 inline-flex items-center gap-1" onClick={() => addPerson(p)}>
                         <UserPlus className="size-3.5" /> Add
                       </button>
                     )}

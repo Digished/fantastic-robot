@@ -140,15 +140,14 @@ export type RequestPerson = { id: string; profile: PublicProfile };
 
 export async function getFriendsWithBirthdays(userId: string): Promise<FriendBirthday[]> {
   const profiles = await getPublicProfiles(await getFriendIds(userId));
-  const items = await Promise.all(
-    profiles.map(async (profile) => {
-      const page = profile.dateOfBirth ? await getUserBirthdayPage(profile.id) : null;
+  const pages = await getBirthdayPagesFor(profiles.map((p) => p.id));
+  return profiles
+    .map((profile) => {
       const days = profile.dateOfBirth ? daysUntilBirthday(profile.dateOfBirth) : null;
       const turning = profile.dateOfBirth ? turningAge(profile.dateOfBirth) : null;
-      return { profile, slug: page?.slug ?? null, days, turning } as FriendBirthday;
-    }),
-  );
-  return items.sort((a, b) => (a.days ?? 9999) - (b.days ?? 9999));
+      return { profile, slug: pages.get(profile.id)?.slug ?? null, days, turning } as FriendBirthday;
+    })
+    .sort((a, b) => (a.days ?? 9999) - (b.days ?? 9999));
 }
 
 export async function getIncomingRequests(userId: string): Promise<RequestPerson[]> {
@@ -215,6 +214,30 @@ export async function getUserBirthdayPage(userId: string): Promise<{
     .limit(1)
     .maybeSingle();
   return data ?? null;
+}
+
+/** Birthday pages for many users in one query (creator_id → slug + date). */
+export async function getBirthdayPagesFor(
+  ids: string[],
+): Promise<Map<string, { slug: string; celebration_date: string }>> {
+  const map = new Map<string, { slug: string; celebration_date: string }>();
+  if (!ids.length) return map;
+  const admin = supabaseAdmin();
+  const { data } = await admin
+    .from("celebrations")
+    .select("creator_id, slug, celebration_date")
+    .eq("is_self", true)
+    .eq("event_type", "birthday")
+    .in("creator_id", ids);
+  for (const r of data ?? []) {
+    if (!map.has(r.creator_id as string)) {
+      map.set(r.creator_id as string, {
+        slug: r.slug as string,
+        celebration_date: r.celebration_date as string,
+      });
+    }
+  }
+  return map;
 }
 
 /** Find people to add — by @username / display name (contains) or exact email. */
