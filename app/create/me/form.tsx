@@ -115,6 +115,7 @@ export function SelfCreateForm({
   initialAccountName,
   initialDateOfBirth = "",
   initialAvatarPath = null,
+  initialUsername = "",
   savedAddresses,
 }: {
   defaultName: string;
@@ -125,6 +126,7 @@ export function SelfCreateForm({
   initialAccountName: string;
   initialDateOfBirth?: string;
   initialAvatarPath?: string | null;
+  initialUsername?: string;
   savedAddresses: ShippingAddress[];
 }) {
   const [state, dispatch, pending] = useActionState<CreateState, FormData>(createSelfCelebration, {});
@@ -136,6 +138,7 @@ export function SelfCreateForm({
   }, [state.redirectTo]);
 
   const [eventType, setEventType] = useState("birthday");
+  const [username, setUsername] = useState(initialUsername);
   const [title, setTitle] = useState(
     defaultName ? `${defaultName}'s Birthday` : "",
   );
@@ -167,15 +170,18 @@ export function SelfCreateForm({
   const [addressError, setAddressError] = useState<string | null>(null);
 
   const bankReady = !!bankCode && /^\d{10}$/.test(accountNumber);
-  // Birthday pages need a photo and a date of birth, plus the payout account.
-  const ready = !!avatarPath && !!date && bankReady;
+  const usernameOk = /^[a-z0-9_]{3,20}$/i.test(username);
+  // Birthday pages need a photo, a username, a date of birth, and a payout account.
+  const ready = !!avatarPath && usernameOk && !!date && bankReady;
   const missingHint = !avatarPath
     ? "Add a profile photo to continue."
-    : !date
-      ? "Add your date of birth to continue."
-      : !bankReady
-        ? "Add your payout account to continue."
-        : null;
+    : !usernameOk
+      ? "Pick a username (3–20 letters, numbers or underscores)."
+      : !date
+        ? "Add your date of birth to continue."
+        : !bankReady
+          ? "Add your payout account to continue."
+          : null;
 
   async function resolveBank(code: string, num: string) {
     setBankError(null);
@@ -221,6 +227,7 @@ export function SelfCreateForm({
   function save() {
     const fd = new FormData();
     fd.set("title", title);
+    fd.set("username", username);
     fd.set("eventType", eventType);
     fd.set("date", date);
     fd.set("theme", theme);
@@ -239,7 +246,7 @@ export function SelfCreateForm({
   // ── Multi-step wizard ──
   const steps = ["About you", "Look", "Gifts"];
   const [step, setStep] = useState(0);
-  const stepValid = step === 0 ? !!avatarPath && !!date : true;
+  const stepValid = step === 0 ? !!avatarPath && usernameOk && !!date : true;
 
   return (
     <div className="space-y-6">
@@ -261,6 +268,23 @@ export function SelfCreateForm({
         {!avatarPath && (
           <p className="text-xs text-center text-ink/45">A profile photo is required.</p>
         )}
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="label" htmlFor="username">Username</label>
+        <div className="flex items-center gap-2">
+          <span className="text-ink/40 text-sm">spendbox.site/c/</span>
+          <input
+            id="username"
+            className="field"
+            value={username}
+            autoComplete="username"
+            placeholder="yourname"
+            pattern="[A-Za-z0-9_]{3,20}"
+            onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+          />
+        </div>
+        <p className="text-xs text-ink/45">Your page link uses this. Letters, numbers or underscores.</p>
       </div>
 
       <div className="space-y-1.5">

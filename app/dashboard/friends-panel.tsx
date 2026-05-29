@@ -139,8 +139,11 @@ export function FriendsPanel({
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-5" role="dialog" aria-modal="true">
           <div className="absolute inset-0 bg-ink/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
           <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl2 sm:rounded-3xl2 shadow-card p-5 max-h-[88dvh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="serif text-xl text-ink">Find friends</h3>
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="serif text-xl text-ink">Find friends</h3>
+                <p className="text-xs text-ink/45 mt-0.5">Search anyone, or share your link — adding is instant.</p>
+              </div>
               <button onClick={() => setOpen(false)} className="text-ink/40 hover:text-ink"><X className="size-5" /></button>
             </div>
 
@@ -172,9 +175,9 @@ export function FriendsPanel({
                     </div>
                     {p.slug && <Link href={`/c/${p.slug}`} className="text-xs text-[var(--accent)] shrink-0">View</Link>}
                     {p.relation === "friend" ? (
-                      <span className="text-xs text-ink/45 inline-flex items-center gap-1"><Check className="size-3.5" /> Friends</span>
+                      <span className="text-xs text-[var(--accent)] inline-flex items-center gap-1 shrink-0"><Check className="size-3.5" /> Friends</span>
                     ) : (
-                      <button className="btn-outline text-xs py-1.5 inline-flex items-center gap-1" onClick={() => addPerson(p)}>
+                      <button className="btn-accent text-xs py-1.5 px-3 inline-flex items-center gap-1 shrink-0" onClick={() => addPerson(p)}>
                         <UserPlus className="size-3.5" /> Add
                       </button>
                     )}

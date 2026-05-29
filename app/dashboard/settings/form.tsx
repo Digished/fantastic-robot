@@ -38,9 +38,25 @@ export function ProfileForm({
   initialUsername: string;
   initialAddresses: ShippingAddress[];
 }) {
-  const [state, action, pending] = useActionState<ProfileState, FormData>(updateProfile, {});
+  const [state, dispatch, pending] = useActionState<ProfileState, FormData>(updateProfile, {});
 
+  const [displayName, setDisplayName] = useState(initialDisplayName);
+  const [username, setUsername] = useState(initialUsername);
   const [dateOfBirth, setDateOfBirth] = useState(initialDateOfBirth);
+
+  // Submit programmatically (not via <form action>) so React 19's automatic
+  // form reset doesn't blank the controlled date-of-birth selects after save.
+  function save() {
+    const fd = new FormData();
+    fd.set("displayName", displayName);
+    fd.set("username", username);
+    fd.set("dateOfBirth", dateOfBirth);
+    fd.set("avatarPath", avatarPath ?? "");
+    fd.set("bankCode", bankCode);
+    fd.set("accountNumber", accountNumber);
+    fd.set("shippingAddresses", JSON.stringify(addresses));
+    dispatch(fd);
+  }
 
   // Avatar
   const fileRef = useRef<HTMLInputElement>(null);
@@ -130,7 +146,7 @@ export function ProfileForm({
   const avatarUrl = publicUrl(avatarPath);
 
   return (
-    <form action={action} className="space-y-5">
+    <form onSubmit={(e) => { e.preventDefault(); save(); }} className="space-y-5">
       <section className="card space-y-6">
         <h2 className="serif text-xl text-ink">Profile</h2>
       {/* Avatar */}
@@ -164,9 +180,9 @@ export function ProfileForm({
         <label className="label" htmlFor="displayName">Display name</label>
         <input
           id="displayName"
-          name="displayName"
           className="field"
-          defaultValue={initialDisplayName}
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
           maxLength={60}
           placeholder="How contributors see you"
         />
@@ -180,9 +196,9 @@ export function ProfileForm({
         <label className="label" htmlFor="username">Username</label>
         <input
           id="username"
-          name="username"
           className="field"
-          defaultValue={initialUsername}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           autoComplete="username"
           placeholder="yourname"
           pattern="[A-Za-z0-9_]{3,20}"

@@ -50,10 +50,14 @@ export default async function Dashboard() {
   ]);
   const pages = pagesQ.data;
 
+  // A birthday page is required to use the app. If it's missing (new user, or
+  // they deleted theirs), send them through creation first.
+  const birthdayPage = (pages ?? []).find((p) => p.is_self && p.event_type === "birthday");
+  if (BIRTHDAY_ONLY && !birthdayPage) redirect("/create/me");
+
   // Birthdays-only: each user gets a single birthday page. Once they have one,
   // hide the "create" CTAs. The create flow lives at /create/me.
-  const hasBirthdayPage =
-    BIRTHDAY_ONLY && (pages ?? []).some((p) => p.is_self && p.event_type === "birthday");
+  const hasBirthdayPage = BIRTHDAY_ONLY ? !!birthdayPage : false;
   const createHref = BIRTHDAY_ONLY ? "/create/me" : "/create";
   const createLabel = BIRTHDAY_ONLY ? "Create my birthday page" : "New celebration";
   const showCreate = !hasBirthdayPage;
@@ -188,8 +192,10 @@ export default async function Dashboard() {
                     {!cover && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
                         {avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={avatar} alt="" className="size-16 rounded-full object-cover ring-2 ring-white/60 shadow-lg" />
+                          <div className="size-16 rounded-full overflow-hidden ring-2 ring-white/60 shadow-lg">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={avatar} alt="" width={64} height={64} className="size-full object-cover" />
+                          </div>
                         ) : (
                           <span className="size-16 rounded-full bg-white/15 grid place-items-center ring-2 ring-white/40">
                             <Cake className="size-7 text-white" />

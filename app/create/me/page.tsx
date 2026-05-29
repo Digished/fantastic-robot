@@ -25,7 +25,7 @@ export default async function CreateSelfPage() {
   const [{ data: profile }, banks, tracks] = await Promise.all([
     supabase
       .from("users")
-      .select("display_name, email, bank_code, account_number, account_name, shipping_addresses, avatar_path")
+      .select("display_name, email, bank_code, account_number, account_name, shipping_addresses, avatar_path, username")
       .eq("id", user.id)
       .maybeSingle(),
     getBanks(),
@@ -52,6 +52,7 @@ export default async function CreateSelfPage() {
             initialAccountNumber={profile?.account_number ?? ""}
             initialAccountName={profile?.account_name ?? ""}
             initialAvatarPath={profile?.avatar_path ?? null}
+            initialUsername={profile?.username ?? ""}
             savedAddresses={(profile?.shipping_addresses as ShippingAddress[]) ?? []}
           />
         </div>

@@ -464,6 +464,23 @@ export default async function WallPage({
               {isCreator && <CelebrantLinkButton slug={page.slug} recipient={page.recipient_name} />}
             </div>
 
+            {/* Explore by year: wishlist / messages / gifts */}
+            <div className="grid grid-cols-3 gap-2 fade-up">
+              {[
+                { id: "wishlist", label: "Wishlist" },
+                { id: "messages", label: "Messages" },
+                { id: "gifts", label: "Gifts" },
+              ].map((t) => (
+                <Link
+                  key={t.id}
+                  href={`/c/${page.slug}/${t.id}`}
+                  className="rounded-2xl bg-ink/5 hover:bg-ink/10 transition text-center py-2.5 text-sm text-ink/70"
+                >
+                  {t.label}
+                </Link>
+              ))}
+            </div>
+
             {/* Wishlist */}
             {wishlist.length > 0 && (
               <section className="rounded-3xl2 bg-white shadow-ring p-5 fade-up">

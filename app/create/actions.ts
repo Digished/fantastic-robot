@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paystack, PaystackError } from "@/lib/paystack/client";
-import { createCelebrationSchema, createSelfCelebrationSchema, shippingAddressSchema } from "@/lib/validation/schemas";
+import { createCelebrationSchema, createSelfCelebrationSchema, shippingAddressSchema, usernameSchema } from "@/lib/validation/schemas";
 import { generateIntroContent } from "@/lib/openai/generate-intro";
 import { resolveSavedTrackId } from "@/lib/music/server";
 import { buildSelfCelebrationDate } from "@/lib/self-celebration";
@@ -198,6 +198,22 @@ export async function createSelfCelebration(
 
   const admin = supabaseAdmin();
 
+  // Username is required and drives the page link (slug). Validate + ensure it's
+  // unique (case-insensitive) across users.
+  let username = "";
+  if (BIRTHDAY_ONLY) {
+    const parsedUsername = usernameSchema.safeParse(formData.get("username"));
+    if (!parsedUsername.success) return { error: "Please choose a valid username (3–20 letters, numbers or underscores)." };
+    username = parsedUsername.data;
+    const { data: taken } = await admin
+      .from("users")
+      .select("id")
+      .ilike("username", username)
+      .neq("id", user.id)
+      .maybeSingle();
+    if (taken) return { error: "That username is taken." };
+  }
+
   // One birthday page per user — if they already have one, send them to it
   // instead of creating a duplicate.
   if (recurring) {
@@ -245,6 +261,7 @@ export async function createSelfCelebration(
       bank_verified_at: new Date().toISOString(),
       ...(bankChanged ? { paystack_recipient_code: null } : {}),
       ...(parsed.data.avatarPath ? { avatar_path: parsed.data.avatarPath } : {}),
+      ...(username ? { username } : {}),
       // Save the full DOB (the recurring date math discards the year) so we can
       // show age/milestones in the throwback section and reuse it later.
       ...(recurring ? { date_of_birth: parsed.data.date } : {}),
@@ -286,7 +303,17 @@ export async function createSelfCelebration(
   }
 
   const resolvedMusic = await resolveSavedTrackId(parsed.data.backgroundMusic ?? null);
-  const slug = slugId();
+  // The page link echoes the username. Fall back to a random suffix only if the
+  // slug is somehow already taken.
+  let slug = username || slugId();
+  if (username) {
+    const { data: slugTaken } = await admin
+      .from("celebrations")
+      .select("id")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (slugTaken) slug = `${username}-${slugId().slice(0, 4)}`;
+  }
   const { error } = await admin.from("celebrations").insert({
     slug,
     creator_id: user.id,

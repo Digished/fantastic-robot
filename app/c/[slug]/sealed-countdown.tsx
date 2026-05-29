@@ -381,12 +381,10 @@ export function SealedCountdown({
         >
           <div className="flex flex-col items-center text-center px-6 py-6 pb-40 min-h-full">
             {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarUrl}
-                alt=""
-                className="size-20 md:size-24 rounded-full object-cover ring-2 ring-white/40 shadow-card mb-5"
-              />
+              <div className="size-20 md:size-24 rounded-full overflow-hidden ring-2 ring-white/40 shadow-card mb-5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={avatarUrl} alt="" width={96} height={96} className="size-full object-cover" />
+              </div>
             ) : (
               <div className="size-20 md:size-24 rounded-full bg-white/15 grid place-items-center mb-5">
                 <Gift className="size-9 text-white" />
@@ -498,6 +496,18 @@ export function SealedCountdown({
 
             <div className="fade-up mt-5 w-full max-w-sm">
               <ShareBar slug={slug} title={title} recipient={recipientName} messageCount={messageCount} daysLeft={daysLeft} />
+            </div>
+
+            <div className="fade-up mt-3 grid grid-cols-3 gap-2 w-full max-w-sm">
+              {["wishlist", "messages", "gifts"].map((t) => (
+                <Link
+                  key={t}
+                  href={`/c/${slug}/${t}`}
+                  className="glass-dark rounded-2xl text-center py-2 text-xs text-white/90 capitalize hover:text-white"
+                >
+                  {t}
+                </Link>
+              ))}
             </div>
 
             {createdBy && (
