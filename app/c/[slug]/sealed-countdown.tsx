@@ -498,18 +498,6 @@ export function SealedCountdown({
               <ShareBar slug={slug} title={title} recipient={recipientName} messageCount={messageCount} daysLeft={daysLeft} />
             </div>
 
-            <div className="fade-up mt-3 grid grid-cols-3 gap-2 w-full max-w-sm">
-              {["wishlist", "messages", "gifts"].map((t) => (
-                <Link
-                  key={t}
-                  href={`/c/${slug}/${t}`}
-                  className="glass-dark rounded-2xl text-center py-2 text-xs text-white/90 capitalize hover:text-white"
-                >
-                  {t}
-                </Link>
-              ))}
-            </div>
-
             {createdBy && (
               <p className="mt-6 text-[11px] text-white/55">
                 Put together by <span className="text-white/80">{createdBy}</span>

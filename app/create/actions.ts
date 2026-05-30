@@ -23,6 +23,23 @@ export type CreateState = {
   redirectTo?: string;
 };
 
+/** Live username availability check for the create form. */
+export async function checkUsername(
+  username: string,
+): Promise<{ available: boolean; reason?: string }> {
+  const parsed = usernameSchema.safeParse(username);
+  if (!parsed.success) return { available: false, reason: parsed.error.issues[0].message };
+  const supabase = await supabaseServer();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: taken } = await supabaseAdmin()
+    .from("users")
+    .select("id")
+    .ilike("username", parsed.data)
+    .maybeSingle();
+  if (taken && (!user || taken.id !== user.id)) return { available: false, reason: "Taken" };
+  return { available: true };
+}
+
 export async function createCelebration(
   _prev: CreateState,
   formData: FormData,

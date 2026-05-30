@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Settings, Users, Lock, MessageCircle, Gift, Cake } from "lucide-react";
+import { Plus, Lock, MessageCircle, Gift, Cake } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { logout } from "@/app/login/actions";
 import { formatNaira } from "@/lib/utils";
 import { formatDate, timeUntil } from "@/lib/time";
 import { DraftCard, EmptyState } from "./draft-card";
 import { FriendsPanel } from "./friends-panel";
-import { MobileNav } from "./mobile-nav";
 import { DashboardChecklist } from "./checklist";
 import { CardArt } from "./card-art";
 import { rehydrateDraft, type SavedDraft } from "@/lib/draft/draft";
@@ -112,38 +110,14 @@ export default async function Dashboard() {
     <main className="min-h-[100dvh] bg-white pb-28">
       <div className="mx-auto max-w-6xl px-5 md:px-10">
 
-        {/* Header */}
+        {/* Header — navigation lives in the global menu (top-right). */}
         <header className="py-5 md:py-7 flex items-center justify-between border-b border-ink/8">
-          <Link href="/" className="serif text-xl md:text-2xl text-ink">Spendbox</Link>
-
-          <MobileNav showCreate={showCreate} createHref={createHref} createLabel={createLabel} />
-
-          <div className="hidden md:flex items-center gap-4">
-            {showCreate && (
-              <Link href={createHref} className="btn-accent shadow-soft hidden md:inline-flex gap-2">
-                <Plus className="size-4" /> {createLabel}
-              </Link>
-            )}
-            <Link
-              href="/dashboard/friends"
-              className="text-sm text-ink/55 hover:text-ink transition inline-flex items-center gap-1.5"
-              title="Friends"
-            >
-              <Users className="size-4" />
-              <span className="hidden md:inline">Friends</span>
+          <Link href="/dashboard" className="serif text-xl md:text-2xl text-ink">Spendbox</Link>
+          {showCreate && (
+            <Link href={createHref} className="btn-accent shadow-soft hidden md:inline-flex gap-2">
+              <Plus className="size-4" /> {createLabel}
             </Link>
-            <Link
-              href="/dashboard/settings"
-              className="text-sm text-ink/55 hover:text-ink transition inline-flex items-center gap-1.5"
-              title="Profile settings"
-            >
-              <Settings className="size-4" />
-              <span className="hidden md:inline">Settings</span>
-            </Link>
-            <form action={logout}>
-              <button className="text-sm text-ink/55 hover:text-ink transition">Sign out</button>
-            </form>
-          </div>
+          )}
         </header>
 
         <div className="pt-7 md:pt-10">
@@ -153,24 +127,6 @@ export default async function Dashboard() {
             hasPhoto={!!myAvatar}
             friendCount={friends.length}
           />
-
-          {birthdayPage && (
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {[
-                { id: "wishlist", label: "Wishlist" },
-                { id: "messages", label: "Messages" },
-                { id: "gifts", label: "Gifts" },
-              ].map((t) => (
-                <Link
-                  key={t.id}
-                  href={`/c/${birthdayPage.slug}/${t.id}`}
-                  className="rounded-2xl bg-ink/5 hover:bg-ink/10 transition text-center py-2.5 text-sm text-ink/70"
-                >
-                  {t.label}
-                </Link>
-              ))}
-            </div>
-          )}
 
           <div className="grid sm:grid-cols-2 gap-4">
             {draft && <DraftCard draft={draft.draft} updatedAt={draft.updatedAt} />}

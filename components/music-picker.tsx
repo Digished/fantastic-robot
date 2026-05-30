@@ -326,6 +326,20 @@ export function MusicPicker({
               })}
             </div>
 
+            {/* Confirm bar — appears once a track is chosen, to close the picker. */}
+            {selectedId && (
+              <div className="shrink-0 border-t border-ink/8 p-4">
+                <button
+                  type="button"
+                  data-no-loading="true"
+                  onClick={close}
+                  className="btn-accent shadow-soft w-full py-3 inline-flex items-center justify-center gap-2"
+                >
+                  <Music className="size-4" /> Use this song
+                </button>
+              </div>
+            )}
+
             <div className="h-safe-b sm:hidden shrink-0" />
           </div>
         </div>

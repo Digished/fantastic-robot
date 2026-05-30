@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import { Suspense } from "react";
 import { GlobalButtonLoading } from "@/components/global-button-loading";
+import { AppNav } from "./app-nav";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -40,6 +41,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-[100dvh] bg-white text-ink">
         <Suspense fallback={null}>
           <GlobalButtonLoading />
+        </Suspense>
+        <Suspense fallback={null}>
+          <AppNav />
         </Suspense>
         {children}
       </body>

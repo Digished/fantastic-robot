@@ -1,9 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Lock, Check, Loader2, Camera, User, MapPin, ArrowLeft, ArrowRight } from "lucide-react";
+import { Lock, Check, Loader2, Camera, User, MapPin, ArrowLeft, ArrowRight, X } from "lucide-react";
 import { StepProgress } from "@/components/step-progress";
-import { createSelfCelebration, type CreateState } from "../actions";
+import { createSelfCelebration, checkUsername, type CreateState } from "../actions";
 import { type Theme } from "@/lib/themes";
 import { ThemePickerButton } from "@/components/page-editor/theme-picker-button";
 import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox";
@@ -139,6 +139,23 @@ export function SelfCreateForm({
 
   const [eventType, setEventType] = useState("birthday");
   const [username, setUsername] = useState(initialUsername);
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const usernameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestUsername = useRef(initialUsername);
+
+  function onUsernameChange(raw: string) {
+    const v = raw.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    setUsername(v);
+    latestUsername.current = v;
+    setUsernameStatus("idle");
+    if (usernameTimer.current) clearTimeout(usernameTimer.current);
+    if (!/^[a-z0-9_]{3,20}$/.test(v)) return;
+    setUsernameStatus("checking");
+    usernameTimer.current = setTimeout(async () => {
+      const res = await checkUsername(v);
+      if (latestUsername.current === v) setUsernameStatus(res.available ? "available" : "taken");
+    }, 400);
+  }
   const [title, setTitle] = useState(
     defaultName ? `${defaultName}'s Birthday` : "",
   );
@@ -170,7 +187,7 @@ export function SelfCreateForm({
   const [addressError, setAddressError] = useState<string | null>(null);
 
   const bankReady = !!bankCode && /^\d{10}$/.test(accountNumber);
-  const usernameOk = /^[a-z0-9_]{3,20}$/i.test(username);
+  const usernameOk = /^[a-z0-9_]{3,20}$/i.test(username) && usernameStatus !== "taken";
   // Birthday pages need a photo, a username, a date of birth, and a payout account.
   const ready = !!avatarPath && usernameOk && !!date && bankReady;
   const missingHint = !avatarPath
@@ -273,18 +290,31 @@ export function SelfCreateForm({
       <div className="space-y-1.5">
         <label className="label" htmlFor="username">Username</label>
         <div className="flex items-center gap-2">
-          <span className="text-ink/40 text-sm">spendbox.site/c/</span>
-          <input
-            id="username"
-            className="field"
-            value={username}
-            autoComplete="username"
-            placeholder="yourname"
-            pattern="[A-Za-z0-9_]{3,20}"
-            onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-          />
+          <span className="text-ink/40 text-sm shrink-0">spendbox.site/c/</span>
+          <div className="relative flex-1">
+            <input
+              id="username"
+              className="field pr-9"
+              value={username}
+              autoComplete="username"
+              placeholder="yourname"
+              pattern="[A-Za-z0-9_]{3,20}"
+              onChange={(e) => onUsernameChange(e.target.value)}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2">
+              {usernameStatus === "checking" && <Loader2 className="size-4 animate-spin text-ink/40" />}
+              {usernameStatus === "available" && <Check className="size-4 text-[var(--accent)]" />}
+              {usernameStatus === "taken" && <X className="size-4 text-red-500" />}
+            </span>
+          </div>
         </div>
-        <p className="text-xs text-ink/45">Your page link uses this. Letters, numbers or underscores.</p>
+        <p className={`text-xs ${usernameStatus === "taken" ? "text-red-600" : "text-ink/45"}`}>
+          {usernameStatus === "taken"
+            ? "That username is taken — try another."
+            : usernameStatus === "available"
+              ? "Available!"
+              : "Your page link uses this. Letters, numbers or underscores."}
+        </p>
       </div>
 
       <div className="space-y-1.5">
