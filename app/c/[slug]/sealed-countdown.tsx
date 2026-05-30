@@ -9,6 +9,7 @@ import {
 import { formatDate } from "@/lib/time";
 import { Sparkles } from "@/components/sparkles";
 import { ShareBar } from "./share-bar";
+import { AddFriendButton } from "./add-friend-button";
 import { NavLoadingLink } from "@/components/nav-loading-link";
 import type { BlessingEntryStatus } from "@/lib/blessings/labels";
 import { BlessingCta } from "./blessing-cta";
@@ -208,6 +209,7 @@ export function SealedCountdown({
   contributorFirstNames,
   shippingAddress,
   sealedTheme,
+  addFriendTargetId,
 }: {
   slug: string;
   title: string;
@@ -230,6 +232,7 @@ export function SealedCountdown({
   contributorFirstNames: string[];
   shippingAddress: ShippingAddress | null;
   sealedTheme?: string | null;
+  addFriendTargetId?: string | null;
 }) {
   const target = new Date(celebrationDate).getTime();
   const [now, setNow] = useState(() => Date.now());
@@ -293,7 +296,7 @@ export function SealedCountdown({
   const milestoneProgress = Math.min((totalSurprises / milestone) * 100, 100);
 
   // Tab system
-  const hasWishlistContent = wishlist.length > 0 || !!shippingAddress;
+  const hasWishlistContent = wishlist.length > 0;
   const tabIds: TabId[] = ["home", ...(hasWishlistContent ? ["wishlist" as TabId] : []), "wall"];
   const wallTabIndex = tabIds.length - 1;
   const [activeTab, setActiveTab] = useState(0);
@@ -330,20 +333,22 @@ export function SealedCountdown({
       {/* ── Sticky top: header + tab preview nav ── */}
       <div className="relative z-30 flex-shrink-0">
         <header
-          className="px-5 pb-2 flex items-center justify-between"
+          className="px-5 pb-2 pr-16 flex items-center gap-3"
           style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top))" }}
         >
           <Link href={isCreator ? "/dashboard" : "/"} className="serif text-lg text-white drop-shadow">
             Spendbox
           </Link>
-          {isCreator && (
+          {isCreator ? (
             <Link
               href={`/c/${slug}/edit`}
               className="glass-dark rounded-full px-3 py-1.5 text-xs text-white inline-flex items-center gap-1.5"
             >
               <Pencil className="size-3.5" /> Edit
             </Link>
-          )}
+          ) : addFriendTargetId ? (
+            <AddFriendButton targetUserId={addFriendTargetId} />
+          ) : null}
         </header>
 
         <div className="flex gap-3 px-5 pb-4 pt-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
@@ -376,12 +381,10 @@ export function SealedCountdown({
         >
           <div className="flex flex-col items-center text-center px-6 py-6 pb-40 min-h-full">
             {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarUrl}
-                alt=""
-                className="size-20 md:size-24 rounded-full object-cover ring-2 ring-white/40 shadow-card mb-5"
-              />
+              <div className="size-20 md:size-24 rounded-full overflow-hidden ring-2 ring-white/40 shadow-card mb-5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={avatarUrl} alt="" width={96} height={96} className="size-full object-cover" />
+              </div>
             ) : (
               <div className="size-20 md:size-24 rounded-full bg-white/15 grid place-items-center mb-5">
                 <Gift className="size-9 text-white" />
@@ -543,30 +546,7 @@ export function SealedCountdown({
                 </div>
               )}
 
-              {shippingAddress && (
-                <div className="glass-dark rounded-2xl p-4">
-                  <p className="text-[10px] uppercase tracking-widest text-white/60 mb-2.5 inline-flex items-center gap-1.5">
-                    <MapPin className="size-3.5" /> Send a physical gift
-                  </p>
-                  <div className="text-sm text-white/90 space-y-0.5">
-                    {shippingAddress.label && (
-                      <p className="text-[10px] uppercase tracking-widest text-white/45 mb-1">
-                        {shippingAddress.label}
-                      </p>
-                    )}
-                    <p className="font-medium">{shippingAddress.fullName}</p>
-                    <p className="text-white/70">{shippingAddress.line1}</p>
-                    {shippingAddress.line2 && <p className="text-white/70">{shippingAddress.line2}</p>}
-                    <p className="text-white/70">{shippingAddress.city}, {shippingAddress.state}</p>
-                    <p className="text-white/70">{shippingAddress.country}</p>
-                    {shippingAddress.phone && (
-                      <p className="text-white/60 mt-1">{shippingAddress.phone}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {wishlist.length === 0 && !shippingAddress && (
+              {wishlist.length === 0 && (
                 <p className="text-center text-white/50 text-sm py-8">Nothing here yet.</p>
               )}
             </div>

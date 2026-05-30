@@ -9,6 +9,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { Sparkles } from "@/components/sparkles";
 import { Reveal } from "@/components/reveal";
 import { SealedPreview } from "@/components/sealed-preview";
+import { BIRTHDAY_ONLY } from "@/lib/features";
 
 const SELF_HIGHLIGHTS = [
   { icon: Lock, title: "Sealed until the day", body: "Messages and gifts stay a surprise — even from you. Nobody peeks until the date arrives." },
@@ -117,10 +118,44 @@ const FAQ = [
   },
 ];
 
+// Birthdays-only FAQ — avoids advertising the hidden "for someone else" flow.
+const FAQ_BIRTHDAY = [
+  {
+    q: "How does it work?",
+    a: "Add your date of birth and we set up your birthday page. It stays sealed — a surprise even from you — until the day. Friends leave messages and chip in to a group gift, you can add a wishlist, and the page renews automatically every year. Creating your page is free.",
+  },
+  {
+    q: "How much does it cost?",
+    a: "Creating your birthday page is free. Contributing is free for friends — a small 5% fee is added on top of each gift, so you always receive the full amount chosen. The minimum contribution is ₦500.",
+  },
+  {
+    q: "When do I get the money?",
+    a: "Contributions close 72 hours before your birthday. On the day, you tap once to receive everything — it transfers straight to the bank account verified at setup.",
+  },
+  {
+    q: "Is the money safe?",
+    a: "Yes. Every contribution is held in escrow with Paystack and can only ever be paid out to your pre-verified, locked bank account.",
+  },
+  {
+    q: "Do friends need an account?",
+    a: "No. Anyone with the link can leave a message or contribute without signing up — and they can post anonymously if they prefer.",
+  },
+  {
+    q: "What can friends post?",
+    a: "Text notes, voice notes up to 20 seconds, videos up to 15 seconds, and photos — recorded in the browser or uploaded from their device.",
+  },
+  {
+    q: "How do I share it?",
+    a: "Copy the link and drop it in your group chat or WhatsApp. New messages appear on the wall in real time as friends add them.",
+  },
+];
+
 export default async function Landing() {
   const supabase = await supabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (user) redirect("/dashboard");
+
+  const faq = BIRTHDAY_ONLY ? FAQ_BIRTHDAY : FAQ;
 
   return (
     <main data-theme="ivory" className="min-h-[100dvh] bg-white overflow-x-hidden">
@@ -131,9 +166,15 @@ export default async function Landing() {
           <span className="serif text-2xl text-ink">Spendbox</span>
           <div className="flex items-center gap-4">
             <Link href="/login" className="text-sm text-ink/65 hover:text-ink transition">Sign in</Link>
-            <Link href="/create" className="btn-accent shadow-soft text-sm py-2.5 hidden md:inline-flex">
-              Start a celebration
-            </Link>
+            {BIRTHDAY_ONLY ? (
+              <Link href="/create/me" className="btn-accent shadow-soft text-sm py-2.5 hidden md:inline-flex items-center gap-2">
+                <Cake className="size-4" /> Create my birthday page
+              </Link>
+            ) : (
+              <Link href="/create" className="btn-accent shadow-soft text-sm py-2.5 hidden md:inline-flex">
+                Start a celebration
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -152,15 +193,25 @@ export default async function Landing() {
               <em className="shimmer-text not-italic">Perfectly</em>
             </h1>
             <p className="fade-up mt-6 text-ink/65 text-lg leading-relaxed max-w-sm" style={{ animationDelay: "120ms" }}>
-              Create a beautiful group surprise page filled with heartfelt messages, voice notes, photos, and cash gifts — delivered straight to their bank account. Or set up your own page and let everyone surprise <em className="not-italic text-[var(--accent)]">you</em>.
+              {BIRTHDAY_ONLY
+                ? <>Add your date of birth and we set up your own birthday page — sealed until the day, while the people who love you fill it with messages and cash gifts. It renews automatically every year.</>
+                : <>Create a beautiful group surprise page filled with heartfelt messages, voice notes, photos, and cash gifts — delivered straight to their bank account. Or set up your own page and let everyone surprise <em className="not-italic text-[var(--accent)]">you</em>.</>}
             </p>
             <div className="fade-up mt-9 flex flex-col sm:flex-row gap-3 max-w-sm" style={{ animationDelay: "180ms" }}>
-              <Link href="/create" className="btn-accent text-base py-4 shadow-glow flex-1 text-center">
-                Start a celebration
-              </Link>
-              <Link href="/create/me" className="btn-outline text-base py-4 flex-1 text-center inline-flex items-center justify-center gap-2">
-                <Cake className="size-4" /> Make my page
-              </Link>
+              {BIRTHDAY_ONLY ? (
+                <Link href="/create/me" className="btn-accent text-base py-4 shadow-glow flex-1 text-center inline-flex items-center justify-center gap-2">
+                  <Cake className="size-4" /> Create my birthday page
+                </Link>
+              ) : (
+                <>
+                  <Link href="/create" className="btn-accent text-base py-4 shadow-glow flex-1 text-center">
+                    Start a celebration
+                  </Link>
+                  <Link href="/create/me" className="btn-outline text-base py-4 flex-1 text-center inline-flex items-center justify-center gap-2">
+                    <Cake className="size-4" /> Make my page
+                  </Link>
+                </>
+              )}
             </div>
           </div>
 
@@ -269,7 +320,8 @@ export default async function Landing() {
         </div>
       </section>
 
-      {/* ── Two ways to celebrate ── */}
+      {/* ── Two ways to celebrate (full product only) ── */}
+      {!BIRTHDAY_ONLY && (
       <section className="mx-auto max-w-6xl px-5 md:px-10 py-20 md:py-28">
         <Reveal className="text-center max-w-xl mx-auto">
           <p className="text-[11px] uppercase tracking-[0.3em] text-ink/45 mb-4">Two ways to celebrate</p>
@@ -334,6 +386,7 @@ export default async function Landing() {
           </Reveal>
         </div>
       </section>
+      )}
 
       {/* ── Self-page spotlight ── */}
       <section className="theme-mesh py-20 md:py-28 overflow-hidden">
@@ -640,7 +693,7 @@ export default async function Landing() {
           </h2>
         </Reveal>
         <div className="mt-10 space-y-3">
-          {FAQ.map(({ q, a }, i) => (
+          {faq.map(({ q, a }, i) => (
             <Reveal key={q} delay={(i % 3) * 70}>
               <details className="group card cursor-pointer">
                 <summary className="flex items-center justify-between gap-4 list-none [&::-webkit-details-marker]:hidden">
@@ -671,15 +724,25 @@ export default async function Landing() {
           </span>
           <h2 className="serif text-ink text-[44px] md:text-[60px] leading-[0.92]">Ready to celebrate?</h2>
           <p className="text-ink/60 mt-4 text-lg max-w-sm mx-auto">
-            Start a page in two minutes — for someone you love, or your own big day.
+            {BIRTHDAY_ONLY
+              ? "Add your date of birth and your birthday page sets itself up — renewed every year."
+              : "Start a page in two minutes — for someone you love, or your own big day."}
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <Link href="/create" className="btn-accent text-base py-4 px-10 shadow-glow inline-flex items-center gap-2">
-              Start a celebration <ArrowRight className="size-4" />
-            </Link>
-            <Link href="/create/me" className="btn-outline text-base py-4 px-10 inline-flex items-center gap-2">
-              <Cake className="size-4" /> Make my page
-            </Link>
+            {BIRTHDAY_ONLY ? (
+              <Link href="/create/me" className="btn-accent text-base py-4 px-10 shadow-glow inline-flex items-center gap-2">
+                <Cake className="size-4" /> Create my birthday page
+              </Link>
+            ) : (
+              <>
+                <Link href="/create" className="btn-accent text-base py-4 px-10 shadow-glow inline-flex items-center gap-2">
+                  Start a celebration <ArrowRight className="size-4" />
+                </Link>
+                <Link href="/create/me" className="btn-outline text-base py-4 px-10 inline-flex items-center gap-2">
+                  <Cake className="size-4" /> Make my page
+                </Link>
+              </>
+            )}
           </div>
         </Reveal>
       </section>
@@ -691,8 +754,12 @@ export default async function Landing() {
           <p className="text-xs text-ink/45">Beautiful group celebrations for every milestone.</p>
           <div className="flex items-center gap-5 text-sm text-ink/60">
             <Link href="/login" className="hover:text-ink transition">Sign in</Link>
-            <Link href="/create" className="hover:text-ink transition">Start a celebration</Link>
-            <Link href="/create/me" className="hover:text-ink transition">Make my page</Link>
+            {!BIRTHDAY_ONLY && (
+              <Link href="/create" className="hover:text-ink transition">Start a celebration</Link>
+            )}
+            <Link href="/create/me" className="hover:text-ink transition">
+              {BIRTHDAY_ONLY ? "Create my birthday page" : "Make my page"}
+            </Link>
           </div>
         </div>
       </footer>

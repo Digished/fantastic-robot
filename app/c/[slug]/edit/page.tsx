@@ -1,6 +1,5 @@
 import { notFound, redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
 import { EditForm } from "./form";
 import { SelfEditForm } from "./self-form";
 import { MessagesManager } from "./messages-manager";
@@ -40,15 +39,15 @@ export default async function EditPage({
       getEffectiveTracks(),
     ]);
 
-    // Fetch sealed_theme with error handling (migration may not yet be applied).
-    const { data: sealedExtras, error: sealedExtrasError } = await supabaseAdmin()
-      .from("celebrations")
-      .select("sealed_theme")
-      .eq("id", page.id)
+    // Date of birth in its own query so a not-yet-applied migration can't break
+    // the editor.
+    const { data: dobRow } = await supabase
+      .from("users")
+      .select("date_of_birth")
+      .eq("id", user.id)
       .maybeSingle();
-    const initialSealedTheme = !sealedExtrasError
-      ? ((sealedExtras as { sealed_theme?: string | null } | null)?.sealed_theme ?? null)
-      : null;
+    const initialDateOfBirth =
+      (dobRow as { date_of_birth?: string | null } | null)?.date_of_birth ?? "";
 
     const selfTheme: Theme = isTheme(page.theme) ? page.theme : "ivory";
     const selfMusic = findTrack(page.background_music, selfTracks) ? page.background_music : null;
@@ -60,15 +59,13 @@ export default async function EditPage({
         initial={{
           title: page.title,
           theme: selfTheme,
-          sealedTheme: initialSealedTheme,
           messageFromCreator: page.message_from_creator ?? "",
-          isRecurring: !!page.is_recurring,
           backgroundMusic: selfMusic,
-          presentation: page.presentation === "book" ? "book" : "reel",
           wishlist: (page.wishlist as WishlistItem[] | null) ?? [],
           bankCode: profile?.bank_code ?? "",
           accountNumber: profile?.account_number ?? "",
           accountName: profile?.account_name ?? "",
+          dateOfBirth: initialDateOfBirth,
         }}
       />
     );

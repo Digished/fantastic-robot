@@ -1,19 +1,23 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
-import { Lock, Check, Loader2, Camera, User, MapPin } from "lucide-react";
-import { createSelfCelebration, type CreateState } from "../actions";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { Lock, Check, Loader2, Camera, User, MapPin, ArrowLeft, ArrowRight, X } from "lucide-react";
+import { StepProgress } from "@/components/step-progress";
+import { createSelfCelebration, checkUsername, type CreateState } from "../actions";
 import { type Theme } from "@/lib/themes";
 import { ThemePickerButton } from "@/components/page-editor/theme-picker-button";
 import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox";
 import { MusicPicker } from "@/components/music-picker";
+import { DateOfBirthPicker } from "@/components/date-of-birth-picker";
 import type { MusicTrack } from "@/lib/music";
 import { uploadWithProgress } from "@/lib/upload";
 import { AddressFormFields, BLANK_ADDRESS, type AddressDraft } from "@/components/address-form-fields";
 import type { ShippingAddress } from "@/lib/validation/schemas";
+import { BIRTHDAY_ONLY } from "@/lib/features";
 
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "webp"];
 
+// Kept for when BIRTHDAY_ONLY is off — the full set of self-page occasions.
 const EVENT_OPTIONS: { value: string; label: string }[] = [
   { value: "birthday", label: "Birthday (renews every year)" },
   { value: "graduation", label: "Graduation" },
@@ -109,6 +113,9 @@ export function SelfCreateForm({
   initialBankCode,
   initialAccountNumber,
   initialAccountName,
+  initialDateOfBirth = "",
+  initialAvatarPath = null,
+  initialUsername = "",
   savedAddresses,
 }: {
   defaultName: string;
@@ -117,22 +124,54 @@ export function SelfCreateForm({
   initialBankCode: string;
   initialAccountNumber: string;
   initialAccountName: string;
+  initialDateOfBirth?: string;
+  initialAvatarPath?: string | null;
+  initialUsername?: string;
   savedAddresses: ShippingAddress[];
 }) {
   const [state, dispatch, pending] = useActionState<CreateState, FormData>(createSelfCelebration, {});
 
+  // Navigate client-side once the page is created (server redirect from a
+  // useActionState action leaves the form spinning).
+  useEffect(() => {
+    if (state.redirectTo) window.location.href = state.redirectTo;
+  }, [state.redirectTo]);
+
   const [eventType, setEventType] = useState("birthday");
+  const [username, setUsername] = useState(initialUsername);
+  const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
+  const usernameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestUsername = useRef(initialUsername);
+
+  function onUsernameChange(raw: string) {
+    const v = raw.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    setUsername(v);
+    latestUsername.current = v;
+    setUsernameStatus("idle");
+    if (usernameTimer.current) clearTimeout(usernameTimer.current);
+    if (!/^[a-z0-9_]{3,20}$/.test(v)) return;
+    setUsernameStatus("checking");
+    usernameTimer.current = setTimeout(async () => {
+      const res = await checkUsername(v);
+      if (latestUsername.current === v) setUsernameStatus(res.available ? "available" : "taken");
+    }, 400);
+  }
   const [title, setTitle] = useState(
     defaultName ? `${defaultName}'s Birthday` : "",
   );
-  const [date, setDate] = useState("");
+  const [date, setDate] = useState(initialDateOfBirth);
   const [theme, setTheme] = useState<Theme>("ivory");
   const [music, setMusic] = useState<string | null>(null);
   const [trackList, setTrackList] = useState<MusicTrack[]>(tracks);
 
-  // Avatar
-  const [avatarPath, setAvatarPath] = useState<string | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  // Avatar — prefilled from the profile photo set in Settings, so the two stay
+  // in sync (saving here also updates the profile avatar).
+  const [avatarPath, setAvatarPath] = useState<string | null>(initialAvatarPath);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(
+    initialAvatarPath
+      ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/celebrations/${initialAvatarPath}`
+      : null,
+  );
 
   // Bank (compulsory)
   const [bankCode, setBankCode] = useState(initialBankCode);
@@ -148,6 +187,18 @@ export function SelfCreateForm({
   const [addressError, setAddressError] = useState<string | null>(null);
 
   const bankReady = !!bankCode && /^\d{10}$/.test(accountNumber);
+  const usernameOk = /^[a-z0-9_]{3,20}$/i.test(username) && usernameStatus !== "taken";
+  // Birthday pages need a photo, a username, a date of birth, and a payout account.
+  const ready = !!avatarPath && usernameOk && !!date && bankReady;
+  const missingHint = !avatarPath
+    ? "Add a profile photo to continue."
+    : !usernameOk
+      ? "Pick a username (3–20 letters, numbers or underscores)."
+      : !date
+        ? "Add your date of birth to continue."
+        : !bankReady
+          ? "Add your payout account to continue."
+          : null;
 
   async function resolveBank(code: string, num: string) {
     setBankError(null);
@@ -193,6 +244,7 @@ export function SelfCreateForm({
   function save() {
     const fd = new FormData();
     fd.set("title", title);
+    fd.set("username", username);
     fd.set("eventType", eventType);
     fd.set("date", date);
     fd.set("theme", theme);
@@ -204,21 +256,78 @@ export function SelfCreateForm({
     dispatch(fd);
   }
 
+  // Advance a step. Leaving the first step (which holds the date of birth)
+  // requires confirming the birthday, since it's permanent.
+  function advance() {
+    if (step === 0) {
+      const pretty = date
+        ? new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
+        : "";
+      if (!window.confirm(`Please confirm your birthday: ${pretty}.\n\nThis is permanent and can never be changed.`)) return;
+    }
+    setStep((s) => s + 1);
+  }
+
   // Whether the selected address came from the saved list
   const isFromSaved = (addr: ShippingAddress) =>
     savedAddresses.some((a) => a.id && a.id === addr.id);
 
+  // ── Multi-step wizard ──
+  const steps = ["About you", "Look", "Gifts"];
+  const [step, setStep] = useState(0);
+  const stepValid = step === 0 ? !!avatarPath && usernameOk && !!date : true;
+
   return (
     <div className="space-y-6">
-      {/* Profile photo */}
-      <AvatarUploader
-        path={avatarPath}
-        previewUrl={avatarPreview}
-        onUploaded={({ path, previewUrl }) => {
-          setAvatarPath(path);
-          setAvatarPreview(previewUrl);
-        }}
-      />
+      <StepProgress steps={steps} current={step} />
+
+      {/* ── Step 1: About you ── */}
+      {step === 0 && (
+      <div className="space-y-6 fade-up">
+      {/* Profile photo — required */}
+      <div className="space-y-1">
+        <AvatarUploader
+          path={avatarPath}
+          previewUrl={avatarPreview}
+          onUploaded={({ path, previewUrl }) => {
+            setAvatarPath(path);
+            setAvatarPreview(previewUrl);
+          }}
+        />
+        {!avatarPath && (
+          <p className="text-xs text-center text-ink/45">A profile photo is required.</p>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="label" htmlFor="username">Username</label>
+        <div className="flex items-center gap-2">
+          <span className="text-ink/40 text-sm shrink-0">spendbox.site/c/</span>
+          <div className="relative flex-1">
+            <input
+              id="username"
+              className="field pr-9"
+              value={username}
+              autoComplete="username"
+              placeholder="yourname"
+              pattern="[A-Za-z0-9_]{3,20}"
+              onChange={(e) => onUsernameChange(e.target.value)}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2">
+              {usernameStatus === "checking" && <Loader2 className="size-4 animate-spin text-ink/40" />}
+              {usernameStatus === "available" && <Check className="size-4 text-[var(--accent)]" />}
+              {usernameStatus === "taken" && <X className="size-4 text-red-500" />}
+            </span>
+          </div>
+        </div>
+        <p className={`text-xs ${usernameStatus === "taken" ? "text-red-600" : "text-ink/45"}`}>
+          {usernameStatus === "taken"
+            ? "That username is taken — try another."
+            : usernameStatus === "available"
+              ? "Available!"
+              : "Your page link uses this. Letters, numbers or underscores."}
+        </p>
+      </div>
 
       <div className="space-y-1.5">
         <label className="label" htmlFor="title">Page title</label>
@@ -232,38 +341,41 @@ export function SelfCreateForm({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <label className="label" htmlFor="eventType">Occasion</label>
-        <select
-          id="eventType"
-          className="field"
-          value={eventType}
-          onChange={(e) => setEventType(e.target.value)}
-        >
-          {EVENT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </div>
+      {/* Occasion picker — only when the full multi-event product is enabled.
+          In birthdays-only mode the type is fixed to "birthday". */}
+      {!BIRTHDAY_ONLY && (
+        <div className="space-y-1.5">
+          <label className="label" htmlFor="eventType">Occasion</label>
+          <select
+            id="eventType"
+            className="field"
+            value={eventType}
+            onChange={(e) => setEventType(e.target.value)}
+          >
+            {EVENT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="space-y-1.5">
         <label className="label" htmlFor="date">
-          {eventType === "birthday" ? "Your birthday" : "The date"}
+          {eventType === "birthday" ? "Your date of birth" : "The date"}
         </label>
-        <input
-          id="date"
-          type="date"
-          className="field"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
+        <DateOfBirthPicker id="date" value={date} onChange={setDate} />
         <p className="text-xs text-ink/45">
           {eventType === "birthday"
-            ? "We'll celebrate the next one and renew it every year."
+            ? "We'll celebrate your next birthday and renew it every year."
             : "Must be at least 4 days away."}
         </p>
       </div>
+      </div>
+      )}
 
+      {/* ── Step 2: Look ── */}
+      {step === 1 && (
+      <div className="space-y-6 fade-up">
       <div className="space-y-1.5">
         <label className="label">Theme</label>
         <ThemePickerButton value={theme} onChange={setTheme} />
@@ -277,9 +389,14 @@ export function SelfCreateForm({
         allowUpload
         onAddTrack={(t) => setTrackList((prev) => [t, ...prev])}
       />
+      </div>
+      )}
 
+      {/* ── Step 3: Gifts ── */}
+      {step === 2 && (
+      <div className="space-y-6 fade-up">
       {/* Payout bank — compulsory */}
-      <div className="space-y-3 pt-2 border-t border-ink/8">
+      <div className="space-y-3">
         <div>
           <h2 className="serif text-xl text-ink">Payout account</h2>
           <p className="text-xs text-ink/45 mt-1">
@@ -446,21 +563,49 @@ export function SelfCreateForm({
         <Lock className="size-4 mt-0.5 shrink-0 text-[var(--accent)]" />
         Messages and gifts stay sealed — nobody (not even you) sees them until the day.
       </p>
+      </div>
+      )}
 
       {state.error && (
         <p className="text-sm rounded-xl bg-red-50 text-red-700 px-3 py-2">{state.error}</p>
       )}
 
-      <button
-        type="button"
-        onClick={save}
-        disabled={pending || !bankReady}
-        className="btn-accent shadow-soft w-full py-4 disabled:opacity-60"
-      >
-        {pending ? "Creating…" : "Create my page"}
-      </button>
-      {!bankReady && (
-        <p className="text-xs text-ink/45 text-center -mt-3">Add your payout account to continue.</p>
+      {/* ── Wizard navigation ── */}
+      <div className="flex items-center gap-3 pt-2">
+        {step > 0 && (
+          <button
+            type="button"
+            onClick={() => setStep((s) => s - 1)}
+            className="btn-outline py-3.5 inline-flex items-center gap-1.5"
+          >
+            <ArrowLeft className="size-4" /> Back
+          </button>
+        )}
+        {step < steps.length - 1 ? (
+          <button
+            type="button"
+            onClick={advance}
+            disabled={!stepValid}
+            className="btn-accent shadow-soft flex-1 py-3.5 inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+          >
+            Continue <ArrowRight className="size-4" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={save}
+            disabled={pending || !!state.redirectTo || !ready}
+            className="btn-accent shadow-soft flex-1 py-3.5 disabled:opacity-60"
+          >
+            {pending || state.redirectTo ? "Creating…" : "Create my page"}
+          </button>
+        )}
+      </div>
+      {step === 0 && !stepValid && (
+        <p className="text-xs text-ink/45 text-center -mt-1">Add a photo and your date of birth to continue.</p>
+      )}
+      {step === steps.length - 1 && missingHint && (
+        <p className="text-xs text-ink/45 text-center -mt-1">{missingHint}</p>
       )}
     </div>
   );

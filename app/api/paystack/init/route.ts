@@ -3,6 +3,7 @@ import { z } from "zod";
 import { customAlphabet } from "nanoid";
 import { paystack, PaystackError } from "@/lib/paystack/client";
 import { supabaseAdmin } from "@/lib/supabase/admin";
+import { supabaseServer } from "@/lib/supabase/server";
 import { computeCharge, MIN_CONTRIBUTION_KOBO } from "@/lib/fees";
 import { env } from "@/lib/env";
 
@@ -44,6 +45,9 @@ export async function POST(req: Request) {
   const reference = `SPB-${ref()}`;
   const idempotencyKey = reference;
 
+  // Credit the gift to the signed-in author (if any) for onboarding goals.
+  const { data: { user: author } } = await (await supabaseServer()).auth.getUser();
+
   const { error: insertErr } = await admin.from("contributions").insert({
     celebration_id: page.id,
     cycle: page.current_cycle,
@@ -57,6 +61,7 @@ export async function POST(req: Request) {
     paystack_reference: reference,
     idempotency_key: idempotencyKey,
     status: "pending",
+    author_user_id: author?.id ?? null,
   });
   if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 });
 

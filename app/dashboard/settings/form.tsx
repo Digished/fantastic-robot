@@ -5,6 +5,7 @@ import { Check, Loader2, User, MapPin } from "lucide-react";
 import { updateProfile, type ProfileState } from "./actions";
 import { uploadWithProgress } from "@/lib/upload";
 import { AddressFormFields, BLANK_ADDRESS, type AddressDraft } from "@/components/address-form-fields";
+import { DateOfBirthPicker } from "@/components/date-of-birth-picker";
 import type { ShippingAddress } from "@/lib/validation/schemas";
 
 type Bank = { name: string; code: string };
@@ -22,6 +23,8 @@ export function ProfileForm({
   initialAccountNumber,
   initialAccountName,
   initialAvatarPath,
+  initialDateOfBirth,
+  initialUsername,
   initialAddresses,
 }: {
   initialDisplayName: string;
@@ -31,9 +34,31 @@ export function ProfileForm({
   initialAccountNumber: string;
   initialAccountName: string;
   initialAvatarPath: string | null;
+  initialDateOfBirth: string;
+  initialUsername: string;
   initialAddresses: ShippingAddress[];
 }) {
-  const [state, action, pending] = useActionState<ProfileState, FormData>(updateProfile, {});
+  const [state, dispatch, pending] = useActionState<ProfileState, FormData>(updateProfile, {});
+
+  const [displayName, setDisplayName] = useState(initialDisplayName);
+  const [username, setUsername] = useState(initialUsername);
+  const [dateOfBirth, setDateOfBirth] = useState(initialDateOfBirth);
+  // A birthday, once set, is permanent.
+  const dobLocked = !!initialDateOfBirth;
+
+  // Submit programmatically (not via <form action>) so React 19's automatic
+  // form reset doesn't blank the controlled date-of-birth selects after save.
+  function save() {
+    const fd = new FormData();
+    fd.set("displayName", displayName);
+    fd.set("username", username);
+    if (!dobLocked) fd.set("dateOfBirth", dateOfBirth);
+    fd.set("avatarPath", avatarPath ?? "");
+    fd.set("bankCode", bankCode);
+    fd.set("accountNumber", accountNumber);
+    fd.set("shippingAddresses", JSON.stringify(addresses));
+    dispatch(fd);
+  }
 
   // Avatar
   const fileRef = useRef<HTMLInputElement>(null);
@@ -123,7 +148,9 @@ export function ProfileForm({
   const avatarUrl = publicUrl(avatarPath);
 
   return (
-    <form action={action} className="space-y-7">
+    <form onSubmit={(e) => { e.preventDefault(); save(); }} className="space-y-5">
+      <section className="card space-y-6">
+        <h2 className="serif text-xl text-ink">Profile</h2>
       {/* Avatar */}
       <div className="flex items-center gap-4">
         <div className="size-20 rounded-full overflow-hidden bg-ink/8 grid place-items-center shrink-0">
@@ -155,9 +182,9 @@ export function ProfileForm({
         <label className="label" htmlFor="displayName">Display name</label>
         <input
           id="displayName"
-          name="displayName"
           className="field"
-          defaultValue={initialDisplayName}
+          value={displayName}
+          onChange={(e) => setDisplayName(e.target.value)}
           maxLength={60}
           placeholder="How contributors see you"
         />
@@ -166,13 +193,52 @@ export function ProfileForm({
         </p>
       </div>
 
+      {/* Username */}
+      <div className="space-y-1.5">
+        <label className="label" htmlFor="username">Username</label>
+        <input
+          id="username"
+          className="field"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          autoComplete="username"
+          placeholder="yourname"
+          pattern="[A-Za-z0-9_]{3,20}"
+          title="3–20 letters, numbers or underscores"
+        />
+        <p className="text-xs text-ink/45">How friends find you. Letters, numbers or underscores.</p>
+      </div>
+
       <div className="space-y-1.5">
         <label className="label">Email</label>
         <input className="field bg-ink/5 text-ink/55" value={email} disabled />
       </div>
 
+      {/* Date of birth */}
+      <div className="space-y-1.5">
+        <label className="label">Date of birth</label>
+        {dobLocked ? (
+          <>
+            <input
+              className="field bg-ink/5 text-ink/55"
+              value={new Date(`${initialDateOfBirth}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
+              disabled
+            />
+            <p className="text-xs text-ink/45">Your birthday is permanent and can&apos;t be changed.</p>
+          </>
+        ) : (
+          <>
+            <DateOfBirthPicker value={dateOfBirth} onChange={setDateOfBirth} />
+            <p className="text-xs text-ink/45">
+              Sets your birthday countdown. This is permanent once saved.
+            </p>
+          </>
+        )}
+      </div>
+      </section>
+
       {/* Bank details */}
-      <div className="space-y-3 pt-2 border-t border-ink/8">
+      <section className="card space-y-3">
         <div>
           <h2 className="serif text-xl text-ink">Payout account</h2>
           <p className="text-xs text-ink/45 mt-1">
@@ -226,14 +292,14 @@ export function ProfileForm({
           </p>
         )}
         {bankError && <p className="text-sm text-red-600">{bankError}</p>}
-      </div>
+      </section>
 
       {/* Delivery addresses */}
-      <div className="space-y-3 pt-2 border-t border-ink/8">
+      <section className="card space-y-3">
         <div>
           <h2 className="serif text-xl text-ink">Delivery addresses</h2>
           <p className="text-xs text-ink/45 mt-1">
-            Where friends can send you physical gifts. Shown on your sealed celebration pages.
+            Where friends can send you a physical gift.
           </p>
         </div>
 
@@ -311,7 +377,7 @@ export function ProfileForm({
         )}
 
         <input type="hidden" name="shippingAddresses" value={JSON.stringify(addresses)} />
-      </div>
+      </section>
 
       {state.error && (
         <p className="text-sm rounded-xl bg-red-50 text-red-700 px-3 py-2">{state.error}</p>

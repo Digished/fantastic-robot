@@ -15,7 +15,7 @@ export async function sendEmail(params: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: env.blessingsFrom(),
+      from: env.fromEmail(),
       to: [params.to],
       subject: params.subject,
       html: params.html,

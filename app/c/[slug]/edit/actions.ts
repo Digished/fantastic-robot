@@ -173,6 +173,7 @@ export async function editSelfCelebration(
     bankCode: (formData.get("bankCode") as string) || undefined,
     accountNumber: (formData.get("accountNumber") as string) || undefined,
     sealedTheme: (formData.get("sealedTheme") as string) || undefined,
+    dateOfBirth: (formData.get("dateOfBirth") as string) || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -181,7 +182,7 @@ export async function editSelfCelebration(
   const admin = supabaseAdmin();
   const { data: page } = await admin
     .from("celebrations")
-    .select("id, creator_id, is_self")
+    .select("id, creator_id, is_self, event_type")
     .eq("slug", slug)
     .maybeSingle();
   if (!page || page.creator_id !== user.id) return { error: "Not allowed." };
@@ -192,6 +193,7 @@ export async function editSelfCelebration(
     .map((w) => ({ title: w.title.trim(), url: w.url?.trim() || undefined }))
     .filter((w) => w.title.length > 0);
 
+  // The birthday date is permanent — never recompute it from edits.
   const { error } = await admin
     .from("celebrations")
     .update({

@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { supabaseServer } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { editMessageSchema, messageSchema } from "@/lib/validation/schemas";
 import { contentWindowOpen } from "@/lib/celebration-windows";
@@ -42,6 +43,9 @@ export async function postMessage(
     return { error: "Video must be 15 seconds or less." };
   }
 
+  // Credit the post to the signed-in author (if any) for onboarding goals.
+  const { data: { user: author } } = await (await supabaseServer()).auth.getUser();
+
   const admin = supabaseAdmin();
   const { data: page } = await admin
     .from("celebrations")
@@ -67,6 +71,7 @@ export async function postMessage(
     interactive_kind: parsed.data.interactiveKind,
     interactive_payload: parsed.data.interactivePayload ?? null,
     contributor_session_id: parsed.data.contributorSessionId ?? null,
+    author_user_id: author?.id ?? null,
   });
   if (error) return { error: error.message };
 

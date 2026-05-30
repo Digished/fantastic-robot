@@ -9,7 +9,10 @@ export async function login(formData: FormData) {
     email: formData.get("email"),
     password: formData.get("password"),
   });
-  const next = (formData.get("next") as string) || "/dashboard";
+  let next = (formData.get("next") as string) || "/dashboard";
+  // Never drop a returning user onto a celebration/countdown page — send them
+  // home. (Other targets like invite links are preserved.)
+  if (next.startsWith("/c/")) next = "/dashboard";
 
   if (!parsed.success) {
     redirect(`/login?error=${encodeURIComponent("Check your email and password.")}`);

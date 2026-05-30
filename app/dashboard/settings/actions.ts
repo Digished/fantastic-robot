@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 import { paystack, PaystackError } from "@/lib/paystack/client";
-import { profileBankSchema, shippingAddressesSchema } from "@/lib/validation/schemas";
+import { profileBankSchema, shippingAddressesSchema, usernameSchema } from "@/lib/validation/schemas";
+import { buildSelfCelebrationDate } from "@/lib/self-celebration";
 
 export type ProfileState = { error?: string; ok?: boolean };
 
@@ -25,6 +27,33 @@ export async function updateProfile(
   // Avatar (optional) — the client uploads to storage and passes the path.
   const avatarPath = (formData.get("avatarPath") as string | null)?.trim();
   if (avatarPath) update.avatar_path = avatarPath;
+
+  // Date of birth (optional). Permanent once set — only accept it if the user
+  // doesn't already have one.
+  const dob = (formData.get("dateOfBirth") as string | null)?.trim() ?? "";
+  if (dob && /^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+    const { data: existingDob } = await supabase
+      .from("users")
+      .select("date_of_birth")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (!existingDob?.date_of_birth) update.date_of_birth = dob;
+  }
+
+  // Username (optional here, but unique case-insensitively).
+  const rawUsername = (formData.get("username") as string | null)?.trim() ?? "";
+  if (rawUsername) {
+    const parsedUsername = usernameSchema.safeParse(rawUsername);
+    if (!parsedUsername.success) return { error: parsedUsername.error.issues[0].message };
+    const { data: taken } = await supabaseAdmin()
+      .from("users")
+      .select("id")
+      .ilike("username", parsedUsername.data)
+      .neq("id", user.id)
+      .maybeSingle();
+    if (taken) return { error: "That username is taken." };
+    update.username = parsedUsername.data;
+  }
 
   // Bank details (optional). Only re-verify with Paystack when they change,
   // and reset the cached transfer recipient so payouts use the new account.
@@ -72,6 +101,22 @@ export async function updateProfile(
 
   const { error } = await supabase.from("users").update(update).eq("id", user.id);
   if (error) return { error: error.message };
+
+  // If the DOB changed, roll the user's recurring birthday page(s) to the next
+  // occurrence of the new month/day so the countdown stays accurate.
+  if (update.date_of_birth) {
+    const nextDate = buildSelfCelebrationDate(dob, true);
+    if (nextDate) {
+      const admin = supabaseAdmin();
+      await admin
+        .from("celebrations")
+        .update({ celebration_date: nextDate })
+        .eq("creator_id", user.id)
+        .eq("is_self", true)
+        .eq("event_type", "birthday")
+        .eq("is_recurring", true);
+    }
+  }
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/settings");

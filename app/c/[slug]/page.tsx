@@ -23,6 +23,8 @@ import { getCreatorProfile } from "@/lib/creator";
 import type { BlessingEntryStatus } from "@/lib/blessings/labels";
 import { BlessingCta } from "./blessing-cta";
 import { SealedCountdown } from "./sealed-countdown";
+import { ThrowbackMilestones, type PastCycle } from "./throwback-milestones";
+import { areFriends } from "@/lib/friends";
 
 export const dynamic = "force-dynamic";
 
@@ -133,9 +135,17 @@ export default async function WallPage({
       ? ((extrasRow as { sealed_theme?: string | null } | null)?.sealed_theme ?? null)
       : null;
 
+    // Offer "Add friend" to a signed-in viewer who isn't the celebrant or
+    // already a friend (self birthday pages only).
+    const addFriendTargetId =
+      page.is_self && !!user && !isCreator && !(await areFriends(user.id, page.creator_id))
+        ? page.creator_id
+        : null;
+
     return (
       <SealedCountdown
         slug={page.slug}
+        addFriendTargetId={addFriendTargetId}
         title={page.title}
         recipientName={page.recipient_name}
         eventLabel={page.event_type.replace(/_/g, " ")}
@@ -178,7 +188,7 @@ export default async function WallPage({
     .order("created_at", { ascending: false })
     .limit(200);
 
-  const pastCycles =
+  const pastCycles: PastCycle[] =
     page.is_recurring && page.current_cycle > 1
       ? (
           await supabase
@@ -188,6 +198,33 @@ export default async function WallPage({
             .order("cycle", { ascending: false })
         ).data ?? []
       : [];
+
+  // Message counts per past cycle for the throwback cards, plus the creator's
+  // DOB for age milestones. Use the service-role client so sealed-wall RLS
+  // doesn't zero out historical years. The DOB is fetched in its own query so a
+  // not-yet-applied migration can't break the page.
+  const pastMessageCounts: Record<number, number> = {};
+  let dateOfBirth: string | null = null;
+  if (pastCycles.length) {
+    const admin = supabaseAdmin();
+    const { data: dobRow } = await admin
+      .from("users")
+      .select("date_of_birth")
+      .eq("id", page.creator_id)
+      .maybeSingle();
+    dateOfBirth = (dobRow as { date_of_birth?: string | null } | null)?.date_of_birth ?? null;
+    await Promise.all(
+      pastCycles.map(async (c) => {
+        const { count } = await admin
+          .from("messages")
+          .select("*", { count: "exact", head: true })
+          .eq("celebration_id", page.id)
+          .eq("cycle", c.cycle)
+          .is("deleted_at", null);
+        pastMessageCounts[c.cycle] = count ?? 0;
+      }),
+    );
+  }
 
   const cover = coverUrl(page.cover_photo_path);
   const unpaid = page.is_paid_for_creation === false;
@@ -427,6 +464,23 @@ export default async function WallPage({
               {isCreator && <CelebrantLinkButton slug={page.slug} recipient={page.recipient_name} />}
             </div>
 
+            {/* Explore by year: wishlist / messages / gifts */}
+            <div className="grid grid-cols-3 gap-2 fade-up">
+              {[
+                { id: "wishlist", label: "Wishlist" },
+                { id: "messages", label: "Messages" },
+                { id: "gifts", label: "Gifts" },
+              ].map((t) => (
+                <Link
+                  key={t.id}
+                  href={`/c/${page.slug}/${t.id}`}
+                  className="rounded-2xl bg-ink/5 hover:bg-ink/10 transition text-center py-2.5 text-sm text-ink/70"
+                >
+                  {t.label}
+                </Link>
+              ))}
+            </div>
+
             {/* Wishlist */}
             {wishlist.length > 0 && (
               <section className="rounded-3xl2 bg-white shadow-ring p-5 fade-up">
@@ -479,40 +533,14 @@ export default async function WallPage({
               />
             </section>
 
-            {/* Past celebrations (recurring pages) */}
-            {pastCycles.length > 0 && (
-              <section className="mt-2 rounded-3xl2 bg-white shadow-ring p-4">
-                <p className="text-[10px] uppercase tracking-widest text-ink/40 mb-2">Past years</p>
-                <ul className="divide-y divide-ink/8">
-                  {pastCycles.map((c) => {
-                    const claimable =
-                      isCreator && c.payout_status === "pending" && Number(c.total_raised_kobo) > 0;
-                    return (
-                      <li key={c.cycle} className="flex items-center justify-between py-2.5 gap-3">
-                        <Link
-                          href={`/c/${page.slug}?cycle=${c.cycle}`}
-                          className="flex-1 flex items-center justify-between text-sm hover:opacity-70 transition"
-                        >
-                          <span className="text-ink/70">{formatDate(c.celebration_date)}</span>
-                          <span className="text-ink/45 text-xs">{c.contributor_count} messages</span>
-                        </Link>
-                        {claimable && (
-                          <ClaimButton
-                            slug={page.slug}
-                            cycle={c.cycle}
-                            amountKobo={Number(c.total_raised_kobo)}
-                            compact
-                          />
-                        )}
-                        {isCreator && c.payout_status === "paid" && (
-                          <span className="text-[11px] text-ink/40 shrink-0">✓ received</span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            )}
+            {/* Throwback — past birthday milestones (recurring pages) */}
+            <ThrowbackMilestones
+              slug={page.slug}
+              cycles={pastCycles}
+              dateOfBirth={dateOfBirth}
+              messageCounts={pastMessageCounts}
+              isCreator={isCreator}
+            />
 
             {createdBy && (
               <p className="pt-6 text-center md:text-left text-[11px] text-ink/45">
