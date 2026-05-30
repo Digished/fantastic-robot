@@ -33,12 +33,12 @@ const FEATURES = [
   {
     icon: Wand2,
     title: "AI-crafted opening",
-    body: "Tell us about the celebrant and we craft a warm, personalised opening that sets the scene before the messages begin.",
+    body: "A warm, personalised opening sets the scene before your friends' messages begin to play.",
   },
   {
     icon: Palette,
     title: "16 beautiful themes",
-    body: "Pick a palette that fits their personality — from soft Ivory to deep Midnight — and the whole page transforms.",
+    body: "Pick a palette that fits your vibe — from soft Ivory to deep Midnight — and the whole page transforms.",
   },
   {
     icon: Music,
@@ -53,9 +53,9 @@ const FEATURES = [
 ];
 
 const STEPS = [
-  { num: "01", title: "Create the page", body: "Pick a theme and music, add a cover photo, write about the celebrant, set the date — about two minutes." },
+  { num: "01", title: "Set up your page", body: "Add your date of birth, pick a theme and a song, and choose where the gift goes — about two minutes." },
   { num: "02", title: "Friends pile on", body: "Share the link in your group chat. Everyone adds voice notes, videos, photos and a cash gift — no account needed." },
-  { num: "03", title: "They unwrap it", body: "On the day, a cinematic play-through of every message — then the pooled gift lands in their bank account." },
+  { num: "03", title: "You unwrap it", body: "On the day, relive every message — then the pooled gift lands in your bank account." },
 ];
 
 const TIMELINE = [
@@ -66,9 +66,9 @@ const TIMELINE = [
 ];
 
 const ROLES = [
-  { icon: PartyPopper, title: "The creator", body: "Builds the page, sets the theme and music, verifies where the gift should go, and shares the link." },
-  { icon: Users, title: "The friends", body: "Open the link, leave a heartfelt message or media card, and chip in to the group gift. No sign-up — anonymous if they like." },
-  { icon: Gift, title: "The celebrant", body: "Presses play for the full surprise, then receives the pooled cash gift straight to their bank in one tap." },
+  { icon: Cake, title: "You", body: "Add your date of birth, pick a theme and a song, and share your page link with everyone who loves you." },
+  { icon: Users, title: "Your friends", body: "Open the link, leave a heartfelt message or media card, and chip in to the group gift. No sign-up — anonymous if they like." },
+  { icon: Gift, title: "On the day", body: "Relive every message, then receive the pooled cash gift straight to your bank in one tap." },
 ];
 
 const TRUST = [
@@ -187,7 +187,7 @@ export default async function Landing() {
 
           {/* Left: Copy */}
           <div className="md:order-1">
-            <p className="text-[11px] uppercase tracking-[0.3em] text-ink/50 mb-6 fade-up">Celebrations, reimagined</p>
+            <p className="text-[11px] uppercase tracking-[0.3em] text-ink/50 mb-6 fade-up">Birthdays, reimagined</p>
             <h1 className="fade-up serif text-ink text-[52px] md:text-[68px] leading-[0.9]" style={{ animationDelay: "60ms" }}>
               Celebrate Together,<br />
               <em className="shimmer-text not-italic">Perfectly</em>
@@ -244,9 +244,9 @@ export default async function Landing() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/10 to-black/70" />
                 <div className="absolute bottom-0 left-0 right-0 p-4">
-                  <p className="text-[8px] uppercase tracking-[0.28em] text-white/65 font-medium">Wedding · 22 Aug</p>
-                  <p className="serif text-white text-lg mt-1 leading-[1.1]">Chiamaka&apos;s<br />big day</p>
-                  <p className="text-white/60 text-[10px] mt-0.5">For Chiamaka Eze</p>
+                  <p className="text-[8px] uppercase tracking-[0.28em] text-white/65 font-medium">Birthday · 22 Aug</p>
+                  <p className="serif text-white text-lg mt-1 leading-[1.1]">Amara<br />turns 27</p>
+                  <p className="text-white/60 text-[10px] mt-0.5">Amara&apos;s big day</p>
                 </div>
               </div>
 
@@ -395,7 +395,7 @@ export default async function Landing() {
             <SealedPreview />
           </Reveal>
 
-          <Reveal delay={120} className="order-1 md:order-2">
+          <Reveal delay={120} className="order-1 md:order-2 mt-12 md:mt-0">
             <p className="text-[11px] uppercase tracking-[0.3em] text-ink/45 mb-4">Your own page</p>
             <h2 className="serif text-ink text-[38px] md:text-[48px] leading-[0.95]">
               Sealed until your day arrives
@@ -559,7 +559,7 @@ export default async function Landing() {
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-12">
             {[
-              { big: "₦500", label: "One-time fee to create and publish a page." },
+              { big: "Free", label: "Creating your birthday page costs nothing." },
               { big: "₦500", label: "Minimum contribution — everyone can join in." },
               { big: "5%", label: "Small fee added on top, so the gift stays whole." },
               { big: "1 tap", label: "To receive the pooled gift on the day." },
@@ -751,7 +751,7 @@ export default async function Landing() {
       <footer className="border-t border-ink/8">
         <div className="mx-auto max-w-6xl px-5 md:px-10 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <span className="serif text-xl text-ink">Spendbox</span>
-          <p className="text-xs text-ink/45">Beautiful group celebrations for every milestone.</p>
+          <p className="text-xs text-ink/45">Beautiful birthdays, celebrated together.</p>
           <div className="flex items-center gap-5 text-sm text-ink/60">
             <Link href="/login" className="hover:text-ink transition">Sign in</Link>
             {!BIRTHDAY_ONLY && (
