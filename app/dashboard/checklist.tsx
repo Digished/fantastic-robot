@@ -8,11 +8,15 @@ export function DashboardChecklist({
   hasUsername,
   hasPhoto,
   referralCount,
+  messagedFriend,
+  giftedFriend,
 }: {
   hasBirthdayPage: boolean;
   hasUsername: boolean;
   hasPhoto: boolean;
   referralCount: number;
+  messagedFriend: boolean;
+  giftedFriend: boolean;
 }) {
   const items = [
     { label: "Create your birthday page", href: "/create/me", done: hasBirthdayPage },
@@ -24,6 +28,8 @@ export function DashboardChecklist({
       done: referralCount >= 10,
       progress: `${Math.min(referralCount, 10)}/10`,
     },
+    { label: "Send a friend a birthday message", href: "/dashboard/friends", done: messagedFriend },
+    { label: "Send a friend a gift", href: "/dashboard/friends", done: giftedFriend },
   ];
   const remaining = items.filter((i) => !i.done);
   if (remaining.length === 0) return null;

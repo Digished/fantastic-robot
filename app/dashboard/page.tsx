@@ -11,7 +11,7 @@ import { DashboardChecklist } from "./checklist";
 import { CardArt } from "./card-art";
 import { rehydrateDraft, type SavedDraft } from "@/lib/draft/draft";
 import { BIRTHDAY_ONLY } from "@/lib/features";
-import { ensureInviteToken, getFriendsWithBirthdays } from "@/lib/friends";
+import { ensureInviteToken, getFriendsWithBirthdays, getFriendActivity } from "@/lib/friends";
 import { env } from "@/lib/env";
 
 function coverUrl(path: string | null | undefined) {
@@ -77,6 +77,7 @@ export default async function Dashboard() {
   const myUsername = meRow?.username ?? null;
 
   const inviteUrl = `${env.appUrl()}/i/${inviteToken}`;
+  const activity = await getFriendActivity(user.id, friends.map((f) => f.profile.id));
 
   // Sealed pages hide their wall — even from the owner. But the owner can still
   // see how many messages/gifts have landed (counts only, no content/amount).
@@ -128,6 +129,8 @@ export default async function Dashboard() {
             hasUsername={!!myUsername}
             hasPhoto={!!myAvatar}
             referralCount={referralCount}
+            messagedFriend={activity.messagedFriend}
+            giftedFriend={activity.giftedFriend}
           />
 
           <div className="grid sm:grid-cols-2 gap-4">

@@ -150,6 +150,36 @@ export async function getFriendsWithBirthdays(userId: string): Promise<FriendBir
     .sort((a, b) => (a.days ?? 9999) - (b.days ?? 9999));
 }
 
+/** Whether the user has posted a message / sent a paid gift on a friend's page. */
+export async function getFriendActivity(
+  userId: string,
+  friendIds: string[],
+): Promise<{ messagedFriend: boolean; giftedFriend: boolean }> {
+  if (!friendIds.length) return { messagedFriend: false, giftedFriend: false };
+  const admin = supabaseAdmin();
+  const { data: pages } = await admin
+    .from("celebrations")
+    .select("id")
+    .in("creator_id", friendIds);
+  const ids = (pages ?? []).map((p) => p.id as string);
+  if (!ids.length) return { messagedFriend: false, giftedFriend: false };
+  const [{ count: msgs }, { count: gifts }] = await Promise.all([
+    admin
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("author_user_id", userId)
+      .in("celebration_id", ids)
+      .is("deleted_at", null),
+    admin
+      .from("contributions")
+      .select("id", { count: "exact", head: true })
+      .eq("author_user_id", userId)
+      .in("celebration_id", ids)
+      .eq("status", "paid"),
+  ]);
+  return { messagedFriend: (msgs ?? 0) > 0, giftedFriend: (gifts ?? 0) > 0 };
+}
+
 export async function getIncomingRequests(userId: string): Promise<RequestPerson[]> {
   const admin = supabaseAdmin();
   const { data } = await admin
