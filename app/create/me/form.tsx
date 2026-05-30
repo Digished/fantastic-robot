@@ -256,14 +256,16 @@ export function SelfCreateForm({
     dispatch(fd);
   }
 
-  // The birthday is permanent — make the user confirm it twice before creating.
-  function confirmAndSave() {
-    const pretty = date
-      ? new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "long" })
-      : "";
-    if (!window.confirm(`Your birthday is ${pretty}. This is permanent and cannot be changed later. Continue?`)) return;
-    if (!window.confirm("Are you sure? Your birthday date can never be changed.")) return;
-    save();
+  // Advance a step. Leaving the first step (which holds the date of birth)
+  // requires confirming the birthday, since it's permanent.
+  function advance() {
+    if (step === 0) {
+      const pretty = date
+        ? new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
+        : "";
+      if (!window.confirm(`Please confirm your birthday: ${pretty}.\n\nThis is permanent and can never be changed.`)) return;
+    }
+    setStep((s) => s + 1);
   }
 
   // Whether the selected address came from the saved list
@@ -582,7 +584,7 @@ export function SelfCreateForm({
         {step < steps.length - 1 ? (
           <button
             type="button"
-            onClick={() => setStep((s) => s + 1)}
+            onClick={advance}
             disabled={!stepValid}
             className="btn-accent shadow-soft flex-1 py-3.5 inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
           >
@@ -591,7 +593,7 @@ export function SelfCreateForm({
         ) : (
           <button
             type="button"
-            onClick={confirmAndSave}
+            onClick={save}
             disabled={pending || !!state.redirectTo || !ready}
             className="btn-accent shadow-soft flex-1 py-3.5 disabled:opacity-60"
           >

@@ -8,15 +8,15 @@ export function DashboardChecklist({
   hasUsername,
   hasPhoto,
   referralCount,
-  messagedFriend,
-  giftedFriend,
+  messageCount,
+  giftCount,
 }: {
   hasBirthdayPage: boolean;
   hasUsername: boolean;
   hasPhoto: boolean;
   referralCount: number;
-  messagedFriend: boolean;
-  giftedFriend: boolean;
+  messageCount: number;
+  giftCount: number;
 }) {
   const items = [
     { label: "Create your birthday page", href: "/create/me", done: hasBirthdayPage },
@@ -28,8 +28,18 @@ export function DashboardChecklist({
       done: referralCount >= 10,
       progress: `${Math.min(referralCount, 10)}/10`,
     },
-    { label: "Send a friend a birthday message", href: "/dashboard/friends", done: messagedFriend },
-    { label: "Send a friend a gift", href: "/dashboard/friends", done: giftedFriend },
+    {
+      label: "Send 10 birthday messages",
+      href: "/dashboard/friends",
+      done: messageCount >= 10,
+      progress: `${Math.min(messageCount, 10)}/10`,
+    },
+    {
+      label: "Send 10 gifts",
+      href: "/dashboard/friends",
+      done: giftCount >= 10,
+      progress: `${Math.min(giftCount, 10)}/10`,
+    },
   ];
   const remaining = items.filter((i) => !i.done);
   if (remaining.length === 0) return null;

@@ -129,8 +129,8 @@ export default async function Dashboard() {
             hasUsername={!!myUsername}
             hasPhoto={!!myAvatar}
             referralCount={referralCount}
-            messagedFriend={activity.messagedFriend}
-            giftedFriend={activity.giftedFriend}
+            messageCount={activity.messageCount}
+            giftCount={activity.giftCount}
           />
 
           <div className="grid sm:grid-cols-2 gap-4">

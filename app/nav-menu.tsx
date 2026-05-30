@@ -1,22 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Menu, X, Home, ListChecks, MessageCircle, Gift, Users, Settings, LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
+import { supabaseBrowser } from "@/lib/supabase/client";
 
-/** Global slide-out menu shown on every page while signed in. */
+const LINKS = [
+  { href: "/dashboard", label: "Home", icon: Home },
+  { href: "/me/wishlist", label: "Wishlist", icon: ListChecks },
+  { href: "/me/messages", label: "Messages", icon: MessageCircle },
+  { href: "/me/gifts", label: "Gifts", icon: Gift },
+  { href: "/dashboard/friends", label: "Friends", icon: Users },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+];
+
+/**
+ * Global slide-out menu, shown on every page while signed in. It's a persistent
+ * client component (reads the session from the browser, no server round-trip),
+ * so it doesn't reload or flicker as you navigate.
+ */
 export function NavMenu() {
+  const [authed, setAuthed] = useState(false);
   const [open, setOpen] = useState(false);
 
-  const links = [
-    { href: "/dashboard", label: "Home", icon: Home },
-    { href: "/me/wishlist", label: "Wishlist", icon: ListChecks },
-    { href: "/me/messages", label: "Messages", icon: MessageCircle },
-    { href: "/me/gifts", label: "Gifts", icon: Gift },
-    { href: "/dashboard/friends", label: "Friends", icon: Users },
-    { href: "/dashboard/settings", label: "Settings", icon: Settings },
-  ];
+  useEffect(() => {
+    const sb = supabaseBrowser();
+    let mounted = true;
+    sb.auth.getSession().then(({ data }) => { if (mounted) setAuthed(!!data.session); });
+    const { data: sub } = sb.auth.onAuthStateChange((_e, session) => setAuthed(!!session));
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, []);
+
+  if (!authed) return null;
 
   return (
     <>
@@ -37,9 +53,9 @@ export function NavMenu() {
               <button onClick={() => setOpen(false)} className="text-ink/40 hover:text-ink"><X className="size-5" /></button>
             </div>
 
-            {links.map(({ href, label, icon: Icon }) => (
+            {LINKS.map(({ href, label, icon: Icon }) => (
               <Link
-                key={href + label}
+                key={href}
                 href={href}
                 onClick={() => setOpen(false)}
                 className="flex items-center gap-3 rounded-2xl px-3 py-3 hover:bg-ink/5 text-ink"
