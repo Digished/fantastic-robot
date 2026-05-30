@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Menu, X, Home, ListChecks, MessageCircle, Gift, Users, Settings, LogOut } from "lucide-react";
 import { logout } from "@/app/login/actions";
-import { supabaseBrowser } from "@/lib/supabase/client";
 
 const LINKS = [
   { href: "/dashboard", label: "Home", icon: Home },
@@ -16,23 +15,12 @@ const LINKS = [
 ];
 
 /**
- * Global slide-out menu, shown on every page while signed in. It's a persistent
- * client component (reads the session from the browser, no server round-trip),
- * so it doesn't reload or flicker as you navigate.
+ * Global slide-out menu. Visibility is decided by the server (AppNav) from the
+ * session cookie, so this just renders the button + drawer — it's in the
+ * initial HTML and doesn't flash in or reload between pages.
  */
 export function NavMenu() {
-  const [authed, setAuthed] = useState(false);
   const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    const sb = supabaseBrowser();
-    let mounted = true;
-    sb.auth.getSession().then(({ data }) => { if (mounted) setAuthed(!!data.session); });
-    const { data: sub } = sb.auth.onAuthStateChange((_e, session) => setAuthed(!!session));
-    return () => { mounted = false; sub.subscription.unsubscribe(); };
-  }, []);
-
-  if (!authed) return null;
 
   return (
     <>

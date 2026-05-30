@@ -65,10 +65,10 @@ export function ThrowbackMilestones({
               key={c.cycle}
               className="snap-start shrink-0 w-64 rounded-3xl2 bg-white shadow-ring overflow-hidden flex flex-col"
             >
-              {/* Header band */}
+              {/* Header band — the age is private, shown only to the owner. */}
               <div className="relative theme-mesh px-5 pt-5 pb-6">
                 <p className="text-[10px] uppercase tracking-[0.3em] text-ink/55">{year}</p>
-                {age !== null ? (
+                {isCreator && age !== null ? (
                   <p className="serif text-3xl text-ink mt-1 leading-none">Turned {age}</p>
                 ) : (
                   <p className="serif text-3xl text-ink mt-1 leading-none">Birthday</p>

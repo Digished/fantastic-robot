@@ -17,6 +17,7 @@ import {
   acceptInviteForUser,
   getPublicProfile,
   getBirthdayPagesFor,
+  birthdayMonthDay,
   daysUntilBirthday,
   profileName,
   searchUsers,
@@ -39,11 +40,14 @@ async function emailFor(userId: string): Promise<string | null> {
   return (data?.email as string | undefined) ?? null;
 }
 
-/** Search results annotated with relationship + their birthday page (if any). */
+/** Search results annotated with relationship + their birthday page (if any).
+ * Only a year-less "day month" label and days-until are exposed — never the
+ * birth year. */
 export type PersonResult = PublicProfile & {
   relation: "self" | "friend" | "incoming" | "outgoing" | "none";
   slug: string | null;
   days: number | null;
+  birthday: string | null;
 };
 
 export async function searchPeople(query: string): Promise<PersonResult[]> {
@@ -71,6 +75,7 @@ export async function searchPeople(query: string): Promise<PersonResult[]> {
   const pages = await getBirthdayPagesFor(ids);
   return profiles.map((p) => ({
     ...p,
+    dateOfBirth: null, // never expose the birth year to the client
     relation: friendSet.has(p.id)
       ? "friend"
       : outgoing.has(p.id)
@@ -80,6 +85,7 @@ export async function searchPeople(query: string): Promise<PersonResult[]> {
           : "none",
     slug: pages.get(p.id)?.slug ?? null,
     days: p.dateOfBirth ? daysUntilBirthday(p.dateOfBirth) : null,
+    birthday: birthdayMonthDay(p.dateOfBirth),
   } as PersonResult));
 }
 
