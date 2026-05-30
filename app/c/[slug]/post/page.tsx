@@ -8,6 +8,7 @@ import { CONTRIBUTOR_COOKIE } from "@/lib/contributor-id";
 import { PostForm } from "./form";
 import { YourMessages, type OwnMessage } from "./your-messages";
 import { ShareBar } from "../share-bar";
+import { AccountNudge } from "../account-nudge";
 
 function daysUntil(dateStr: string) {
   return Math.max(0, Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86400000));
@@ -82,6 +83,7 @@ export default async function PostPage({
                 daysLeft={daysLeft}
               />
             </div>
+            <AccountNudge />
           </>
         )}
         {closed ? (

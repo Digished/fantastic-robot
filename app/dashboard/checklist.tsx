@@ -7,22 +7,22 @@ export function DashboardChecklist({
   hasBirthdayPage,
   hasUsername,
   hasPhoto,
-  friendCount,
+  referralCount,
 }: {
   hasBirthdayPage: boolean;
   hasUsername: boolean;
   hasPhoto: boolean;
-  friendCount: number;
+  referralCount: number;
 }) {
   const items = [
     { label: "Create your birthday page", href: "/create/me", done: hasBirthdayPage },
     { label: "Pick a username", href: "/dashboard/settings", done: hasUsername },
     { label: "Add a profile photo", href: "/dashboard/settings", done: hasPhoto },
     {
-      label: "Invite 5 friends",
+      label: "Invite 10 friends to join",
       href: "/dashboard/friends",
-      done: friendCount >= 5,
-      progress: `${Math.min(friendCount, 5)}/5`,
+      done: referralCount >= 10,
+      progress: `${Math.min(referralCount, 10)}/10`,
     },
   ];
   const remaining = items.filter((i) => !i.done);

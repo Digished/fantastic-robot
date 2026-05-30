@@ -43,6 +43,8 @@ export function ProfileForm({
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [username, setUsername] = useState(initialUsername);
   const [dateOfBirth, setDateOfBirth] = useState(initialDateOfBirth);
+  // A birthday, once set, is permanent.
+  const dobLocked = !!initialDateOfBirth;
 
   // Submit programmatically (not via <form action>) so React 19's automatic
   // form reset doesn't blank the controlled date-of-birth selects after save.
@@ -50,7 +52,7 @@ export function ProfileForm({
     const fd = new FormData();
     fd.set("displayName", displayName);
     fd.set("username", username);
-    fd.set("dateOfBirth", dateOfBirth);
+    if (!dobLocked) fd.set("dateOfBirth", dateOfBirth);
     fd.set("avatarPath", avatarPath ?? "");
     fd.set("bankCode", bankCode);
     fd.set("accountNumber", accountNumber);
@@ -215,11 +217,23 @@ export function ProfileForm({
       {/* Date of birth */}
       <div className="space-y-1.5">
         <label className="label">Date of birth</label>
-        <DateOfBirthPicker value={dateOfBirth} onChange={setDateOfBirth} />
-        <p className="text-xs text-ink/45">
-          Sets your birthday countdown. We celebrate the next one and renew it every year.
-        </p>
-        <input type="hidden" name="dateOfBirth" value={dateOfBirth} />
+        {dobLocked ? (
+          <>
+            <input
+              className="field bg-ink/5 text-ink/55"
+              value={new Date(`${initialDateOfBirth}T00:00:00`).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}
+              disabled
+            />
+            <p className="text-xs text-ink/45">Your birthday is permanent and can&apos;t be changed.</p>
+          </>
+        ) : (
+          <>
+            <DateOfBirthPicker value={dateOfBirth} onChange={setDateOfBirth} />
+            <p className="text-xs text-ink/45">
+              Sets your birthday countdown. This is permanent once saved.
+            </p>
+          </>
+        )}
       </div>
       </section>
 

@@ -36,7 +36,7 @@ export default async function Dashboard() {
 
   // Fetch everything the dashboard needs up front, in parallel.
   const admin = supabaseAdmin();
-  const [pagesQ, draftQ, meRowQ, friends, inviteToken] = await Promise.all([
+  const [pagesQ, draftQ, meRowQ, friends, inviteToken, referralsQ] = await Promise.all([
     supabase
       .from("celebrations")
       .select("id, slug, title, recipient_name, event_type, celebration_date, status, total_raised_kobo, contributor_count, theme, cover_photo_path, is_paid_for_creation, is_self, is_sealed, claimable_at, current_cycle")
@@ -54,8 +54,10 @@ export default async function Dashboard() {
       .maybeSingle(),
     getFriendsWithBirthdays(user.id),
     ensureInviteToken(user.id),
+    admin.from("users").select("id", { count: "exact", head: true }).eq("referred_by", user.id),
   ]);
   const pages = pagesQ.data;
+  const referralCount = referralsQ.count ?? 0;
 
   // A birthday page is required to use the app. If it's genuinely missing (new
   // user, or they deleted theirs) send them through creation — but never bounce
@@ -125,7 +127,7 @@ export default async function Dashboard() {
             hasBirthdayPage={hasBirthdayPage}
             hasUsername={!!myUsername}
             hasPhoto={!!myAvatar}
-            friendCount={friends.length}
+            referralCount={referralCount}
           />
 
           <div className="grid sm:grid-cols-2 gap-4">

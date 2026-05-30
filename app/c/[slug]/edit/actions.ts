@@ -10,7 +10,6 @@ import { THEME_IDS } from "@/lib/themes";
 import { editSelfCelebrationSchema } from "@/lib/validation/schemas";
 import { resolveSavedTrackId } from "@/lib/music/server";
 import { contentWindowOpen } from "@/lib/celebration-windows";
-import { buildSelfCelebrationDate } from "@/lib/self-celebration";
 
 const editSchema = z.object({
   title: z.string().min(2).max(80),
@@ -189,28 +188,12 @@ export async function editSelfCelebration(
   if (!page || page.creator_id !== user.id) return { error: "Not allowed." };
   if (!page.is_self) return { error: "Not a personal page." };
 
-  // Date of birth lives on the profile and drives the recurring birthday
-  // countdown. When it changes, roll the celebration date to the next
-  // occurrence of the new month/day.
-  if (parsed.data.dateOfBirth) {
-    await admin
-      .from("users")
-      .update({ date_of_birth: parsed.data.dateOfBirth })
-      .eq("id", user.id);
-  }
-
   // Drop blank links so an empty url field doesn't render a dead anchor.
   const cleanWishlist = parsed.data.wishlist
     .map((w) => ({ title: w.title.trim(), url: w.url?.trim() || undefined }))
     .filter((w) => w.title.length > 0);
 
-  // For a recurring birthday, a new DOB rolls the page to the next occurrence
-  // of that month/day (the DB trigger keeps deadline/claimable in sync).
-  const recomputedDate =
-    parsed.data.dateOfBirth && page.event_type === "birthday"
-      ? buildSelfCelebrationDate(parsed.data.dateOfBirth, true)
-      : null;
-
+  // The birthday date is permanent — never recompute it from edits.
   const { error } = await admin
     .from("celebrations")
     .update({
@@ -223,7 +206,6 @@ export async function editSelfCelebration(
       sealed_theme: parsed.data.sealedTheme || null,
       ...(parsed.data.theme ? { theme: parsed.data.theme } : {}),
       ...(parsed.data.presentation ? { presentation: parsed.data.presentation } : {}),
-      ...(recomputedDate ? { celebration_date: recomputedDate } : {}),
     })
     .eq("id", page.id);
   if (error) return { error: error.message };

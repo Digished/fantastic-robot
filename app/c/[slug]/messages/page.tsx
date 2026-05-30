@@ -23,12 +23,22 @@ export default async function MessagesPage({
 
   const { page, viewCycle, sealed, years } = view;
 
+  const admin = supabaseAdmin();
   let messages: {
     id: string; contributor_name: string; is_anonymous: boolean;
     body: string | null; media_kind: string;
   }[] = [];
-  if (!sealed) {
-    const { data } = await supabaseAdmin()
+  let sealedCount = 0;
+  if (sealed) {
+    const { count } = await admin
+      .from("messages")
+      .select("*", { count: "exact", head: true })
+      .eq("celebration_id", page.id)
+      .eq("cycle", viewCycle)
+      .is("deleted_at", null);
+    sealedCount = count ?? 0;
+  } else {
+    const { data } = await admin
       .from("messages")
       .select("id, contributor_name, is_anonymous, body, media_kind")
       .eq("celebration_id", page.id)
@@ -46,12 +56,26 @@ export default async function MessagesPage({
         <h1 className="serif text-3xl text-ink">Messages</h1>
 
         {sealed ? (
-          <div className="card text-center py-12">
-            <Lock className="size-7 text-[var(--accent)] mx-auto" />
-            <p className="serif text-xl text-ink mt-3">Sealed until the day</p>
-            <p className="text-ink/55 text-sm mt-1.5">
-              Messages stay hidden — even from you — and are revealed on {formatDate(page.celebration_date)}.
-            </p>
+          <div className="space-y-3">
+            <div className="rounded-2xl bg-[var(--accent-soft)] text-center py-5 px-4">
+              <Lock className="size-6 text-[var(--accent)] mx-auto" />
+              <p className="serif text-2xl text-ink mt-2">{sealedCount} message{sealedCount === 1 ? "" : "s"} waiting</p>
+              <p className="text-ink/55 text-sm mt-1">
+                Hidden — even from you — until {formatDate(page.celebration_date)}.
+              </p>
+            </div>
+            {/* Blurred teaser of what's waiting */}
+            {Array.from({ length: Math.min(Math.max(sealedCount, 1), 4) }).map((_, i) => (
+              <div key={i} className="card select-none pointer-events-none" aria-hidden>
+                <div className="blur-sm space-y-2">
+                  <div className="h-3 rounded bg-ink/15 w-3/4" />
+                  <div className="h-3 rounded bg-ink/10 w-1/2" />
+                  <div className="mt-2 flex items-center gap-2 text-xs text-ink/30">
+                    <MessageCircle className="size-3.5" /> <span>Someone special</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : messages.length === 0 ? (
           <p className="text-ink/50 text-sm">No messages this year yet.</p>

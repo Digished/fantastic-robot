@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Heart, MessageSquarePlus } from "lucide-react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isTheme } from "@/lib/themes";
+import { AccountNudge } from "../../account-nudge";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,8 @@ export default async function ContributionDonePage({
             Add a message
           </Link>
         </div>
+
+        <AccountNudge />
 
         <p className="text-xs text-ink/35">
           Made with Spendbox · for {page.recipient_name}

@@ -333,7 +333,7 @@ export function SealedCountdown({
       {/* ── Sticky top: header + tab preview nav ── */}
       <div className="relative z-30 flex-shrink-0">
         <header
-          className="px-5 pb-2 flex items-center justify-between"
+          className="px-5 pb-2 pr-16 flex items-center gap-3"
           style={{ paddingTop: "max(1.25rem, env(safe-area-inset-top))" }}
         >
           <Link href={isCreator ? "/dashboard" : "/"} className="serif text-lg text-white drop-shadow">

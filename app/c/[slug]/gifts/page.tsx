@@ -22,10 +22,20 @@ export default async function GiftsPage({
 
   const { page, isCreator, viewCycle, sealed, years } = view;
 
+  const admin = supabaseAdmin();
   let gifts: { id: string; contributor_name: string; is_anonymous: boolean; amount_net_kobo: number }[] = [];
   let total = 0;
-  if (!sealed) {
-    const { data } = await supabaseAdmin()
+  let sealedCount = 0;
+  if (sealed) {
+    const { count } = await admin
+      .from("contributions")
+      .select("*", { count: "exact", head: true })
+      .eq("celebration_id", page.id)
+      .eq("cycle", viewCycle)
+      .eq("status", "paid");
+    sealedCount = count ?? 0;
+  } else {
+    const { data } = await admin
       .from("contributions")
       .select("id, contributor_name, is_anonymous, amount_net_kobo")
       .eq("celebration_id", page.id)
@@ -53,12 +63,22 @@ export default async function GiftsPage({
         </div>
 
         {sealed ? (
-          <div className="card text-center py-12">
-            <Lock className="size-7 text-[var(--accent)] mx-auto" />
-            <p className="serif text-xl text-ink mt-3">Sealed until the day</p>
-            <p className="text-ink/55 text-sm mt-1.5">
-              Gifts stay hidden until {formatDate(page.celebration_date)}, then it&apos;s all revealed.
-            </p>
+          <div className="space-y-3">
+            <div className="rounded-2xl bg-[var(--accent-soft)] text-center py-5 px-4">
+              <Lock className="size-6 text-[var(--accent)] mx-auto" />
+              <p className="serif text-2xl text-ink mt-2">{sealedCount} gift{sealedCount === 1 ? "" : "s"} waiting</p>
+              <p className="text-ink/55 text-sm mt-1">
+                The amount stays hidden until {formatDate(page.celebration_date)}.
+              </p>
+            </div>
+            {Array.from({ length: Math.min(Math.max(sealedCount, 1), 4) }).map((_, i) => (
+              <div key={i} className="card flex items-center justify-between py-3 select-none pointer-events-none" aria-hidden>
+                <span className="inline-flex items-center gap-2 text-ink/40 blur-[2px]">
+                  <Gift className="size-4" /> Someone special
+                </span>
+                <span className="text-ink/30 blur-sm">₦••••</span>
+              </div>
+            ))}
           </div>
         ) : gifts.length === 0 ? (
           <p className="text-ink/50 text-sm">No gifts this year yet.</p>

@@ -28,9 +28,17 @@ export async function updateProfile(
   const avatarPath = (formData.get("avatarPath") as string | null)?.trim();
   if (avatarPath) update.avatar_path = avatarPath;
 
-  // Date of birth (optional). Drives the recurring birthday countdown.
+  // Date of birth (optional). Permanent once set — only accept it if the user
+  // doesn't already have one.
   const dob = (formData.get("dateOfBirth") as string | null)?.trim() ?? "";
-  if (dob && /^\d{4}-\d{2}-\d{2}$/.test(dob)) update.date_of_birth = dob;
+  if (dob && /^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+    const { data: existingDob } = await supabase
+      .from("users")
+      .select("date_of_birth")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (!existingDob?.date_of_birth) update.date_of_birth = dob;
+  }
 
   // Username (optional here, but unique case-insensitively).
   const rawUsername = (formData.get("username") as string | null)?.trim() ?? "";

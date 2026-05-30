@@ -6,18 +6,14 @@ import { Menu, X, Home, ListChecks, MessageCircle, Gift, Users, Settings, LogOut
 import { logout } from "@/app/login/actions";
 
 /** Global slide-out menu shown on every page while signed in. */
-export function NavMenu({ slug }: { slug: string | null }) {
+export function NavMenu() {
   const [open, setOpen] = useState(false);
 
   const links = [
     { href: "/dashboard", label: "Home", icon: Home },
-    ...(slug
-      ? [
-          { href: `/c/${slug}/wishlist`, label: "Wishlist", icon: ListChecks },
-          { href: `/c/${slug}/messages`, label: "Messages", icon: MessageCircle },
-          { href: `/c/${slug}/gifts`, label: "Gifts", icon: Gift },
-        ]
-      : []),
+    { href: "/me/wishlist", label: "Wishlist", icon: ListChecks },
+    { href: "/me/messages", label: "Messages", icon: MessageCircle },
+    { href: "/me/gifts", label: "Gifts", icon: Gift },
     { href: "/dashboard/friends", label: "Friends", icon: Users },
     { href: "/dashboard/settings", label: "Settings", icon: Settings },
   ];

@@ -9,7 +9,6 @@ import { isTheme, type Theme } from "@/lib/themes";
 import { ThemePickerButton } from "@/components/page-editor/theme-picker-button";
 import { BankCombobox, type Bank } from "@/components/page-editor/bank-combobox";
 import { MusicPicker } from "@/components/music-picker";
-import { DateOfBirthPicker } from "@/components/date-of-birth-picker";
 import { StepProgress } from "@/components/step-progress";
 import { isValidUploadedTrackId, makeUploadedTrack, parseMusicValue, type MusicTrack } from "@/lib/music";
 import type { WishlistItem } from "@/lib/validation/schemas";
@@ -42,7 +41,6 @@ export function SelfEditForm({
   const [title, setTitle] = useState(initial.title);
   const [theme, setTheme] = useState<Theme>(isTheme(initial.theme) ? initial.theme : "ivory");
   const [note, setNote] = useState(initial.messageFromCreator);
-  const [dateOfBirth, setDateOfBirth] = useState(initial.dateOfBirth);
   const [wishlist, setWishlist] = useState<WishlistItem[]>(
     initial.wishlist.length ? initial.wishlist : [],
   );
@@ -103,7 +101,6 @@ export function SelfEditForm({
     if (note) fd.set("messageFromCreator", note);
     // Birthday pages always renew every year.
     fd.set("isRecurring", "on");
-    if (dateOfBirth) fd.set("dateOfBirth", dateOfBirth);
     if (music) fd.set("backgroundMusic", music);
     fd.set(
       "wishlist",
@@ -140,7 +137,7 @@ export function SelfEditForm({
   // ── Multi-step wizard ──
   const steps = ["About", "Look", "Wishlist & gifts"];
   const [step, setStep] = useState(0);
-  const stepValid = step === 0 ? title.trim().length >= 2 && !!dateOfBirth : true;
+  const stepValid = step === 0 ? title.trim().length >= 2 : true;
 
   return (
     <main className="min-h-[100dvh] bg-white pb-28" data-theme={theme}>
@@ -177,13 +174,6 @@ export function SelfEditForm({
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="label">Date of birth</label>
-              <DateOfBirthPicker value={dateOfBirth} onChange={setDateOfBirth} />
-              <p className="text-xs text-ink/45">
-                We celebrate your next birthday and renew it every year.
-              </p>
-            </div>
 
             <div className="space-y-1.5">
               <label className="label" htmlFor="note">A note on your page</label>
@@ -349,26 +339,6 @@ export function SelfEditForm({
         </div>
 
         <SlugEditor slug={slug} />
-
-        {/* Danger zone */}
-        <div className="rounded-3xl2 border border-red-200 bg-red-50/40 p-5 space-y-3">
-          <div>
-            <p className="font-medium text-ink">Delete this celebration</p>
-            <p className="text-xs text-ink/50 mt-0.5">
-              Removes the page and everything on it. This can&apos;t be undone.
-            </p>
-          </div>
-          {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
-          <button
-            type="button"
-            onClick={remove}
-            disabled={deleting}
-            className="inline-flex items-center gap-2 rounded-full border border-red-300 text-red-700 hover:bg-red-100 px-4 py-2 text-sm disabled:opacity-60"
-          >
-            {deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
-            {deleting ? "Deleting…" : "Delete celebration"}
-          </button>
-        </div>
       </div>
     </main>
   );

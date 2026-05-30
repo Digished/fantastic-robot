@@ -55,9 +55,13 @@ export async function signup(formData: FormData) {
     password: parsed.data.password,
   });
 
-  // Consume an invite token if they arrived from one → instant friendship.
+  // Consume an invite token if they arrived from one → instant friendship,
+  // and record the referral so it counts toward the inviter's "invite" goal.
   if (invite) {
-    await acceptInviteForUser(data.user.id, invite);
+    const res = await acceptInviteForUser(data.user.id, invite);
+    if (res.inviterId) {
+      await admin.from("users").update({ referred_by: res.inviterId }).eq("id", data.user.id);
+    }
     redirect("/dashboard/friends");
   }
   redirect("/dashboard");
