@@ -129,14 +129,28 @@ export async function getFriendIds(userId: string): Promise<string[]> {
   return (data ?? []).map((r) => r.friend_id as string);
 }
 
-// A friend plus their birthday page + countdown, for feeds and lists.
+// A friend plus their birthday countdown. The birth year is never included —
+// only a "day month" label and days-until — so it can't leak to the client.
 export type FriendBirthday = {
   profile: PublicProfile;
   slug: string | null;
   days: number | null;
-  turning: number | null;
+  birthday: string | null;
 };
 export type RequestPerson = { id: string; profile: PublicProfile };
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** A year-less "14 June" label from a YYYY-MM-DD date of birth. */
+export function birthdayMonthDay(dateOfBirth: string | null): string | null {
+  if (!dateOfBirth) return null;
+  const [, m, d] = dateOfBirth.split("-").map(Number);
+  if (!m || !d) return null;
+  return `${d} ${MONTH_NAMES[m - 1]}`;
+}
 
 export async function getFriendsWithBirthdays(userId: string): Promise<FriendBirthday[]> {
   const profiles = await getPublicProfiles(await getFriendIds(userId));
@@ -144,8 +158,14 @@ export async function getFriendsWithBirthdays(userId: string): Promise<FriendBir
   return profiles
     .map((profile) => {
       const days = profile.dateOfBirth ? daysUntilBirthday(profile.dateOfBirth) : null;
-      const turning = profile.dateOfBirth ? turningAge(profile.dateOfBirth) : null;
-      return { profile, slug: pages.get(profile.id)?.slug ?? null, days, turning } as FriendBirthday;
+      const birthday = birthdayMonthDay(profile.dateOfBirth);
+      // Strip the birth year before it reaches the client.
+      return {
+        profile: { ...profile, dateOfBirth: null },
+        slug: pages.get(profile.id)?.slug ?? null,
+        days,
+        birthday,
+      } as FriendBirthday;
     })
     .sort((a, b) => (a.days ?? 9999) - (b.days ?? 9999));
 }

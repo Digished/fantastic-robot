@@ -115,14 +115,14 @@ export function FriendsPanel({
         </div>
       ) : (
         <ul className="grid sm:grid-cols-2 gap-3">
-          {friends.map(({ profile, slug, days }) => (
+          {friends.map(({ profile, slug, days, birthday }) => (
             <li key={profile.id} className="card flex items-center gap-3 py-3">
               <Avatar p={profile} size={48} />
               <div className="min-w-0 flex-1">
                 <p className="text-ink font-medium truncate">{name(profile)}</p>
                 <p className="text-xs text-ink/55 inline-flex items-center gap-1.5">
                   <Cake className="size-3.5 text-[var(--accent)]" />
-                  {countdownLabel(days)}
+                  {birthday ? `${birthday} · ${countdownLabel(days)}` : countdownLabel(days)}
                 </p>
               </div>
               {slug && <Link href={`/c/${slug}`} className="btn-outline text-sm py-2 shrink-0">View</Link>}
@@ -170,7 +170,9 @@ export function FriendsPanel({
                     <div className="min-w-0 flex-1">
                       <p className="text-ink font-medium truncate">{name(p)}</p>
                       <p className="text-xs text-ink/45 truncate inline-flex items-center gap-1">
-                        {p.days !== null ? <><Cake className="size-3 text-[var(--accent)]" /> {countdownLabel(p.days)}</> : p.username ? `@${p.username}` : ""}
+                        {p.days !== null ? (
+                          <><Cake className="size-3 text-[var(--accent)]" /> {p.birthday ? `${p.birthday} · ${countdownLabel(p.days)}` : countdownLabel(p.days)}</>
+                        ) : p.username ? `@${p.username}` : ""}
                       </p>
                     </div>
                     {p.slug && <Link href={`/c/${p.slug}`} className="text-xs text-[var(--accent)] shrink-0">View</Link>}
