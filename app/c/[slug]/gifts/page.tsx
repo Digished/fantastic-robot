@@ -66,22 +66,17 @@ export default async function GiftsPage({
         </div>
 
         {sealed ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="rounded-2xl bg-[var(--accent-soft)] text-center py-5 px-4">
               <Lock className="size-6 text-[var(--accent)] mx-auto" />
-              <p className="serif text-2xl text-ink mt-2">{sealedCount} gift{sealedCount === 1 ? "" : "s"} waiting</p>
+              <p className="serif text-2xl text-ink mt-2">{sealedItems.length} gift{sealedItems.length === 1 ? "" : "s"} waiting</p>
               <p className="text-ink/55 text-sm mt-1">
-                The amount stays hidden until {formatDate(page.celebration_date)}.
+                Tap any gift to learn more — the amount is revealed on {formatDate(page.celebration_date)}.
               </p>
             </div>
-            {Array.from({ length: Math.min(Math.max(sealedCount, 1), 4) }).map((_, i) => (
-              <div key={i} className="card flex items-center justify-between py-3 select-none pointer-events-none" aria-hidden>
-                <span className="inline-flex items-center gap-2 text-ink/40 blur-[2px]">
-                  <Gift className="size-4" /> Someone special
-                </span>
-                <span className="text-ink/30 blur-sm">₦••••</span>
-              </div>
-            ))}
+            {sealedItems.length > 0 && (
+              <SealedItemGrid items={sealedItems} revealLabel={formatDate(page.celebration_date)} noun="gifts" />
+            )}
           </div>
         ) : gifts.length === 0 ? (
           <p className="text-ink/50 text-sm">No gifts this year yet.</p>
