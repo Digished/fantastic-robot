@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/time";
 import { Sparkles } from "@/components/sparkles";
 import { ShareBar } from "./share-bar";
 import { AddFriendButton } from "./add-friend-button";
+import { BackgroundMusic } from "./background-music";
 import { NavLoadingLink } from "@/components/nav-loading-link";
 import type { BlessingEntryStatus } from "@/lib/blessings/labels";
 import { BlessingCta } from "./blessing-cta";
@@ -210,6 +211,9 @@ export function SealedCountdown({
   shippingAddress,
   sealedTheme,
   addFriendTargetId,
+  musicSrc = null,
+  musicStartSec = null,
+  musicEndSec = null,
 }: {
   slug: string;
   title: string;
@@ -233,6 +237,9 @@ export function SealedCountdown({
   shippingAddress: ShippingAddress | null;
   sealedTheme?: string | null;
   addFriendTargetId?: string | null;
+  musicSrc?: string | null;
+  musicStartSec?: number | null;
+  musicEndSec?: number | null;
 }) {
   const target = new Date(celebrationDate).getTime();
   const [now, setNow] = useState(() => Date.now());
@@ -325,6 +332,7 @@ export function SealedCountdown({
       data-sealed-theme={sealedTheme ?? ""}
       className="relative h-[100dvh] overflow-hidden flex flex-col theme-mesh"
     >
+      {musicSrc && <BackgroundMusic src={musicSrc} startSec={musicStartSec} endSec={musicEndSec} />}
       <Sparkles count={8} />
       <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-black/75 pointer-events-none" aria-hidden />
 
