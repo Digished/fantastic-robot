@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatNaira } from "@/lib/utils";
 import { formatDate } from "@/lib/time";
 import { YearTabs } from "../year-tabs";
+import { SealedItemGrid, type SealedItem } from "../sealed-item-grid";
 
 export const dynamic = "force-dynamic";
 
@@ -25,15 +26,17 @@ export default async function GiftsPage({
   const admin = supabaseAdmin();
   let gifts: { id: string; contributor_name: string; is_anonymous: boolean; amount_net_kobo: number }[] = [];
   let total = 0;
-  let sealedCount = 0;
+  let sealedItems: SealedItem[] = [];
   if (sealed) {
-    const { count } = await admin
+    // Read only ids — no names or amounts — so nothing leaks before the day.
+    const { data } = await admin
       .from("contributions")
-      .select("*", { count: "exact", head: true })
+      .select("id")
       .eq("celebration_id", page.id)
       .eq("cycle", viewCycle)
-      .eq("status", "paid");
-    sealedCount = count ?? 0;
+      .eq("status", "paid")
+      .limit(200);
+    sealedItems = (data ?? []).map((g) => ({ id: g.id as string, kind: "gift" }));
   } else {
     const { data } = await admin
       .from("contributions")
