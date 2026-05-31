@@ -4,10 +4,19 @@ import { loadCelebrationView } from "@/lib/celebration-view";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { formatDate } from "@/lib/time";
 import { YearTabs } from "../year-tabs";
+import { SealedItemGrid, type SealedItem, type SealedKind } from "../sealed-item-grid";
 
 export const dynamic = "force-dynamic";
 
 const MEDIA_ICON: Record<string, typeof Mic> = { audio: Mic, video: Video, image: ImageIcon };
+
+function sealedKind(m: { media_kind: string; interactive_kind: string | null }): SealedKind {
+  if (m.interactive_kind && m.interactive_kind !== "none") return "surprise";
+  if (m.media_kind === "audio") return "audio";
+  if (m.media_kind === "video") return "video";
+  if (m.media_kind === "image") return "photo";
+  return "message";
+}
 
 export default async function MessagesPage({
   params,
@@ -28,15 +37,18 @@ export default async function MessagesPage({
     id: string; contributor_name: string; is_anonymous: boolean;
     body: string | null; media_kind: string;
   }[] = [];
-  let sealedCount = 0;
+  let sealedItems: SealedItem[] = [];
   if (sealed) {
-    const { count } = await admin
+    // Only the type is read — no names or content — so nothing leaks early.
+    const { data } = await admin
       .from("messages")
-      .select("*", { count: "exact", head: true })
+      .select("id, media_kind, interactive_kind")
       .eq("celebration_id", page.id)
       .eq("cycle", viewCycle)
-      .is("deleted_at", null);
-    sealedCount = count ?? 0;
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    sealedItems = (data ?? []).map((m) => ({ id: m.id as string, kind: sealedKind(m as { media_kind: string; interactive_kind: string | null }) }));
   } else {
     const { data } = await admin
       .from("messages")
@@ -56,26 +68,17 @@ export default async function MessagesPage({
         <h1 className="serif text-3xl text-ink">Messages</h1>
 
         {sealed ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div className="rounded-2xl bg-[var(--accent-soft)] text-center py-5 px-4">
               <Lock className="size-6 text-[var(--accent)] mx-auto" />
-              <p className="serif text-2xl text-ink mt-2">{sealedCount} message{sealedCount === 1 ? "" : "s"} waiting</p>
+              <p className="serif text-2xl text-ink mt-2">{sealedItems.length} message{sealedItems.length === 1 ? "" : "s"} waiting</p>
               <p className="text-ink/55 text-sm mt-1">
-                Hidden — even from you — until {formatDate(page.celebration_date)}.
+                Tap any card to learn more — it all opens on {formatDate(page.celebration_date)}.
               </p>
             </div>
-            {/* Blurred teaser of what's waiting */}
-            {Array.from({ length: Math.min(Math.max(sealedCount, 1), 4) }).map((_, i) => (
-              <div key={i} className="card select-none pointer-events-none" aria-hidden>
-                <div className="blur-sm space-y-2">
-                  <div className="h-3 rounded bg-ink/15 w-3/4" />
-                  <div className="h-3 rounded bg-ink/10 w-1/2" />
-                  <div className="mt-2 flex items-center gap-2 text-xs text-ink/30">
-                    <MessageCircle className="size-3.5" /> <span>Someone special</span>
-                  </div>
-                </div>
-              </div>
-            ))}
+            {sealedItems.length > 0 && (
+              <SealedItemGrid items={sealedItems} revealLabel={formatDate(page.celebration_date)} noun="messages and surprises" />
+            )}
           </div>
         ) : messages.length === 0 ? (
           <p className="text-ink/50 text-sm">No messages this year yet.</p>

@@ -25,6 +25,8 @@ import { BlessingCta } from "./blessing-cta";
 import { SealedCountdown } from "./sealed-countdown";
 import { ThrowbackMilestones, type PastCycle } from "./throwback-milestones";
 import { areFriends } from "@/lib/friends";
+import { resolveSavedTrack } from "@/lib/music/server";
+import { BackgroundMusic } from "./background-music";
 
 export const dynamic = "force-dynamic";
 
@@ -47,12 +49,15 @@ export default async function WallPage({
   const { data: page } = await supabase
     .from("celebrations")
     .select(
-      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle, wishlist, presentation",
+      "id, slug, title, recipient_name, event_type, celebration_date, deadline_at, claimable_at, status, message_from_creator, total_raised_kobo, contributor_count, payout_status, recipient_account_name, cover_photo_path, creator_id, theme, gallery_images, is_paid_for_creation, creation_payment_reference, is_self, is_sealed, is_recurring, current_cycle, wishlist, presentation, background_music",
     )
     .eq("slug", slug)
     .maybeSingle();
 
   if (!page) notFound();
+
+  // Background song (built-in, custom, or per-page upload) with optional clip.
+  const musicTrack = await resolveSavedTrack(page.background_music);
 
   const { data: { user } } = await supabase.auth.getUser();
   const isCreator = !!user && user.id === page.creator_id;
@@ -166,6 +171,9 @@ export default async function WallPage({
         contributorFirstNames={contributorFirstNames}
         shippingAddress={shippingAddress}
         sealedTheme={sealedTheme}
+        musicSrc={musicTrack?.src ?? null}
+        musicStartSec={musicTrack?.clip?.startSec ?? null}
+        musicEndSec={musicTrack?.clip?.endSec ?? null}
       />
     );
   }
@@ -236,6 +244,10 @@ export default async function WallPage({
 
   return (
     <main className={`min-h-[100dvh] pb-20 ${book ? "bg-[#EFE4D2]" : "bg-white"}`} data-theme={theme} data-presentation={page.presentation ?? "reel"}>
+
+      {musicTrack && (
+        <BackgroundMusic src={musicTrack.src} startSec={musicTrack.clip?.startSec ?? null} endSec={musicTrack.clip?.endSec ?? null} />
+      )}
 
       {/* ── Wide container ── */}
       <div className={`mx-auto w-full max-w-6xl px-4 md:px-10 pt-4 ${book ? "md:px-12" : ""}`}>
